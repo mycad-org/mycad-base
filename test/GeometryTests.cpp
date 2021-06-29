@@ -21,17 +21,12 @@ namespace rc{
 }
 
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
-    GIVEN("Two points") {
-        WHEN("A Line is created") {
-            THEN("It is parametrized from u=0 to u=1") {
-            rc::prop("",
-                [](const Point& p1, const Point& p2) {
-                    Line line(p1, p2);
-                    RC_ASSERT(line.atU(0) == p1);
-                    RC_ASSERT(line.atU(1) == p2);
-                }
-            );
-            }
+    rc::prop("A line is parametrized from u=0 to u=1",
+        [](const Point& p1, const Point& p2) {
+            Line line(p1, p2);
+            RC_ASSERT(line.atU(0) == p1);
+            RC_ASSERT(line.atU(1) == p2);
+            RC_ASSERT(false);
         }
-    }
+    );
 }
