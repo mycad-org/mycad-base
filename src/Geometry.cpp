@@ -15,6 +15,15 @@ Line::Line(const Point& p1, const Point& p2)
     : p1(p1), p2(p2){}
 
 Point Line::atU(float u) const {
+    if (u == 0)
+    {
+        return p1;
+    }
+    else if (u == 1)
+    {
+        return p2;
+    }
+
     auto f = [u](float component1, float component2) -> float {
             return component1 + u * (component2 - component1);
         };
