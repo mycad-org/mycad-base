@@ -26,7 +26,6 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             Line line(p1, p2);
             RC_ASSERT(line.atU(0) == p1);
             RC_ASSERT(line.atU(1) == p2);
-            RC_ASSERT(false);
         }
     );
 }
