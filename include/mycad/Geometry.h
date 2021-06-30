@@ -52,6 +52,7 @@ namespace mycad {
         };
 
         std::ostream& operator<<(std::ostream& stream, const mycad::geom::Point& p);
+        std::ostream& operator<<(std::ostream& stream, const mycad::geom::Line& line);
 
     } // namespace geom
 }     // namespace mycad

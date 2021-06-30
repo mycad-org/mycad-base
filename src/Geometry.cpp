@@ -57,3 +57,11 @@ std::ostream& mycad::geom::operator<<(
     stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
     return stream;
 }
+
+std::ostream& mycad::geom::operator<<(
+        std::ostream& stream,
+        const mycad::geom::Line& line)
+{
+    stream << "Line: " << line.atU(0) << " → " << line.atU(1);
+    return stream;
+}
