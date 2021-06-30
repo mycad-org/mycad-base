@@ -46,8 +46,25 @@ Point Line::atU(float u) const {
             );
 }
 
-bool Line::intersects(const Point& ) const {
-    return false;
+bool Line::intersects(const Point& p) const {
+    if (p == p1 || p == p2)
+    {
+        return true;
+    }
+
+    // The parametric equations of a 3d line are:
+    //
+    // x = x₁ + (x₂ - x₁)u
+    // y = y₁ + (y₂ - y₁)u
+    // z = z₁ + (z₂ - z₁)u
+    //
+    // We can use this to solve for `u` given any one of the components of the
+    // point we were given
+    float u = (p.x - p1.x) / (p2.x - p1.x);
+
+    // Now we should be able to get the point back if it intersects with our
+    // line
+    return p == this->atU(u);
 }
 
 std::ostream& mycad::geom::operator<<(
