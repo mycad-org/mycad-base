@@ -6,3 +6,5 @@
     - this will allow for separate "build" and "test" badges, which could be
       helpful
     - it also will make it easier to track down where errors are occuring
+- set up a `mycad::ErrorCode` enum so we can be a bit more expressive using our
+  `tl::expected`
