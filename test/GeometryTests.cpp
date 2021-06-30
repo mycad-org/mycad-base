@@ -19,6 +19,18 @@ namespace rc{
             );
         }
     };
+
+    template<>
+    struct Arbitrary<Line> {
+        static Gen<Line> arbitrary() {
+            return gen::exec([]() {
+                Point p1 = *gen::arbitrary<Point>();
+                Point p2 = *gen::distinctFrom(p1);
+                return Line::makeLine(p1, p2).value();
+                }
+            );
+        }
+    };
 }
 
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
@@ -40,6 +52,14 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             const Line& line = eLine.value();
             RC_ASSERT(line.atU(0) == p1);
             RC_ASSERT(line.atU(1) == p2);
+        }
+    );
+
+    rc::prop("Any point on the line intersects the line",
+        [](const Line& line) {
+            float u = *rc::gen::inRange(0, 1);
+            const Point& p = line.atU(u);
+            RC_ASSERT(line.intersects(p));
         }
     );
 }

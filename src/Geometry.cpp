@@ -46,6 +46,10 @@ Point Line::atU(float u) const {
             );
 }
 
+bool Line::intersects(const Point& ) const {
+    return false;
+}
+
 std::ostream& mycad::geom::operator<<(
         std::ostream& stream,
         const mycad::geom::Point& p)

@@ -43,6 +43,8 @@ namespace mycad {
                  */
                 Point atU(float u) const;
 
+                bool intersects(const Point& p) const;
+
             private:
                 Line(const Point& p1, const Point& p2);
 
