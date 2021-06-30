@@ -28,7 +28,10 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
         }
     );
     rc::prop("A line is parametrized from u=0 to u=1",
-        [](const Point& p1, const Point& p2) {
+        []() {
+            Point p1 = *rc::gen::arbitrary<Point>();
+            Point p2 = *rc::gen::distinctFrom(p1);
+
             auto eLine = Line::makeLine(p1, p2);
             RC_ASSERT(eLine.has_value());
             const Line& line = eLine.value();

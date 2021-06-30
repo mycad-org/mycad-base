@@ -11,6 +11,18 @@ bool Point::operator==(const Point& other) const {
     return x == other.x && y == other.y && z == other.z;
 }
 
+tl::expected<Line, std::string> Line::makeLine(const Point& p1, const Point& p2)
+{
+    if (p1 == p2)
+    {
+        return tl::unexpected(std::string("A line cannot be constructed with two equivalent Points"));
+    }
+    else
+    {
+        return Line(p1, p2);
+    }
+}
+
 Line::Line(const Point& p1, const Point& p2)
     : p1(p1), p2(p2){}
 

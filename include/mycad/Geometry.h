@@ -2,6 +2,7 @@
 #define MYCAD_GEOMETRY_HEADER
 
 #include <iostream>
+#include "tl/expected.hpp"
 
 namespace mycad {
     namespace geom {
@@ -29,8 +30,10 @@ namespace mycad {
                  *  such that when @f$i u=0 @f$,
                  *  @f$ x = p1.x, y = p1.y, z = y1.z @f$, and similarly for
                  *  @f$ u=1 @f$ and @param p2.
+                 *
+                 *  @returns A Line if the two points are not equivalent
                  */
-                Line(const Point& p1, const Point& p2);
+                 static tl::expected<Line, std::string> makeLine(const Point& p1, const Point& p2);
 
                 /** @brief return the point at the given @param u
                  *
@@ -41,6 +44,8 @@ namespace mycad {
                 Point atU(float u) const;
 
             private:
+                Line(const Point& p1, const Point& p2);
+
                 Point p1, p2;
         };
 
