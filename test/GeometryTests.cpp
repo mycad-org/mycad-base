@@ -1,5 +1,5 @@
 #include "mycad/Geometry.h"
-#include <tuple>
+#include "tl/expected.hpp"
 
 #include <catch2/catch.hpp>
 #include "rapidcheck.h"
@@ -21,9 +21,17 @@ namespace rc{
 }
 
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
+    rc::prop("A line cannot be constructed with only one point",
+        [](const Point& p1) {
+            tl::expected<Line, std::string>  eLine = Line::makeLine(p1, p1);
+            RC_ASSERT_FALSE(eLine.has_value());
+        }
+    );
     rc::prop("A line is parametrized from u=0 to u=1",
         [](const Point& p1, const Point& p2) {
-            Line line(p1, p2);
+            auto eLine = Line::makeLine(p1, p2);
+            RC_ASSERT(eLine.has_value());
+            const Line& line = eLine.value();
             RC_ASSERT(line.atU(0) == p1);
             RC_ASSERT(line.atU(1) == p2);
         }
