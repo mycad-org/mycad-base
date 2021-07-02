@@ -30,17 +30,29 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
     );
 
     GIVEN("Two Vertices") {
+        Topology topo;
+        int v1 = topo.addFreeVertex(),
+            v2 = topo.addFreeVertex();
+
         WHEN("An Edge is created between them") {
+            std::set<int> edgeIDs = topo.getEdgeIDs();
+            auto eitherEdgeID = topo.makeEdge(v1, v2);
+
             THEN("An Edge with a unique ID is created") {
-                Topology topo;
-                int v1 = topo.addFreeVertex(),
-                    v2 = topo.addFreeVertex();
-
-                std::set<int> edgeIDs = topo.getEdgeIDs();
-                auto eitherEdgeID = topo.makeEdge(v1, v2);
-
                 CHECK(eitherEdgeID.has_value());
-                CHECK(edgeIDs.count(eitherEdgeID.value()) == 0);
+                REQUIRE(edgeIDs.count(eitherEdgeID.value()) == 0);
+            }
+        }
+
+        WHEN("There's already an Edge between them") {
+            auto eitherEdgeID = topo.makeEdge(v1, v2);
+
+            THEN("We cannot create a second Edge in the same direction") {
+                CHECK_FALSE(topo.makeEdge(v1, v2).has_value());
+            }
+
+            THEN("We can still create an Edge in the reverse direction") {
+                REQUIRE(topo.makeEdge(v2, v1).has_value());
             }
         }
     }
