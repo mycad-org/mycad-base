@@ -1,6 +1,11 @@
 Provides the necessary geometric objects and algorithms needed to implement a
 CAD system.
 
+Provides a `Topology` data structure that can be used to manage topological
+entities in a CAD application.
+
+Can be built as follows:
+
 This project can be built using cmake:
 
 ```sh
