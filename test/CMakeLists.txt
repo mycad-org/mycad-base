@@ -24,6 +24,7 @@ set(TEST_LIBS
     mycad_geometry
     mycad-topology
     rapidcheck
+    mycad-topology
     )
 
 add_executable(mycad_tests ${TEST_SRCS})

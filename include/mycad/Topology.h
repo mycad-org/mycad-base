@@ -8,7 +8,10 @@ namespace mycad {
     namespace topo {
         class Topology{
             public:
-                int addFreeVertex(){return 0;};
+                int addFreeVertex();
+
+            private:
+                int lastVertexID = 0;
         };
     } // namespace topo
 }     // namespace mycad
