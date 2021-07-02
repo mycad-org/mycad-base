@@ -1,0 +1,1 @@
+- try to centralize the github actions yaml's so we don't duplicate it.
