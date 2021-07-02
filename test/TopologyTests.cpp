@@ -28,4 +28,20 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
             return true;
         }
     );
+
+    GIVEN("Two Vertices") {
+        WHEN("An Edge is created between them") {
+            THEN("An Edge with a unique ID is created") {
+                Topology topo;
+                int v1 = topo.addFreeVertex(),
+                    v2 = topo.addFreeVertex();
+
+                std::set<int> edgeIDs = topo.getEdgeIDs();
+                auto eitherEdgeID = topo.makeEdge(v1, v2);
+
+                CHECK(eitherEdgeID.has_value());
+                CHECK(edgeIDs.count(eitherEdgeID.value()) == 0);
+            }
+        }
+    }
 }
