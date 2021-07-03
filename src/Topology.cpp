@@ -44,6 +44,26 @@ int Topology::addFreeVertex()
     return out;
 }
 
+/**
+ * The two Vertices **can** be the same, in which case the Edge would be
+ * considered a "loop" edge.
+ *
+ * Only a single Edge can exist between two Vertices in a given direction, so
+ * that if this method is called twice with the same vertices an error is
+ * returned.
+ *
+ * However, if this method is called a second time with the parameters reversed,
+ * this is valid and results in an Edge going "in the other direction".
+ *
+ * Visually:
+ *
+ * makeEdge(v1, v2): V₁ → V₂
+ * makeEdge(v1, v2): error
+ * makeEdge(v2, v1): V₁ ↔ V₂
+ *
+ * @returns error string if either of the vertices doesn't exist
+ * @returns error string if an Edge already exists **from** @v1@ **to** @v2@
+ */
 tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
 {
     if (not (vertexIDs.contains(v1) && vertexIDs.contains(v2)))

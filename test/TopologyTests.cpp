@@ -43,6 +43,18 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
             {
                 REQUIRE(eitherEdgeID.has_value());
             }
+
+            THEN("An adjacency exists between each Vertex and the new Edge")
+            {
+                int edgeID = eitherEdgeID.value();
+                // Either Edge ID from V₁
+                auto eEID_v1 = topo.edgesAdjacentToVertex(v1);
+                auto eEID_v2 = topo.edgesAdjacentToVertex(v2);
+                REQUIRE(eEID_v1.has_value());
+                REQUIRE(eEID_v2.has_value());
+                CHECK(eEID_v1.value() == std::unordered_set<int>{edgeID});
+                REQUIRE(eEID_v2.value() == std::unordered_set<int>{edgeID});
+            }
         }
 
         WHEN("There's already an Edge between them")
