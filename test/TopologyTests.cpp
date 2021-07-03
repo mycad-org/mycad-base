@@ -35,12 +35,10 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
             v2 = topo.addFreeVertex();
 
         WHEN("An Edge is created between them") {
-            std::set<int> edgeIDs = topo.getEdgeIDs();
             auto eitherEdgeID = topo.makeEdge(v1, v2);
 
-            THEN("An Edge with a unique ID is created") {
-                CHECK(eitherEdgeID.has_value());
-                REQUIRE(edgeIDs.count(eitherEdgeID.value()) == 0);
+            THEN("A unique ID is returned for that Edge") {
+                REQUIRE(eitherEdgeID.has_value());
             }
         }
 
