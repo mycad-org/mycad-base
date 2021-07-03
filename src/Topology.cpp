@@ -1,6 +1,5 @@
 #include "mycad/Topology.h"
 #include "detail/Topology.h"
-#include "detail/Topology.cpp"
 
 using namespace mycad::topo;
 
