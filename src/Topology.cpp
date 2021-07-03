@@ -1,6 +1,8 @@
 #include "mycad/Topology.h"
 #include "detail/Topology.h"
 
+#include <iostream>
+
 using namespace mycad::topo;
 
 Topology::Topology() = default;
@@ -86,7 +88,26 @@ tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
     }
 
     detail::Edge edge(v1, v2);
-    edges.emplace(lastEdgeID++,
+    int eid = lastEdgeID++;
+    edges.emplace(eid,
                   std::make_unique<detail::Edge>(v1, v2));
-    return lastEdgeID;
+    return eid;
+}
+
+tl::expected<std::unordered_set<int>, std::string>
+Topology::edgesAdjacentToVertex(int v) const
+{
+    return detail::hasVertex(v, vertexIDs)
+           .map([v, this]
+           {
+               std::unordered_set<int> out;
+               for (const auto& [edgeID, edge] : edges)
+               {
+                   if (edge->leftVertexID == v || edge->rightVertexID == v)
+                   {
+                       out.insert(edgeID);
+                   }
+               }
+               return out;
+           });
 }

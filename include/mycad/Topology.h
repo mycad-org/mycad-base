@@ -37,7 +37,7 @@ namespace mycad
                  *           topology
                  */
                 tl::expected<std::unordered_set<int>, std::string>
-                edgesAdjacentToVertex(int) const {return {};}
+                edgesAdjacentToVertex(int) const;
 
             private:
                 int lastVertexID = 0;
