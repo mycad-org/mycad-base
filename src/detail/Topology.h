@@ -1,10 +1,14 @@
 #ifndef TOPOLOGY_DETAIL_H
 #define TOPOLOGY_DETAIL_H
 
-namespace mycad {
-    namespace topo {
-        namespace detail {
-            struct Edge {
+namespace mycad
+{
+    namespace topo
+    {
+        namespace detail
+        {
+            struct Edge
+            {
                 int leftVertexID;
                 int rightVertexID;
             };

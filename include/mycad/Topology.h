@@ -7,13 +7,17 @@
 #include <string>
 #include "tl/expected.hpp"
 
-namespace mycad {
-    namespace topo {
-        namespace detail {
+namespace mycad
+{
+    namespace topo
+    {
+        namespace detail
+        {
             struct Edge;
         }
 
-        class Topology{
+        class Topology
+        {
             public:
                 Topology();
                 Topology(const Topology& other);
