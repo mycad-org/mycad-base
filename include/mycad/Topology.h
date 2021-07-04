@@ -24,6 +24,8 @@ namespace mycad
                 ~Topology();
                 Topology& operator=(const Topology& other);
 
+                bool operator==(const Topology&) const {return false;}
+
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
                 int addFreeVertex();
@@ -38,6 +40,10 @@ namespace mycad
                  */
                 tl::expected<std::unordered_set<int>, std::string>
                 edgesAdjacentToVertex(int) const;
+
+                /** @returns false if the Edge doesn't exist
+                 */
+                bool deleteEdge(int){return false;}
 
             private:
                 int lastVertexID = 0;

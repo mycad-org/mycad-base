@@ -37,6 +37,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
 
         WHEN("An Edge is created between them")
         {
+            Topology orig = topo;
             auto eitherEdgeID = topo.makeEdge(v1, v2);
 
             THEN("A unique ID is returned for that Edge")
@@ -44,9 +45,10 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
                 REQUIRE(eitherEdgeID.has_value());
             }
 
+            int edgeID = eitherEdgeID.value();
+
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
-                int edgeID = eitherEdgeID.value();
                 // Either Edge ID from V₁
                 auto eEID_v1 = topo.edgesAdjacentToVertex(v1);
                 auto eEID_v2 = topo.edgesAdjacentToVertex(v2);
@@ -54,6 +56,16 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
                 REQUIRE(eEID_v2.has_value());
                 CHECK(eEID_v1.value() == std::unordered_set<int>{edgeID});
                 REQUIRE(eEID_v2.value() == std::unordered_set<int>{edgeID});
+            }
+
+            WHEN("The Edge is deleted")
+            {
+                CHECK(topo.deleteEdge(edgeID));
+
+                THEN("The Topology reverts to the previous state")
+                {
+                    REQUIRE(orig == topo);
+                }
             }
         }
 
