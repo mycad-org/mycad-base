@@ -45,6 +45,7 @@ namespace mycad
                  */
                 bool deleteEdge(int){return false;}
 
+                void streamTo(std::ostream& os) const;
             private:
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
@@ -52,6 +53,9 @@ namespace mycad
                 std::unordered_set<int> vertexIDs;
                 std::map<int, std::unique_ptr<detail::Edge>> edges;
         };
+
+
+        std::ostream& operator<<(std::ostream& os, const Topology& topo);
     } // namespace topo
 }     // namespace mycad
 

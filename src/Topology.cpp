@@ -111,3 +111,30 @@ Topology::edgesAdjacentToVertex(int v) const
                return out;
            });
 }
+
+void Topology::streamTo(std::ostream& os) const
+{
+    os << "lastVertexID = " << lastVertexID << ", "
+       << "lastEdgeID = " << lastEdgeID << std::endl;
+
+    os << "vertexIDs:" << std::endl;;
+
+    for (const auto& id : vertexIDs)
+    {
+        os << "    vid: " << id << std::endl;
+    }
+
+    os << "edges:" << std::endl;
+    for (const auto& [key, edge] : edges)
+    {
+        os << "    eid: " << key << ", "
+           << "leftVertexID = " << edge->leftVertexID << ", "
+           << "rightVertexID = " << edge->rightVertexID << std::endl;
+    }
+}
+
+std::ostream& mycad::topo::operator<<(std::ostream& os, const Topology& topo)
+{
+    topo.streamTo(os);
+    return os;
+}
