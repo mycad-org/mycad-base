@@ -8,7 +8,7 @@ using namespace mycad::topo;
 Topology::Topology() = default;
 
 Topology::Topology(const Topology& other)
-    : lastVertexID(other.lastVertexID), lastEdgeID(other.lastEdgeID), vertexIDs(other.vertexIDs)
+    : lastVertexID(other.lastVertexID), lastEdgeID(other.lastEdgeID), vertices(other.vertices)
 {
     for(const auto& [id, edge] : other.edges)
     {
@@ -28,7 +28,7 @@ Topology& Topology::operator=(const Topology& other)
 
     this->lastVertexID = other.lastVertexID;
     this->lastEdgeID = other.lastEdgeID;
-    this->vertexIDs = other.vertexIDs;
+    this->vertices = other.vertices;
 
     edges.clear();
     for(const auto& [id, edge] : other.edges)
@@ -42,7 +42,7 @@ Topology& Topology::operator=(const Topology& other)
 int Topology::addFreeVertex()
 {
     int out = lastVertexID++;
-    vertexIDs.insert(out);
+    vertices.insert(out);
     return out;
 }
 
@@ -68,7 +68,7 @@ int Topology::addFreeVertex()
  */
 tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
 {
-    if (not (vertexIDs.contains(v1) && vertexIDs.contains(v2)))
+    if (not (vertices.contains(v1) && vertices.contains(v2)))
     {
         return tl::unexpected(
             std::string("One or both of v1 = ") + std::to_string(v1) +
@@ -97,7 +97,7 @@ tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
 tl::expected<std::unordered_set<int>, std::string>
 Topology::edgesAdjacentToVertex(int v) const
 {
-    return detail::hasVertex(v, vertexIDs)
+    return detail::hasVertex(v, vertices)
            .map([v, this]
            {
                std::unordered_set<int> out;
@@ -119,7 +119,7 @@ void Topology::streamTo(std::ostream& os) const
 
     os << "vertexIDs:" << std::endl;;
 
-    for (const auto& id : vertexIDs)
+    for (const auto& id : vertices)
     {
         os << "    vid: " << id << std::endl;
     }

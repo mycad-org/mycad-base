@@ -50,7 +50,7 @@ namespace mycad
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
-                std::unordered_set<int> vertexIDs;
+                std::unordered_set<int> vertices;
                 std::map<int, std::unique_ptr<detail::Edge>> edges;
         };
 
