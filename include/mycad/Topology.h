@@ -3,8 +3,9 @@
 
 #include <map>
 #include <memory>
-#include <unordered_set>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include "tl/expected.hpp"
 
 namespace mycad
@@ -43,6 +44,12 @@ namespace mycad
                  */
                 tl::expected<std::unordered_set<int>, std::string>
                 edgesAdjacentToVertex(int) const;
+
+                /** @returns error sring if the edge does not exist in the
+                 *           topology
+                 */
+                tl::expected<std::pair<int, int>, std::string>
+                getEdgeVertices(int) const{return std::make_pair(0, 0);}
 
                 /** @returns false if the Edge doesn't exist
                  */

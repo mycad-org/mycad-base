@@ -58,6 +58,13 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
                 REQUIRE(eEID_v2.value() == std::unordered_set<int>{edgeID});
             }
 
+            THEN("Both Vertices are adjacent to the Edge")
+            {
+                auto eitherVertices = topo.getEdgeVertices(edgeID);
+                REQUIRE(eitherVertices.has_value());
+                REQUIRE(eitherVertices.value() == std::pair<int, int>(v1, v2));
+            }
+
             WHEN("The Edge is deleted")
             {
                 CHECK(topo.deleteEdge(edgeID));
