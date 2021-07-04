@@ -64,7 +64,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
 
                 THEN("The Topology reverts to the previous state")
                 {
-                    REQUIRE(orig == topo);
+                    REQUIRE(orig.similar(topo));
                 }
             }
         }

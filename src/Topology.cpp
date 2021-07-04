@@ -39,6 +39,40 @@ Topology& Topology::operator=(const Topology& other)
     return *this;
 }
 
+/**
+ *
+ *  Each Topology keeps track of a list of UIDs for each topological entity. IDs
+ *  are not reused. Therefore:
+ *
+ *  ```cpp
+ *  Topology topo1;
+ *  int v1 = topo1.addFreeVertex();
+ *  int v2 = topo1.addFreeVertex();
+ *
+ *  Topology topo2(topo1);
+ *
+ *  int eid = topo1.makeEdge(v1, v2);
+ *  topo1.deleteEdge(eid);
+ *
+ *  topo1 == topo2;       // false (1)
+ *  topo1.similar(topo2); // true (2)
+ *  topo2.similar(topo1); // true (2)
+ *  ```
+ *
+ *  The reason these two topologies are not equivalent is because topo1 has more
+ *  "history". It knows about the Edge that was created and then deleted. Since
+ *  UID's are not reused, the next time an Edge is made, it will get the "next"
+ *  availabl ID.
+ *
+ *  The specifics of how the ID's are created and managed is an implementation
+ *  detail, but it suffices to know that this mechanism is what makes `topo1 !=
+ *  topo2`
+ */
+bool Topology::similar(const Topology& other) const
+{
+    return vertices == other.vertices && edges == other.edges;
+}
+
 int Topology::addFreeVertex()
 {
     int out = lastVertexID++;
@@ -92,6 +126,18 @@ tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
     edges.emplace(eid,
                   std::make_unique<detail::Edge>(v1, v2));
     return eid;
+}
+
+bool Topology::deleteEdge(int edge)
+{
+    auto search = edges.find(edge);
+    if (search == edges.end())
+    {
+        return false;
+    }
+
+    edges.erase(search);
+    return true;
 }
 
 tl::expected<std::unordered_set<int>, std::string>

@@ -24,7 +24,10 @@ namespace mycad
                 ~Topology();
                 Topology& operator=(const Topology& other);
 
-                bool operator==(const Topology&) const {return false;}
+                bool operator==(const Topology&) const = default;
+                /** @brief checks if two topologies are mostly equivalent
+                 */
+                bool similar(const Topology& other) const;
 
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
@@ -43,7 +46,7 @@ namespace mycad
 
                 /** @returns false if the Edge doesn't exist
                  */
-                bool deleteEdge(int){return false;}
+                bool deleteEdge(int);
 
                 void streamTo(std::ostream& os) const;
             private:
