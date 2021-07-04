@@ -45,11 +45,13 @@ namespace mycad
                 tl::expected<std::unordered_set<int>, std::string>
                 edgesAdjacentToVertex(int) const;
 
-                /** @returns error sring if the edge does not exist in the
+                /** @returns A pair `(left, right)` of vertex IDs corresponding
+                 *           to this Edge
+                 *  @returns error sring if the edge does not exist in the
                  *           topology
                  */
                 tl::expected<std::pair<int, int>, std::string>
-                getEdgeVertices(int) const{return std::make_pair(0, 0);}
+                getEdgeVertices(int edge) const;
 
                 /** @returns false if the Edge doesn't exist
                  */

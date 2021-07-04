@@ -3,6 +3,8 @@
 
 #include "tl/expected.hpp"
 
+#include <map>
+#include <memory>
 #include <string>
 #include <unordered_set>
 
@@ -12,14 +14,16 @@ namespace mycad
     {
         namespace detail
         {
-            tl::expected<void, std::string>
-            hasVertex(int v, std::unordered_set<int> vs);
-
             struct Edge
             {
                 int leftVertexID;
                 int rightVertexID;
             };
+
+            tl::expected<void, std::string>
+            hasVertex(int v, std::unordered_set<int> vs);
+            tl::expected<void, std::string>
+            hasEdge(int edge, const std::map<int, std::unique_ptr<Edge>>& es);
         }
     } // namespace topo
 } // namespace mycad

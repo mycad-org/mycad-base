@@ -158,6 +158,17 @@ Topology::edgesAdjacentToVertex(int v) const
            });
 }
 
+tl::expected<std::pair<int, int>, std::string>
+Topology::getEdgeVertices(int edge) const
+{
+    return detail::hasEdge(edge, edges)
+           .map([edge, this]
+           {
+               auto [left, right] = *edges.at(edge);
+               return std::make_pair(left, right);
+           });
+}
+
 void Topology::streamTo(std::ostream& os) const
 {
     os << "lastVertexID = " << lastVertexID << ", "
