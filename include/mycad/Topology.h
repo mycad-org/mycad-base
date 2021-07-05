@@ -59,7 +59,7 @@ namespace mycad
                  *  @returns error string if the Vertex and Edge are not
                  *           adjacent to each other
                  */
-                tl::expected<int, std::string> oppositeVertex(int , int ){return -1;}
+                tl::expected<int, std::string> oppositeVertex(int v, int e) const;
 
                 /** @returns false if the Edge doesn't exist
                  */

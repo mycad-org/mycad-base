@@ -169,6 +169,31 @@ Topology::getEdgeVertices(int edge) const
            });
 }
 
+tl::expected<int, std::string> Topology::oppositeVertex(int v, int e) const
+{
+    return
+        detail::hasVertex(v, vertices)
+        .and_then(std::bind(detail::hasEdge, e, std::cref(edges)))
+        .and_then([v, e, this]() -> tl::expected<int, std::string>{
+            auto [left, right] = *edges.at(e);
+            if (left == v)
+            {
+                return right;
+            }
+            else if (right == v )
+            {
+                return left;
+            }
+            else
+            {
+                return tl::unexpected(
+                       std::string("vertex with id = ") + std::to_string(v) +
+                                   " is not adjacent to edge with id ="  +
+                                   std::to_string(e));
+            }
+        });
+}
+
 void Topology::streamTo(std::ostream& os) const
 {
     os << "lastVertexID = " << lastVertexID << ", "
