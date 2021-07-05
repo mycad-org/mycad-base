@@ -30,7 +30,8 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
         }
     );
 
-    GIVEN("Two Vertices"){
+    GIVEN("Two Vertices")
+    {
         Topology topo;
         int v1 = topo.addFreeVertex(),
             v2 = topo.addFreeVertex();
@@ -94,6 +95,31 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
             {
                 CHECK_FALSE(topo.makeEdge(v1, v2).has_value());
                 REQUIRE_FALSE(topo.makeEdge(v2, v1).has_value());
+            }
+        }
+    }
+
+}
+
+SCENARIO("002: Edge Topology", "[topology][edge]")
+{
+    GIVEN("A topology with a single Edge")
+    {
+        Topology topo;
+        int v1 = topo.addFreeVertex();
+        int v2 = topo.addFreeVertex();
+        int edge = topo.makeEdge(v1, v2).value();
+
+        WHEN("A second Edge is added adjacent to v1")
+        {
+            int v3 = topo.addFreeVertex();
+            int edge2 = topo.makeEdge(v1, v3).value();
+            THEN("v1 is adjacent to both edges")
+            {
+                auto eitherEdges = topo.edgesAdjacentToVertex(v1);
+                REQUIRE(eitherEdges.has_value());
+                REQUIRE(eitherEdges.value().contains(edge));
+                REQUIRE(eitherEdges.value().contains(edge2));
             }
         }
     }
