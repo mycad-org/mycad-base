@@ -65,6 +65,16 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
                 REQUIRE(eitherVertices.value() == std::pair<int, int>(v1, v2));
             }
 
+            THEN("Either Vertex can be used to find the other across the Edge")
+            {
+                auto eitherVertex1 = topo.oppositeVertex(v2, edgeID);
+                auto eitherVertex2 = topo.oppositeVertex(v1, edgeID);
+                REQUIRE(eitherVertex1.has_value());
+                REQUIRE(eitherVertex2.has_value());
+                REQUIRE(eitherVertex1.value() == v1);
+                REQUIRE(eitherVertex2.value() == v2);
+            }
+
             WHEN("The Edge is deleted")
             {
                 CHECK(topo.deleteEdge(edgeID));

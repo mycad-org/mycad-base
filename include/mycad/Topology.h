@@ -53,6 +53,14 @@ namespace mycad
                 tl::expected<std::pair<int, int>, std::string>
                 getEdgeVertices(int edge) const;
 
+                /** @brief find the Vertex on the other side of the Edge
+                 *  @returns error string if either @v@ or @e@ does not exist in
+                 *           the topology
+                 *  @returns error string if the Vertex and Edge are not
+                 *           adjacent to each other
+                 */
+                tl::expected<int, std::string> oppositeVertex(int , int ){return -1;}
+
                 /** @returns false if the Edge doesn't exist
                  */
                 bool deleteEdge(int);
