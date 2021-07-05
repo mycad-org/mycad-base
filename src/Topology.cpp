@@ -112,12 +112,12 @@ tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
 
     for (const auto& [uid, edge] : edges)
     {
-        if (edge->leftVertexID == v1 && edge->rightVertexID == v2)
+        auto [left, right] = *edge;
+        if ((left == v1 && right == v2) ||
+            (left == v2 && right == v1))
         {
             return tl::unexpected(
-                std::string("Only one Edge can exist between two Vertices in"
-                            " a given direction, i.e. v₁ → v₂. Maybe try "
-                            "flipping the arguments to make v₂ → v₁"));
+                std::string("Only one Edge can exist between any two Vertices"));
         }
     }
 
