@@ -90,14 +90,10 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
         {
             auto eitherEdgeID = topo.makeEdge(v1, v2);
 
-            THEN("We cannot create a second Edge in the same direction")
+            THEN("We cannot create a second Edge")
             {
                 CHECK_FALSE(topo.makeEdge(v1, v2).has_value());
-            }
-
-            THEN("We can still create an Edge in the reverse direction")
-            {
-                REQUIRE(topo.makeEdge(v2, v1).has_value());
+                REQUIRE_FALSE(topo.makeEdge(v2, v1).has_value());
             }
         }
     }
