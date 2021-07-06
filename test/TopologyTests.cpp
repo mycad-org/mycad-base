@@ -113,10 +113,10 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
         WHEN("A second Edge is added adjacent to v1")
         {
             int v3 = topo.addFreeVertex();
-            int edge2 = topo.makeEdge(v1, v3).value();
-            THEN("v1 is adjacent to both edges")
+            int edge2 = topo.makeEdge(v2, v3).value();
+            THEN("v2 is adjacent to both edges")
             {
-                auto eitherEdges = topo.edgesAdjacentToVertex(v1);
+                auto eitherEdges = topo.edgesAdjacentToVertex(v2);
                 REQUIRE(eitherEdges.has_value());
                 REQUIRE(eitherEdges.value().contains(edge));
                 REQUIRE(eitherEdges.value().contains(edge2));
