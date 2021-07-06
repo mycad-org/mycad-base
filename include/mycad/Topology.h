@@ -1,6 +1,7 @@
 #ifndef MYCAD_TOPOLOGY_HEADER
 #define MYCAD_TOPOLOGY_HEADER
 
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -38,6 +39,17 @@ namespace mycad
                  */
                 tl::expected<int, std::string> makeEdge(int v1, int v2);
 
+                /** @brief creates a directional connection between two edges
+                 *  @returns error string if either edge doesn't exist in the
+                 *           topology
+                 *  @returns error string if a Chain from \param fromEdge to
+                 *           \param toEdge already exists
+                 *  @returns error string if the two Edge do not share a common
+                 *           Vertex
+                 */
+                tl::expected<void, std::string>
+                makeChain(int /*fromEdge*/, int /*toEdge*/){return {};}
+
                 /** @returns empty set if valid vertex is 'free'
                  *  @returns error sring if the vertex does not exist in the
                  *           topology
@@ -60,6 +72,15 @@ namespace mycad
                  *           adjacent to each other
                  */
                 tl::expected<int, std::string> oppositeVertex(int v, int e) const;
+
+                /** @brief returns all Edges in the Chain
+                 *
+                 *  The Edge are returns as a std::list to maintain their order
+                 *
+                 *  @returns error if the chain does not exist
+                 */
+                tl::expected<std::list<int>, std::string>
+                getChainEdges(int /*vertex*/, int /*edge*/) const{return {};}
 
                 /** @returns false if the Edge doesn't exist
                  */

@@ -121,6 +121,39 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
                 REQUIRE(eitherEdges.value().contains(edge));
                 REQUIRE(eitherEdges.value().contains(edge2));
             }
+
+            WHEN("A Chain is made between both edges")
+            {
+                REQUIRE(topo.makeChain(edge, edge2).has_value());
+
+                THEN("We can recover both Edges in order")
+                {
+                    auto eitherEdges = topo.getChainEdges(v1, edge);
+                    REQUIRE(eitherEdges.has_value());
+                    REQUIRE(eitherEdges.value() == std::list<int>{edge, edge2});
+                }
+            }
+
+            WHEN("The second Edge is deleted before making a Chain")
+            {
+                topo.deleteEdge(edge2);
+                THEN("We get an error")
+                {
+                    REQUIRE_FALSE(topo.makeChain(edge, edge2).has_value());
+                }
+            }
+        }
+
+        WHEN("A second Edge is added with zero adjacencies to the first")
+        {
+            int v3 = topo.addFreeVertex();
+            int v4 = topo.addFreeVertex();
+            int edge2 = topo.makeEdge(v3, v4).value();
+
+            THEN("Trying to make a chain between them results in an error")
+            {
+                REQUIRE_FALSE(topo.makeChain(edge, edge2).has_value());
+            }
         }
     }
 }
