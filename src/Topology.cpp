@@ -140,6 +140,16 @@ bool Topology::deleteEdge(int edge)
     return true;
 }
 
+tl::expected<void, std::string>
+Topology::makeChain(int fromEdge, int toEdge)
+{
+    return
+        detail::getCommonVertex(fromEdge, toEdge, std::cref(edges))
+        .map([](int /*v*/) {
+            return;
+        });
+}
+
 tl::expected<std::unordered_set<int>, std::string>
 Topology::edgesAdjacentToVertex(int v) const
 {

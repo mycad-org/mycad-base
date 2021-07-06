@@ -48,7 +48,7 @@ namespace mycad
                  *           Vertex
                  */
                 tl::expected<void, std::string>
-                makeChain(int /*fromEdge*/, int /*toEdge*/){return {};}
+                makeChain(int /*fromEdge*/, int /*toEdge*/);
 
                 /** @returns empty set if valid vertex is 'free'
                  *  @returns error sring if the vertex does not exist in the
