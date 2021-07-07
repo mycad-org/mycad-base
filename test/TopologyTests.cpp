@@ -10,7 +10,8 @@
 
 using namespace mycad::topo;
 
-SCENARIO( "002: Vertex Topology", "[topology][vertex]" ) {
+SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
+{
     rc::prop("Each Vertex is given a unique ID",
         []()
         {
