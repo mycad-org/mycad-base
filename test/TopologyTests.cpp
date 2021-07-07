@@ -5,6 +5,7 @@
 #include "rapidcheck.h"
 #include "rapidcheck/catch.h"
 
+#include <algorithm>
 #include <set>
 #include <iostream>
 
@@ -52,29 +53,28 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
                 // Either Edge ID from V₁
-                auto eEID_v1 = topo.edgesAdjacentToVertex(v1);
-                auto eEID_v2 = topo.edgesAdjacentToVertex(v2);
-                REQUIRE(eEID_v1.has_value());
-                REQUIRE(eEID_v2.has_value());
-                CHECK(eEID_v1.value() == std::unordered_set<int>{edgeID});
-                REQUIRE(eEID_v2.value() == std::unordered_set<int>{edgeID});
+                REQUIRE(
+                    topo.edgesAdjacentToVertex(v1).value()==
+                    std::unordered_set<int>{edgeID}
+                );
+                REQUIRE(
+                    topo.edgesAdjacentToVertex(v2).value() ==
+                    std::unordered_set<int>{edgeID}
+                );
             }
 
             THEN("Both Vertices are adjacent to the Edge")
             {
-                auto eitherVertices = topo.getEdgeVertices(edgeID);
-                REQUIRE(eitherVertices.has_value());
-                REQUIRE(eitherVertices.value() == std::pair<int, int>(v1, v2));
+                REQUIRE(
+                    topo.getEdgeVertices(edgeID).value() ==
+                    std::pair<int, int>(v1, v2)
+                );
             }
 
             THEN("Either Vertex can be used to find the other across the Edge")
             {
-                auto eitherVertex1 = topo.oppositeVertex(v2, edgeID);
-                auto eitherVertex2 = topo.oppositeVertex(v1, edgeID);
-                REQUIRE(eitherVertex1.has_value());
-                REQUIRE(eitherVertex2.has_value());
-                REQUIRE(eitherVertex1.value() == v1);
-                REQUIRE(eitherVertex2.value() == v2);
+                REQUIRE(topo.oppositeVertex(v1, edgeID).value() == v2);
+                REQUIRE(topo.oppositeVertex(v2, edgeID).value() == v1);
             }
 
             WHEN("The Edge is deleted")
@@ -129,9 +129,7 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
 
                 THEN("We can recover both Edges in order")
                 {
-                    auto eitherEdges = topo.getChainEdges(v1, edge);
-                    REQUIRE(eitherEdges.has_value());
-                    REQUIRE(eitherEdges.value() == std::list<int>{edge, edge2});
+                    REQUIRE(topo.getChainEdges(v1, edge).value() == std::list<int>{edge, edge2});
                 }
             }
 
