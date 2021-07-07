@@ -23,7 +23,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             Topology topo;
             for(unsigned int i=0; i <= n; i++)
             {
-                int id = topo.addFreeVertex();
+                auto [id] = topo.addFreeVertex();
                 RC_ASSERT(vals.count(id) == (std::size_t) 0);
                 vals.insert(id);
             }
@@ -35,51 +35,51 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
     GIVEN("Two Vertices")
     {
         Topology topo;
-        int v1 = topo.addFreeVertex(),
-            v2 = topo.addFreeVertex();
+        Vertex v1 = topo.addFreeVertex(),
+               v2 = topo.addFreeVertex();
 
         WHEN("An Edge is created between them")
         {
             Topology orig = topo;
-            auto eitherEdgeID = topo.makeEdge(v1, v2);
+            auto eitherEdge = topo.makeEdge(v1, v2);
 
             THEN("A unique ID is returned for that Edge")
             {
-                REQUIRE(eitherEdgeID.has_value());
+                REQUIRE(eitherEdge.has_value());
             }
 
-            int edgeID = eitherEdgeID.value();
+            Edge edge = eitherEdge.value();
 
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
                 // Either Edge ID from V₁
                 REQUIRE(
                     topo.edgesAdjacentToVertex(v1).value()==
-                    std::unordered_set<int>{edgeID}
+                    std::vector<Edge>{edge}
                 );
                 REQUIRE(
                     topo.edgesAdjacentToVertex(v2).value() ==
-                    std::unordered_set<int>{edgeID}
+                    std::vector<Edge>{edge}
                 );
             }
 
             THEN("Both Vertices are adjacent to the Edge")
             {
                 REQUIRE(
-                    topo.getEdgeVertices(edgeID).value() ==
-                    std::pair<int, int>(v1, v2)
+                    topo.getEdgeVertices(edge).value() ==
+                    std::pair<Vertex, Vertex>(v1, v2)
                 );
             }
 
             THEN("Either Vertex can be used to find the other across the Edge")
             {
-                REQUIRE(topo.oppositeVertex(v1, edgeID).value() == v2);
-                REQUIRE(topo.oppositeVertex(v2, edgeID).value() == v1);
+                REQUIRE(topo.oppositeVertex(v1, edge).value() == v2);
+                REQUIRE(topo.oppositeVertex(v2, edge).value() == v1);
             }
 
             WHEN("The Edge is deleted")
             {
-                CHECK(topo.deleteEdge(edgeID));
+                CHECK(topo.deleteEdge(edge));
 
                 THEN("The Topology reverts to the previous state")
                 {
@@ -90,7 +90,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
         WHEN("There's already an Edge between them")
         {
-            auto eitherEdgeID = topo.makeEdge(v1, v2);
+            auto eitherEdge = topo.makeEdge(v1, v2);
 
             THEN("We cannot create a second Edge")
             {
@@ -107,20 +107,20 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
     GIVEN("A topology with a single Edge")
     {
         Topology topo;
-        int v1 = topo.addFreeVertex();
-        int v2 = topo.addFreeVertex();
-        int edge = topo.makeEdge(v1, v2).value();
+        Vertex v1 = topo.addFreeVertex(),
+               v2 = topo.addFreeVertex();
+        Edge edge = topo.makeEdge(v1, v2).value();
 
         WHEN("A second Edge is added adjacent to v1")
         {
-            int v3 = topo.addFreeVertex();
-            int edge2 = topo.makeEdge(v2, v3).value();
+            Vertex v3 = topo.addFreeVertex();
+            Edge edge2 = topo.makeEdge(v2, v3).value();
             THEN("v2 is adjacent to both edges")
             {
                 auto eitherEdges = topo.edgesAdjacentToVertex(v2);
                 REQUIRE(eitherEdges.has_value());
-                REQUIRE(eitherEdges.value().contains(edge));
-                REQUIRE(eitherEdges.value().contains(edge2));
+                REQUIRE(std::ranges::count(eitherEdges.value(), edge) == 1);
+                REQUIRE(std::ranges::count(eitherEdges.value(), edge2) == 1);
             }
 
             WHEN("A Chain is made between both edges")
@@ -129,7 +129,9 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
 
                 THEN("We can recover both Edges in order")
                 {
-                    REQUIRE(topo.getChainEdges(v1, edge).value() == std::list<int>{edge, edge2});
+                    REQUIRE(
+                        topo.getChainEdges(v1, edge).value() ==
+                        std::list<Edge>{edge, edge2});
                 }
             }
 
@@ -145,13 +147,13 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
 
         WHEN("A second Edge is added with zero adjacencies to the first")
         {
-            int v3 = topo.addFreeVertex();
-            int v4 = topo.addFreeVertex();
-            int edge2 = topo.makeEdge(v3, v4).value();
+            Vertex v3 = topo.addFreeVertex();
+            Vertex v4 = topo.addFreeVertex();
+            auto eitherEdge2 = topo.makeEdge(v3, v4);
 
             THEN("Trying to make a chain between them results in an error")
             {
-                REQUIRE_FALSE(topo.makeChain(edge, edge2).has_value());
+                REQUIRE_FALSE(topo.makeChain(edge, eitherEdge2.value()).has_value());
             }
         }
     }

@@ -1,6 +1,7 @@
 #include "mycad/Topology.h"
 #include "detail/Topology.h"
 
+#include <algorithm>
 #include <iostream>
 
 using namespace mycad::topo;
@@ -73,11 +74,11 @@ bool Topology::similar(const Topology& other) const
     return vertices == other.vertices && edges == other.edges;
 }
 
-int Topology::addFreeVertex()
+Vertex Topology::addFreeVertex()
 {
     int out = lastVertexID++;
-    vertices.insert(out);
-    return out;
+    vertices.push_back(out);
+    return Vertex(out);
 }
 
 /**
@@ -100,37 +101,41 @@ int Topology::addFreeVertex()
  * @returns error string if either of the vertices doesn't exist
  * @returns error string if an Edge already exists **from** @v1@ **to** @v2@
  */
-tl::expected<int, std::string> Topology::makeEdge(int v1, int v2)
+tl::expected<Edge, std::string> Topology::makeEdge(Vertex v1, Vertex v2)
 {
-    if (not (vertices.contains(v1) && vertices.contains(v2)))
+    // std::ranges::includes requires the range to be sorted
+    std::ranges::sort(vertices);
+    auto check = std::vector<int>{v1.index, v2.index};
+    std::ranges::sort(check);
+    if (not std::ranges::includes(vertices, check))
     {
         return tl::unexpected(
-            std::string("One or both of v1 = ") + std::to_string(v1) +
-                        " and v2 = " + std::to_string(v2) +
+            std::string("One or both of v1 = ") + std::to_string(v1.index) +
+                        " and v2 = " + std::to_string(v2.index) +
                         " do not exist in the topology");
     }
 
     for (const auto& [uid, edge] : edges)
     {
         auto [left, right] = *edge;
-        if ((left == v1 && right == v2) ||
-            (left == v2 && right == v1))
+        if ((left == v1.index && right == v2.index) ||
+            (left == v2.index && right == v1.index))
         {
             return tl::unexpected(
                 std::string("Only one Edge can exist between any two Vertices"));
         }
     }
 
-    detail::Edge edge(v1, v2);
+    detail::Edge edge(v1.index, v2.index);
     int eid = lastEdgeID++;
     edges.emplace(eid,
-                  std::make_unique<detail::Edge>(v1, v2));
-    return eid;
+                  std::make_unique<detail::Edge>(v1.index, v2.index));
+    return Edge(eid);
 }
 
-bool Topology::deleteEdge(int edge)
+bool Topology::deleteEdge(Edge edge)
 {
-    auto search = edges.find(edge);
+    auto search = edges.find(edge.index);
     if (search == edges.end())
     {
         return false;
@@ -141,67 +146,74 @@ bool Topology::deleteEdge(int edge)
 }
 
 tl::expected<void, std::string>
-Topology::makeChain(int fromEdge, int toEdge)
+Topology::makeChain(Edge fromEdge, Edge toEdge)
 {
     return
-        detail::getCommonVertex(fromEdge, toEdge, std::cref(edges))
+        detail::getCommonVertex(fromEdge.index, toEdge.index, std::cref(edges))
         .map([](int /*v*/) {
             return;
         });
 }
 
-tl::expected<std::unordered_set<int>, std::string>
-Topology::edgesAdjacentToVertex(int v) const
+tl::expected<std::vector<Edge>, std::string>
+Topology::edgesAdjacentToVertex(Vertex v) const
 {
-    return detail::hasVertex(v, vertices)
+    return detail::hasVertex(v.index, vertices)
            .map([v, this]
            {
-               std::unordered_set<int> out;
+               std::vector<Edge> out;
                for (const auto& [edgeID, edge] : edges)
                {
-                   if (edge->leftVertexID == v || edge->rightVertexID == v)
+                   if (edge->leftVertexID == v.index || edge->rightVertexID == v.index)
                    {
-                       out.insert(edgeID);
+                       out.push_back(Edge(edgeID));
                    }
                }
                return out;
            });
 }
 
-tl::expected<std::pair<int, int>, std::string>
-Topology::getEdgeVertices(int edge) const
+tl::expected<std::pair<Vertex, Vertex>, std::string>
+Topology::getEdgeVertices(Edge edge) const
 {
-    return detail::hasEdge(edge, edges)
+    return detail::hasEdge(edge.index, edges)
            .map([edge, this]
            {
-               auto [left, right] = *edges.at(edge);
-               return std::make_pair(left, right);
+               auto [left, right] = *edges.at(edge.index);
+               return std::make_pair(Vertex(left), Vertex(right));
            });
 }
 
-tl::expected<int, std::string> Topology::oppositeVertex(int v, int e) const
+tl::expected<Vertex, std::string> Topology::oppositeVertex(Vertex v, Edge e) const
 {
     return
-        detail::hasVertex(v, vertices)
-        .and_then(std::bind(detail::hasEdge, e, std::cref(edges)))
-        .and_then([v, e, this]() -> tl::expected<int, std::string>{
-            auto [left, right] = *edges.at(e);
-            if (left == v)
+        detail::hasVertex(v.index, vertices)
+        .and_then(std::bind(detail::hasEdge, e.index, std::cref(edges)))
+        .and_then([v, e, this]() -> tl::expected<Vertex, std::string>
+        {
+            auto [left, right] = *edges.at(e.index);
+            if (left == v.index)
             {
-                return right;
+                return Vertex(right);
             }
-            else if (right == v )
+            else if (right == v.index )
             {
-                return left;
+                return Vertex(left);
             }
             else
             {
                 return tl::unexpected(
-                       std::string("vertex with id = ") + std::to_string(v) +
+                       std::string("vertex with id = ") + std::to_string(v.index) +
                                    " is not adjacent to edge with id ="  +
-                                   std::to_string(e));
+                                   std::to_string(e.index));
             }
         });
+}
+
+tl::expected<std::list<Edge>, std::string>
+Topology::getChainEdges(Vertex /*vertex*/, Edge /*edge*/) const
+{
+    return {};
 }
 
 void Topology::streamTo(std::ostream& os) const
@@ -223,6 +235,16 @@ void Topology::streamTo(std::ostream& os) const
            << "leftVertexID = " << edge->leftVertexID << ", "
            << "rightVertexID = " << edge->rightVertexID << std::endl;
     }
+}
+
+std::ostream& mycad::topo::operator<<(std::ostream& os, const Vertex& v)
+{
+    return os << v.index;
+}
+
+std::ostream& mycad::topo::operator<<(std::ostream& os, const Edge& e)
+{
+    return os << e.index;
 }
 
 std::ostream& mycad::topo::operator<<(std::ostream& os, const Topology& topo)

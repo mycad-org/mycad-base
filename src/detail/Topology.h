@@ -6,7 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_set>
+#include <vector>
 
 namespace mycad
 {
@@ -21,7 +21,7 @@ namespace mycad
             };
 
             tl::expected<void, std::string>
-            hasVertex(int v, std::unordered_set<int> vs);
+            hasVertex(int v, std::vector<int> vs);
 
             tl::expected<void, std::string>
             hasEdge(int edge, const std::map<int, std::unique_ptr<Edge>>& es);

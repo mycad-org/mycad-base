@@ -1,9 +1,11 @@
 #include "Topology.h" // detail/Topology.h NOT mycad/Topology.h
 
+#include <algorithm>
+
 tl::expected<void, std::string>
-mycad::topo::detail::hasVertex(int v, std::unordered_set<int> vs)
+mycad::topo::detail::hasVertex(int v, std::vector<int> vs)
 {
-    if (vs.count(v) == 0)
+    if (std::ranges::count(vs, v) == 0)
     {
         return tl::unexpected(
             std::string("Vertex with ID=") + 

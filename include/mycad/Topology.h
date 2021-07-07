@@ -5,8 +5,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 #include "tl/expected.hpp"
 
 namespace mycad
@@ -17,6 +17,29 @@ namespace mycad
         {
             struct Edge;
         }
+
+        /**{
+         * @brief used to remove ambiguity from API
+         *
+         * Rather than passing around raw `int`, we'll pass around these shallow
+         * wrapper classes around `int`
+         */
+        struct Vertex
+        {
+            explicit Vertex(int v) : index(v){};
+            bool operator==(const Vertex&) const = default;
+
+            int index;
+        };
+
+        struct Edge
+        {
+            explicit Edge(int e) : index(e){};
+            bool operator==(const Edge&) const = default;
+
+            int index;
+        };
+        /**}*/
 
         class Topology
         {
@@ -33,11 +56,11 @@ namespace mycad
 
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
-                int addFreeVertex();
+                Vertex addFreeVertex();
 
                 /** @brief an Edge is always adjacent to exactly two Vertices
                  */
-                tl::expected<int, std::string> makeEdge(int v1, int v2);
+                tl::expected<Edge, std::string> makeEdge(Vertex v1, Vertex v2);
 
                 /** @brief creates a directional connection between two edges
                  *  @returns error string if either edge doesn't exist in the
@@ -48,22 +71,22 @@ namespace mycad
                  *           Vertex
                  */
                 tl::expected<void, std::string>
-                makeChain(int /*fromEdge*/, int /*toEdge*/);
+                makeChain(Edge /*fromEdge*/, Edge /*toEdge*/);
 
-                /** @returns empty set if valid vertex is 'free'
+                /** @returns empty vector if valid vertex is 'free'
                  *  @returns error sring if the vertex does not exist in the
                  *           topology
                  */
-                tl::expected<std::unordered_set<int>, std::string>
-                edgesAdjacentToVertex(int) const;
+                tl::expected<std::vector<Edge>, std::string>
+                edgesAdjacentToVertex(Vertex v) const;
 
                 /** @returns A pair `(left, right)` of vertex IDs corresponding
                  *           to this Edge
                  *  @returns error sring if the edge does not exist in the
                  *           topology
                  */
-                tl::expected<std::pair<int, int>, std::string>
-                getEdgeVertices(int edge) const;
+                tl::expected<std::pair<Vertex, Vertex>, std::string>
+                getEdgeVertices(Edge edge) const;
 
                 /** @brief find the Vertex on the other side of the Edge
                  *  @returns error string if either @v@ or @e@ does not exist in
@@ -71,7 +94,7 @@ namespace mycad
                  *  @returns error string if the Vertex and Edge are not
                  *           adjacent to each other
                  */
-                tl::expected<int, std::string> oppositeVertex(int v, int e) const;
+                tl::expected<Vertex, std::string> oppositeVertex(Vertex v, Edge e) const;
 
                 /** @brief returns all Edges in the Chain
                  *
@@ -79,23 +102,25 @@ namespace mycad
                  *
                  *  @returns error if the chain does not exist
                  */
-                tl::expected<std::list<int>, std::string>
-                getChainEdges(int /*vertex*/, int /*edge*/) const{return {};}
+                tl::expected<std::list<Edge>, std::string>
+                getChainEdges(Vertex /*vertex*/, Edge /*edge*/) const;
 
                 /** @returns false if the Edge doesn't exist
                  */
-                bool deleteEdge(int);
+                bool deleteEdge(Edge e);
 
                 void streamTo(std::ostream& os) const;
             private:
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
-                std::unordered_set<int> vertices;
+                std::vector<int> vertices;
                 std::map<int, std::unique_ptr<detail::Edge>> edges;
         };
 
 
+        std::ostream& operator<<(std::ostream& os, const Vertex& v);
+        std::ostream& operator<<(std::ostream& os, const Edge& e);
         std::ostream& operator<<(std::ostream& os, const Topology& topo);
     } // namespace topo
 }     // namespace mycad
