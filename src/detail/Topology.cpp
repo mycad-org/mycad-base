@@ -1,10 +1,11 @@
 #include "Topology.h" // detail/Topology.h NOT mycad/Topology.h
-#include "mycad/Topology.h"
 
 #include <algorithm>
 
+using namespace mycad::topo;
+
 tl::expected<void, std::string>
-mycad::topo::detail::hasVertex(const Vertex& v, const std::vector<Vertex>& vs)
+detail::hasVertex(const Vertex& v, const std::vector<Vertex>& vs)
 {
     if (std::ranges::count(vs, v) == 0)
     {
@@ -18,30 +19,31 @@ mycad::topo::detail::hasVertex(const Vertex& v, const std::vector<Vertex>& vs)
 }
 
 tl::expected<void, std::string>
-mycad::topo::detail::hasEdge(int edge, const std::map<int, std::unique_ptr<Edge>>& es)
+detail::hasEdge(const Edge& edge, const std::vector<Edge>& es)
 {
-    if (not es.contains(edge))
+    if (std::ranges::count(es, edge) == 1)
+    {
+        return {};
+    }
+    else
     {
         return tl::unexpected(
             std::string("Edge with ID=") +
-            std::to_string(edge) + " not found"
-        );
+            std::to_string(edge.getIndex()) + " not found");
     }
-
-    return {};
 }
 
 tl::expected<int, std::string>
-mycad::topo::detail::getCommonVertex(
-    int edge1, int edge2, const std::map<int, std::unique_ptr<Edge>>& es)
+detail::getCommonVertexID(
+    const Edge& edge1, const Edge& edge2, const std::vector<Edge>& es)
 {
     return
-        hasEdge(edge1, es)
-        .and_then(std::bind(hasEdge, edge2, std::cref(es)))
+        detail::hasEdge(edge1, es)
+        .and_then(std::bind(detail::hasEdge, edge2, std::cref(es)))
         .and_then([edge1, edge2, &es]() -> tl::expected<int, std::string>
         {
-            auto [v1, v2] = *(es.at(edge1));
-            auto [v3, v4] = *(es.at(edge2));
+            auto [v1, v2] = es.at(edge1.getIndex()).getVertexIDs();
+            auto [v3, v4] = es.at(edge2.getIndex()).getVertexIDs();
 
             if (v1 == v3)
             {
@@ -62,8 +64,9 @@ mycad::topo::detail::getCommonVertex(
             else
             {
                 return tl::unexpected(
-                    std::string("The two edges with IDs ") + std::to_string(edge1) +
-                    " and " + std::to_string(edge2) +
+                    std::string("The two edges with IDs ") +
+                    std::to_string(edge1.getIndex()) +
+                    " and " + std::to_string(edge2.getIndex()) +
                     " do not appear to share a common Vertex");
             }
         });

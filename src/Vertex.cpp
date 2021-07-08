@@ -1,5 +1,7 @@
 #include "mycad/Topology.h"
 
+#include <string>
+
 using namespace mycad::topo;
 
 Vertex::Vertex(int i)
@@ -25,5 +27,5 @@ int Vertex::getIndex() const
 
 void Vertex::streamTo(std::ostream& os) const
 {
-    os << "V" << index;
+    os << std::string("V") << std::to_string(index);
 }

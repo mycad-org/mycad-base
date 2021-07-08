@@ -9,14 +9,11 @@ using namespace mycad::topo;
 Topology::Topology() = default;
 
 Topology::Topology(const Topology& other)
-    : lastVertexID(other.lastVertexID), lastEdgeID(other.lastEdgeID), vertices(other.vertices)
-{
-    for(const auto& [id, edge] : other.edges)
-    {
-        edges.emplace(id, std::make_unique<detail::Edge>(edge->leftVertexID,
-                                                         edge->rightVertexID));
-    }
-}
+    : lastVertexID(other.lastVertexID),
+      lastEdgeID(other.lastEdgeID),
+      vertices(other.vertices),
+      edges(other.edges)
+{}
 
 Topology::~Topology() = default;
 
@@ -30,13 +27,8 @@ Topology& Topology::operator=(const Topology& other)
     this->lastVertexID = other.lastVertexID;
     this->lastEdgeID = other.lastEdgeID;
     this->vertices = other.vertices;
+    this->edges = other.edges;
 
-    edges.clear();
-    for(const auto& [id, edge] : other.edges)
-    {
-        edges.emplace(id, std::make_unique<detail::Edge>(edge->leftVertexID,
-                                                         edge->rightVertexID));
-    }
     return *this;
 }
 
@@ -120,9 +112,9 @@ tl::expected<Edge, std::string> Topology::makeEdge(Vertex v1, Vertex v2)
                         " do not exist in the topology");
     }
 
-    for (const auto& [uid, edge] : edges)
+    for (const auto& edge : edges)
     {
-        auto [left, right] = *edge;
+        auto [left, right] = edge.getVertexIDs();
         if ((left == v1.index && right == v2.index) ||
             (left == v2.index && right == v1.index))
         {
@@ -131,30 +123,25 @@ tl::expected<Edge, std::string> Topology::makeEdge(Vertex v1, Vertex v2)
         }
     }
 
-    detail::Edge edge(v1.index, v2.index);
-    int eid = lastEdgeID++;
-    edges.emplace(eid,
-                  std::make_unique<detail::Edge>(v1.index, v2.index));
-    return Edge(eid);
+    Edge edge(lastEdgeID++, v1.index, v2.index);
+    edges.push_back(edge);
+    return edge;
 }
 
 bool Topology::deleteEdge(Edge edge)
 {
-    auto search = edges.find(edge.index);
-    if (search == edges.end())
-    {
-        return false;
-    }
-
-    edges.erase(search);
-    return true;
+    return
+        std::erase_if(
+            edges,
+            [&edge](const Edge& check){return edge == check;}
+        ) == 1;
 }
 
 tl::expected<void, std::string>
 Topology::makeChain(Edge fromEdge, Edge toEdge)
 {
     return
-        detail::getCommonVertex(fromEdge.index, toEdge.index, std::cref(edges))
+        detail::getCommonVertexID(fromEdge, toEdge, std::cref(edges))
         .map([](int /*v*/) {
             return;
         });
@@ -167,11 +154,11 @@ Topology::edgesAdjacentToVertex(Vertex v) const
            .map([v, this]
            {
                std::vector<Edge> out;
-               for (const auto& [edgeID, edge] : edges)
+               for (const auto& edge: edges)
                {
-                   if (edge->leftVertexID == v.index || edge->rightVertexID == v.index)
+                   if (edge.leftVertexID == v.index || edge.rightVertexID == v.index)
                    {
-                       out.push_back(Edge(edgeID));
+                       out.push_back(edge);
                    }
                }
                return out;
@@ -181,10 +168,10 @@ Topology::edgesAdjacentToVertex(Vertex v) const
 tl::expected<std::pair<Vertex, Vertex>, std::string>
 Topology::getEdgeVertices(Edge edge) const
 {
-    return detail::hasEdge(edge.index, edges)
+    return detail::hasEdge(edge, edges)
            .map([edge, this]
            {
-               auto [left, right] = *edges.at(edge.index);
+               auto [left, right] = edges.at(edge.index).getVertexIDs();
                return std::make_pair(Vertex(left), Vertex(right));
            });
 }
@@ -193,10 +180,10 @@ tl::expected<Vertex, std::string> Topology::oppositeVertex(Vertex v, Edge e) con
 {
     return
         detail::hasVertex(v, vertices)
-        .and_then(std::bind(detail::hasEdge, e.index, std::cref(edges)))
+        .and_then(std::bind(detail::hasEdge, e, std::cref(edges)))
         .and_then([v, e, this]() -> tl::expected<Vertex, std::string>
         {
-            auto [left, right] = *edges.at(e.index);
+            auto [left, right] = edges.at(e.index).getVertexIDs();
             if (left == v.getIndex())
             {
                 return vertices.at(right);
@@ -234,11 +221,11 @@ void Topology::streamTo(std::ostream& os) const
     }
 
     os << "edges:" << std::endl;
-    for (const auto& [key, edge] : edges)
+    for (const auto& edge: edges)
     {
-        os << "    eid: " << key << ", "
-           << "leftVertexID = " << edge->leftVertexID << ", "
-           << "rightVertexID = " << edge->rightVertexID << std::endl;
+        os << "    eid: " << edge.index << ", "
+           << "leftVertexID = " << edge.leftVertexID << ", "
+           << "rightVertexID = " << edge.rightVertexID << std::endl;
     }
 }
 
@@ -250,7 +237,8 @@ std::ostream& mycad::topo::operator<<(std::ostream& os, const Vertex& v)
 
 std::ostream& mycad::topo::operator<<(std::ostream& os, const Edge& e)
 {
-    return os << e.index;
+    e.streamTo(os);
+    return os;
 }
 
 std::ostream& mycad::topo::operator<<(std::ostream& os, const Topology& topo)

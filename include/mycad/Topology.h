@@ -2,10 +2,8 @@
 #define MYCAD_TOPOLOGY_HEADER
 
 #include <list>
-#include <map>
-#include <memory>
 #include <string>
-#include <utility>
+#include <utility> // std::pair
 #include <vector>
 #include "tl/expected.hpp"
 
@@ -13,11 +11,6 @@ namespace mycad
 {
     namespace topo
     {
-        namespace detail
-        {
-            struct Edge;
-        }
-
         class Vertex;
         class Edge;
         class Topology;
@@ -48,14 +41,24 @@ namespace mycad
                 std::vector<Link> links;
         };
 
-        struct Edge
+        class Edge
         {
-            explicit Edge(int e) : index(e){};
-            bool operator==(const Edge&) const = default;
+            public:
+                friend Topology;
 
-            int index;
+                explicit Edge(int e, int l, int r);
+                bool operator==(const Edge&) const = default;
+
+                int getIndex() const;
+                std::pair<int, int> getVertexIDs() const;
+
+                void streamTo(std::ostream& os) const;
+
+            private:
+                int index;
+                int leftVertexID;
+                int rightVertexID;
         };
-        /**}*/
 
         class Topology
         {
@@ -76,7 +79,8 @@ namespace mycad
 
                 /** @brief an Edge is always adjacent to exactly two Vertices
                  */
-                tl::expected<Edge, std::string> makeEdge(Vertex v1, Vertex v2);
+                tl::expected<Edge, std::string>
+                makeEdge(Vertex v1, Vertex v2);
 
                 /** @brief creates a directional connection between two edges
                  *  @returns error string if either edge doesn't exist in the
@@ -131,7 +135,7 @@ namespace mycad
                 int lastEdgeID = 0;
 
                 std::vector<Vertex> vertices;
-                std::map<int, std::unique_ptr<detail::Edge>> edges;
+                std::vector<Edge> edges;
         };
 
 
