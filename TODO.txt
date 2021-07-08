@@ -1,3 +1,4 @@
 - try to centralize the github actions yaml's so we don't duplicate it.
 - consider writing `mycad::expected` rather than using the one from
   `https:://github.com/tartanllama/expected`
+- use east const

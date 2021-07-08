@@ -74,11 +74,11 @@ bool Topology::similar(const Topology& other) const
     return vertices == other.vertices && edges == other.edges;
 }
 
-Vertex Topology::addFreeVertex()
+const Vertex& Topology::addFreeVertex()
 {
-    int out = lastVertexID++;
-    vertices.push_back(out);
-    return Vertex(out);
+    Vertex v = Vertex(lastVertexID++);
+    vertices.push_back(v);
+    return vertices.back();
 }
 
 /**
@@ -104,10 +104,15 @@ Vertex Topology::addFreeVertex()
 tl::expected<Edge, std::string> Topology::makeEdge(Vertex v1, Vertex v2)
 {
     // std::ranges::includes requires the range to be sorted
-    std::ranges::sort(vertices);
+    std::vector<int> indices;
+    std::ranges::transform(
+        vertices,
+        std::back_inserter(indices),
+        [](const auto& v){return v.index;});
+    std::ranges::sort(indices);
     auto check = std::vector<int>{v1.index, v2.index};
     std::ranges::sort(check);
-    if (not std::ranges::includes(vertices, check))
+    if (not std::ranges::includes(indices, check))
     {
         return tl::unexpected(
             std::string("One or both of v1 = ") + std::to_string(v1.index) +
@@ -158,7 +163,7 @@ Topology::makeChain(Edge fromEdge, Edge toEdge)
 tl::expected<std::vector<Edge>, std::string>
 Topology::edgesAdjacentToVertex(Vertex v) const
 {
-    return detail::hasVertex(v.index, vertices)
+    return detail::hasVertex(v, vertices)
            .map([v, this]
            {
                std::vector<Edge> out;
@@ -187,18 +192,18 @@ Topology::getEdgeVertices(Edge edge) const
 tl::expected<Vertex, std::string> Topology::oppositeVertex(Vertex v, Edge e) const
 {
     return
-        detail::hasVertex(v.index, vertices)
+        detail::hasVertex(v, vertices)
         .and_then(std::bind(detail::hasEdge, e.index, std::cref(edges)))
         .and_then([v, e, this]() -> tl::expected<Vertex, std::string>
         {
             auto [left, right] = *edges.at(e.index);
-            if (left == v.index)
+            if (left == v.getIndex())
             {
-                return Vertex(right);
+                return vertices.at(right);
             }
             else if (right == v.index )
             {
-                return Vertex(left);
+                return vertices.at(left);
             }
             else
             {
@@ -223,9 +228,9 @@ void Topology::streamTo(std::ostream& os) const
 
     os << "vertexIDs:" << std::endl;;
 
-    for (const auto& id : vertices)
+    for (const auto& v : vertices)
     {
-        os << "    vid: " << id << std::endl;
+        os << "    vid: " << v.index << std::endl;
     }
 
     os << "edges:" << std::endl;
@@ -239,7 +244,8 @@ void Topology::streamTo(std::ostream& os) const
 
 std::ostream& mycad::topo::operator<<(std::ostream& os, const Vertex& v)
 {
-    return os << v.index;
+    v.streamTo(os);
+    return os;
 }
 
 std::ostream& mycad::topo::operator<<(std::ostream& os, const Edge& e)

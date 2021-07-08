@@ -18,18 +18,34 @@ namespace mycad
             struct Edge;
         }
 
-        /**{
-         * @brief used to remove ambiguity from API
-         *
-         * Rather than passing around raw `int`, we'll pass around these shallow
-         * wrapper classes around `int`
-         */
-        struct Vertex
-        {
-            explicit Vertex(int v) : index(v){};
-            bool operator==(const Vertex&) const = default;
+        class Vertex;
+        class Edge;
+        class Topology;
 
-            int index;
+        struct Link
+        {
+            Vertex* parentVertex;
+            Edge* parentEdge;
+
+            bool operator==(const Link& other) const;
+        };
+
+        class Vertex
+        {
+            public:
+                friend Topology;
+
+                explicit Vertex(int v);
+                bool operator< (const Vertex& other) const;
+                bool operator== (const Vertex& other) const;
+
+                int getIndex() const;
+
+                void streamTo(std::ostream& os) const;
+
+            private:
+                int index;
+                std::vector<Link> links;
         };
 
         struct Edge
@@ -56,7 +72,7 @@ namespace mycad
 
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
-                Vertex addFreeVertex();
+                const Vertex& addFreeVertex();
 
                 /** @brief an Edge is always adjacent to exactly two Vertices
                  */
@@ -114,7 +130,7 @@ namespace mycad
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
-                std::vector<int> vertices;
+                std::vector<Vertex> vertices;
                 std::map<int, std::unique_ptr<detail::Edge>> edges;
         };
 

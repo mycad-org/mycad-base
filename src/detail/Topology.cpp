@@ -1,15 +1,16 @@
 #include "Topology.h" // detail/Topology.h NOT mycad/Topology.h
+#include "mycad/Topology.h"
 
 #include <algorithm>
 
 tl::expected<void, std::string>
-mycad::topo::detail::hasVertex(int v, std::vector<int> vs)
+mycad::topo::detail::hasVertex(const Vertex& v, const std::vector<Vertex>& vs)
 {
     if (std::ranges::count(vs, v) == 0)
     {
         return tl::unexpected(
             std::string("Vertex with ID=") + 
-            std::to_string(v) + " not found"
+            std::to_string(v.getIndex()) + " not found"
         );
     }
 

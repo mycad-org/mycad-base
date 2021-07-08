@@ -12,6 +12,8 @@ namespace mycad
 {
     namespace topo
     {
+        class Vertex;
+
         namespace detail
         {
             struct Edge
@@ -21,7 +23,7 @@ namespace mycad
             };
 
             tl::expected<void, std::string>
-            hasVertex(int v, std::vector<int> vs);
+            hasVertex(const Vertex& v, const std::vector<Vertex>& vs);
 
             tl::expected<void, std::string>
             hasEdge(int edge, const std::map<int, std::unique_ptr<Edge>>& es);

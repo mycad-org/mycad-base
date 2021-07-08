@@ -23,7 +23,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             Topology topo;
             for(unsigned int i=0; i <= n; i++)
             {
-                auto [id] = topo.addFreeVertex();
+                int id = topo.addFreeVertex().getIndex();
                 RC_ASSERT(vals.count(id) == (std::size_t) 0);
                 vals.insert(id);
             }
