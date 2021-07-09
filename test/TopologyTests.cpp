@@ -161,10 +161,9 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
 
                 THEN("We can recover both Edges in order")
                 {
-                    // skip test for now - until we're done refactoring
-                    /* REQUIRE( */
-                    /*     topo.getChainEdges(v1, edge).value() == */
-                    /*     std::list<EdgeID>{edge, edge2}); */
+                    REQUIRE(
+                        topo.getChainEdges(v1, edge).value() ==
+                        std::list<EdgeID>{edge, edge2});
                 }
             }
 
