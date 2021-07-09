@@ -1,6 +1,7 @@
 [submodule "ext/expected"]
 	path = ext/expected
 	url = https://github.com/TartanLlama/expected
+
 [submodule "ext/rapidcheck"]
 	path = ext/rapidcheck
-	url = https://github.com/emil-e/rapidcheck
+	url = https://github.com/ezzieyguywuf/rapidcheck
