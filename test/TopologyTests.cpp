@@ -29,7 +29,8 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             }
 
             return true;
-        }
+        },
+        /* verbose= */ true
     );
 
     GIVEN("Two Vertices")

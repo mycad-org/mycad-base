@@ -38,7 +38,8 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
         [](const Point& p1) {
             EitherLineOrString eLine = Line::makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
-        }
+        },
+        /* verbose= */ true
     );
 
     rc::prop("A line is parametrized from u=0 to u=1",
@@ -60,7 +61,8 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             float u = *rc::gen::inRange(0, 1);
             const Point& p = line.atU(u);
             RC_ASSERT(line.intersects(p));
-        }
+        },
+        /* verbose= */ true
     );
 
     rc::prop("Any point off the line does not intersect the line",
@@ -91,6 +93,7 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
                 }
             }
             RC_ASSERT_FALSE(line.intersects(p));
-        }
+        },
+        /* verbose= */ true
     );
 }
