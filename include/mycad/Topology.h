@@ -31,12 +31,8 @@ namespace mycad
         class Topology
         {
             public:
-                Topology();
-                Topology(const Topology& other);
-                ~Topology();
-                Topology& operator=(const Topology& other);
-
                 bool operator==(const Topology&) const = default;
+
                 /** @brief checks if two topologies are mostly equivalent
                  */
                 bool similar(const Topology& other) const;

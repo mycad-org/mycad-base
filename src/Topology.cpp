@@ -6,32 +6,6 @@
 
 using namespace mycad::topo;
 
-Topology::Topology() = default;
-
-Topology::Topology(const Topology& other)
-    : lastVertexID(other.lastVertexID),
-      lastEdgeID(other.lastEdgeID),
-      vertices(other.vertices),
-      edges(other.edges)
-{}
-
-Topology::~Topology() = default;
-
-Topology& Topology::operator=(const Topology& other)
-{
-    if (this == &other)
-    {
-        return *this;
-    }
-
-    this->lastVertexID = other.lastVertexID;
-    this->lastEdgeID = other.lastEdgeID;
-    this->vertices = other.vertices;
-    this->edges = other.edges;
-
-    return *this;
-}
-
 /**
  *
  *  Each Topology keeps track of a list of UIDs for each topological entity. IDs
