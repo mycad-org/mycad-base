@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.7)
+project(mycad)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wextra -Wall -pedantic")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -11,28 +14,14 @@ set(MYCAD_EXT_TL_INCLUDE_DIR
     PATH "Path to the TartanLlama c++ headers, i.e. tl::expected"
 )
 
+include(CTest)
+
 if(BUILD_TESTING)
-    if(MYCAD_FETCH_CATCH)
-        Include(FetchContent)
-
-        FetchContent_Declare(
-          Catch2
-          GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-          GIT_TAG        v2.13.4)
-
-        FetchContent_MakeAvailable(Catch2)
-
-        set(CMAKE_MODULE_PATH
-            "${catch2_SOURCE_DIR}/contrib;${CMAKE_MODULE_PATH}"
-        )
-    else()
-        find_package(Catch2 2.13.4 REQUIRED)
-    endif()
-
     add_subdirectory(ext/rapidcheck)
 
     set(MYCAD_RAPIDCHECK_EXTRAS_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/ext/rapidcheck/extras"
-        PARENT_SCOPE
+        "${CMAKE_PROJECT_SOURCE_DIR}/ext/rapidcheck/extras"
     )
+
+    add_subdirectory(test)
 endif()
