@@ -134,8 +134,8 @@ namespace mycad
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
-                std::vector<Vertex> vertices;
-                std::vector<Edge> edges;
+                std::vector<Vertex> vertices{};
+                std::vector<Edge> edges{};
         };
 
 
