@@ -4,13 +4,6 @@
 
 using namespace mycad::geom;
 
-Point::Point(float x, float y, float z)
-    : x(x), y(y), z(z){}
-
-bool Point::operator==(const Point& other) const {
-    return x == other.x && y == other.y && z == other.z;
-}
-
 tl::expected<Line, std::string> Line::makeLine(const Point& p1, const Point& p2)
 {
     if (p1 == p2)

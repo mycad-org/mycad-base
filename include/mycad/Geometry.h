@@ -8,10 +8,7 @@ namespace mycad::geom {
     struct Point {
         float x, y, z;
 
-        Point() = default;
-        Point(float x, float y, float z);
-
-        bool operator==(const Point& other) const;
+        auto operator<=>(const Point&) const = default;
     };
 
     class Line {
