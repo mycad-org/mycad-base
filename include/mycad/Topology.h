@@ -1,6 +1,9 @@
 #ifndef MYCAD_TOPOLOGY_HEADER
 #define MYCAD_TOPOLOGY_HEADER
 
+#include "detail/Topology.h"
+
+#include <map>
 #include <list>
 #include <string>
 #include <utility> // std::pair
@@ -11,53 +14,18 @@ namespace mycad
 {
     namespace topo
     {
-        class Vertex;
-        class Edge;
-        class Topology;
-
-        struct Link
+        struct VertexID
         {
-            Vertex* parentVertex;
-            Edge* parentEdge;
+            int index;
 
-            bool operator==(const Link& other) const;
+            auto operator<=>(const VertexID&) const = default;
         };
 
-        class Vertex
+        struct EdgeID
         {
-            public:
-                friend Topology;
+            int index;
 
-                explicit Vertex(int v);
-                bool operator< (const Vertex& other) const;
-                bool operator== (const Vertex& other) const;
-
-                int getIndex() const;
-
-                void streamTo(std::ostream& os) const;
-
-            private:
-                int index;
-                std::vector<Link> links;
-        };
-
-        class Edge
-        {
-            public:
-                friend Topology;
-
-                explicit Edge(int e, int l, int r);
-                bool operator==(const Edge&) const = default;
-
-                int getIndex() const;
-                std::pair<int, int> getVertexIDs() const;
-
-                void streamTo(std::ostream& os) const;
-
-            private:
-                int index;
-                int leftVertexID;
-                int rightVertexID;
+            auto operator<=>(const EdgeID&) const = default;
         };
 
         class Topology
@@ -75,12 +43,12 @@ namespace mycad
 
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
-                const Vertex& addFreeVertex();
+                VertexID addFreeVertex();
 
                 /** @brief an Edge is always adjacent to exactly two Vertices
                  */
-                tl::expected<Edge, std::string>
-                makeEdge(Vertex v1, Vertex v2);
+                tl::expected<EdgeID, std::string>
+                makeEdge(VertexID v1, VertexID v2);
 
                 /** @brief creates a directional connection between two edges
                  *  @returns error string if either edge doesn't exist in the
@@ -91,22 +59,22 @@ namespace mycad
                  *           Vertex
                  */
                 tl::expected<void, std::string>
-                makeChain(Edge /*fromEdge*/, Edge /*toEdge*/);
+                makeChain(EdgeID /*fromEdge*/, EdgeID /*toEdge*/);
 
                 /** @returns empty vector if valid vertex is 'free'
                  *  @returns error sring if the vertex does not exist in the
                  *           topology
                  */
-                tl::expected<std::vector<Edge>, std::string>
-                edgesAdjacentToVertex(Vertex v) const;
+                tl::expected<std::vector<EdgeID>, std::string>
+                edgesAdjacentToVertex(VertexID v) const;
 
                 /** @returns A pair `(left, right)` of vertex IDs corresponding
                  *           to this Edge
                  *  @returns error sring if the edge does not exist in the
                  *           topology
                  */
-                tl::expected<std::pair<Vertex, Vertex>, std::string>
-                getEdgeVertices(Edge edge) const;
+                tl::expected<std::pair<VertexID, VertexID>, std::string>
+                getEdgeVertices(EdgeID edge) const;
 
                 /** @brief find the Vertex on the other side of the Edge
                  *  @returns error string if either @v@ or @e@ does not exist in
@@ -114,7 +82,8 @@ namespace mycad
                  *  @returns error string if the Vertex and Edge are not
                  *           adjacent to each other
                  */
-                tl::expected<Vertex, std::string> oppositeVertex(Vertex v, Edge e) const;
+                tl::expected<VertexID, std::string>
+                oppositeVertex(VertexID v, EdgeID e) const;
 
                 /** @brief returns all Edges in the Chain
                  *
@@ -122,12 +91,12 @@ namespace mycad
                  *
                  *  @returns error if the chain does not exist
                  */
-                tl::expected<std::list<Edge>, std::string>
-                getChainEdges(Vertex /*vertex*/, Edge /*edge*/) const;
+                tl::expected<std::list<EdgeID>, std::string>
+                getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const;
 
                 /** @returns false if the Edge doesn't exist
                  */
-                bool deleteEdge(Edge e);
+                bool deleteEdge(EdgeID e);
 
                 void streamTo(std::ostream& os) const;
             private:
@@ -136,13 +105,13 @@ namespace mycad
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
-                std::vector<Vertex> vertices{};
-                std::vector<Edge> edges{};
+                std::map<VertexID, detail::Vertex> vertices{};
+                std::map<EdgeID, detail::Edge> edges{};
         };
 
 
-        std::ostream& operator<<(std::ostream& os, const Vertex& v);
-        std::ostream& operator<<(std::ostream& os, const Edge& e);
+        std::ostream& operator<<(std::ostream& os, const VertexID& v);
+        std::ostream& operator<<(std::ostream& os, const EdgeID& e);
         std::ostream& operator<<(std::ostream& os, const Topology& topo);
     } // namespace topo
 }     // namespace mycad
