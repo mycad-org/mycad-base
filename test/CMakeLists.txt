@@ -16,11 +16,13 @@ endif()
 set(TEST_SRCS
     main.cpp
     GeometryTests.cpp
+    TopologyTests.cpp
     )
 
 set(TEST_LIBS
     Catch2::Catch2
     mycad_geometry
+    mycad-topology
     rapidcheck
     )
 
