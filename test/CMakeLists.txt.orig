@@ -21,7 +21,7 @@ set(TEST_SRCS
 
 set(TEST_LIBS
     Catch2::Catch2
-    mycad-geometry
+    mycad_geometry
     mycad-topology
     rapidcheck
     )
@@ -29,7 +29,12 @@ set(TEST_LIBS
 add_executable(mycad_tests ${TEST_SRCS})
 target_link_libraries(mycad_tests PUBLIC ${TEST_LIBS} INTERFACE rapidcheck_catch)
 target_include_directories(
+<<<<<<< HEAD
     mycad_tests PUBLIC ${rapidcheck_SOURCE_DIR}/extras/catch/include)
+=======
+    mycad_tests PUBLIC
+    "${MYCAD_RAPIDCHECK_EXTRAS_DIR}/catch/include")
+>>>>>>> def4b75 (First failing test for topology)
 
 include(Catch REQUIRED) # provides catch_discover_tests
 catch_discover_tests(mycad_tests)
