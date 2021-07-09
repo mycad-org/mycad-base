@@ -35,13 +35,25 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
     GIVEN("Two Vertices")
     {
         Topology topo;
+        Topology unsafe_topo;
+
         VertexID v1 = topo.addFreeVertex();
         VertexID v2 = topo.addFreeVertex();
+
+        VertexID unsafe_v1 = unsafe_topo.addFreeVertex();
+        VertexID unsafe_v2 = unsafe_topo.addFreeVertex();
+
+        REQUIRE(unsafe_topo.hasVertex(unsafe_v1));
+        REQUIRE(unsafe_topo.hasVertex(unsafe_v2));
 
         WHEN("An Edge is created between them")
         {
             Topology orig = topo;
             auto eitherEdge = topo.makeEdge(v1, v2);
+            EdgeID unsafe_edge = unsafe_topo.unsafe_makeEdge(unsafe_v1, unsafe_v2);
+
+            REQUIRE(unsafe_topo.hasEdge(unsafe_edge));
+
             if (not eitherEdge.has_value())
             {
                 std::cout << eitherEdge.error() << '\n';
@@ -65,6 +77,15 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
                     topo.edgesAdjacentToVertex(v2).value() ==
                     std::vector<EdgeID>{edge}
                 );
+                REQUIRE(
+                    unsafe_topo.unsafe_edgesAdjacentToVertex(unsafe_v1) ==
+                    std::vector<EdgeID>{unsafe_edge}
+                );
+
+                REQUIRE(
+                    unsafe_topo.unsafe_edgesAdjacentToVertex(unsafe_v2) ==
+                    std::vector<EdgeID>{unsafe_edge}
+                );
             }
 
             THEN("Both Vertices are adjacent to the Edge")
@@ -73,12 +94,18 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
                     topo.getEdgeVertices(edge).value() ==
                     std::pair<VertexID, VertexID>(v1, v2)
                 );
+                REQUIRE(
+                    unsafe_topo.unsafe_getEdgeVertices(unsafe_edge) ==
+                    std::pair<VertexID, VertexID>(unsafe_v1, unsafe_v2)
+                );
             }
 
             THEN("Either Vertex can be used to find the other across the Edge")
             {
                 REQUIRE(topo.oppositeVertex(v1, edge).value() == v2);
                 REQUIRE(topo.oppositeVertex(v2, edge).value() == v1);
+                REQUIRE( unsafe_topo.unsafe_oppositeVertex(unsafe_v1, unsafe_edge) == unsafe_v2);
+                REQUIRE( unsafe_topo.unsafe_oppositeVertex(unsafe_v2, unsafe_edge) == unsafe_v1);
             }
 
             WHEN("The Edge is deleted")

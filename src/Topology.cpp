@@ -40,6 +40,16 @@ bool Topology::similar(const Topology& other) const
     return vertices == other.vertices && edges == other.edges;
 }
 
+bool Topology::hasVertex(VertexID v) const
+{
+    return detail::hasVertex(v, vertices).has_value();
+}
+
+bool Topology::hasEdge(EdgeID e) const
+{
+    return detail::hasEdge(e, edges).has_value();
+}
+
 VertexID Topology::addFreeVertex()
 {
     VertexID v(lastVertexID++);
@@ -107,6 +117,11 @@ tl::expected<EdgeID, std::string> Topology::makeEdge(VertexID v1, VertexID v2)
     return edge;
 }
 
+EdgeID Topology::unsafe_makeEdge(VertexID v1, VertexID v2)
+{
+    return makeEdge(v1, v2).value();
+}
+
 bool Topology::deleteEdge(EdgeID edge)
 {
     if (not detail::hasEdge(edge, edges))
@@ -166,6 +181,11 @@ Topology::edgesAdjacentToVertex(VertexID v) const
            });
 }
 
+std::vector<EdgeID> Topology::unsafe_edgesAdjacentToVertex(VertexID v) const
+{
+    return edgesAdjacentToVertex(v).value();
+}
+
 tl::expected<std::pair<VertexID, VertexID>, std::string>
 Topology::getEdgeVertices(EdgeID edge) const
 {
@@ -175,6 +195,11 @@ Topology::getEdgeVertices(EdgeID edge) const
                auto [left, right] = edges.at(edge);
                return std::make_pair(VertexID(left), VertexID(right));
            });
+}
+
+std::pair<VertexID, VertexID> Topology::unsafe_getEdgeVertices(EdgeID edge) const
+{
+    return getEdgeVertices(edge).value();
 }
 
 tl::expected<VertexID, std::string>
@@ -202,6 +227,11 @@ Topology::oppositeVertex(VertexID v, EdgeID e) const
                                    std::to_string(e.index));
             }
         });
+}
+
+VertexID Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const
+{
+    return oppositeVertex(v, e).value();
 }
 
 tl::expected<std::list<EdgeID>, std::string>

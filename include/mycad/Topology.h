@@ -28,6 +28,15 @@ namespace mycad
             auto operator<=>(const EdgeID&) const = default;
         };
 
+        /**
+         *  Any method that returns a `tl::expected` has built-in error
+         *  checking. This is useful for chaining together operations that may
+         *  return an error, short-circuiting on the first error.
+         *
+         *  Each of these functions has an 'unsafe' version which does not
+         *  perform the error-checking. You'll be responsible for making sure
+         *  you call them appropriately.
+         */
         class Topology
         {
             public:
@@ -37,6 +46,9 @@ namespace mycad
                  */
                 bool similar(const Topology& other) const;
 
+                bool hasVertex(VertexID v) const;
+                bool hasEdge(EdgeID e) const;
+
                 /** @brief A 'free' vertex does is not adajacent to anything
                  */
                 VertexID addFreeVertex();
@@ -45,6 +57,7 @@ namespace mycad
                  */
                 tl::expected<EdgeID, std::string>
                 makeEdge(VertexID v1, VertexID v2);
+                EdgeID unsafe_makeEdge(VertexID v1, VertexID v2);
 
                 /** @brief creates a directional connection between two edges
                  *  @returns error string if either edge doesn't exist in the
@@ -56,6 +69,7 @@ namespace mycad
                  */
                 tl::expected<void, std::string>
                 makeChain(EdgeID /*fromEdge*/, EdgeID /*toEdge*/);
+                void unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge);
 
                 /** @returns empty vector if valid vertex is 'free'
                  *  @returns error sring if the vertex does not exist in the
@@ -63,6 +77,8 @@ namespace mycad
                  */
                 tl::expected<std::vector<EdgeID>, std::string>
                 edgesAdjacentToVertex(VertexID v) const;
+                std::vector<EdgeID>
+                unsafe_edgesAdjacentToVertex(VertexID v) const;
 
                 /** @returns A pair `(left, right)` of vertex IDs corresponding
                  *           to this Edge
@@ -71,6 +87,8 @@ namespace mycad
                  */
                 tl::expected<std::pair<VertexID, VertexID>, std::string>
                 getEdgeVertices(EdgeID edge) const;
+                std::pair<VertexID, VertexID>
+                unsafe_getEdgeVertices(EdgeID edge) const;
 
                 /** @brief find the Vertex on the other side of the Edge
                  *  @returns error string if either @v@ or @e@ does not exist in
@@ -80,6 +98,7 @@ namespace mycad
                  */
                 tl::expected<VertexID, std::string>
                 oppositeVertex(VertexID v, EdgeID e) const;
+                VertexID unsafe_oppositeVertex(VertexID v, EdgeID e) const;
 
                 /** @brief returns all Edges in the Chain
                  *
@@ -89,6 +108,8 @@ namespace mycad
                  */
                 tl::expected<std::list<EdgeID>, std::string>
                 getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const;
+                std::list<EdgeID>
+                unsafe_getChainEdges(VertexID vertex, EdgeID edge) const;
 
                 /** @returns false if the Edge doesn't exist
                  */
