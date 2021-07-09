@@ -1,5 +1,6 @@
 #include "mycad/Geometry.h"
 
+#include <cmath> // std::lerp (since c++20)
 #include <iostream>
 
 using namespace mycad::geom;
@@ -30,13 +31,9 @@ Point Line::atU(float u) const
         return p2;
     }
 
-    auto f = [u](float component1, float component2) -> float {
-            return component1 + u * (component2 - component1);
-        };
-
-    return Point(f(p1.x, p2.x),
-                 f(p1.y, p2.y),
-                 f(p1.z, p2.z)
+    return Point(std::lerp(p1.x, p2.x, u),
+                 std::lerp(p1.y, p2.y, u),
+                 std::lerp(p1.z, p2.z, u)
             );
 }
 
