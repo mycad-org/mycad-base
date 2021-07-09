@@ -21,10 +21,13 @@ set(TEST_SRCS
 set(TEST_LIBS
     Catch2::Catch2
     mycad_geometry
+    rapidcheck
     )
 
 add_executable(mycad_tests ${TEST_SRCS})
-target_link_libraries(mycad_tests PRIVATE ${TEST_LIBS})
+target_link_libraries(mycad_tests PUBLIC ${TEST_LIBS} INTERFACE rapidcheck_catch)
+target_include_directories(
+    mycad_tests PUBLIC ${rapidcheck_SOURCE_DIR}/extras/catch/include)
 
 include(Catch REQUIRED) # provides catch_discover_tests
 catch_discover_tests(mycad_tests)

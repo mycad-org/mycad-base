@@ -1,5 +1,7 @@
 #include "mycad/Geometry.h"
 
+#include <iostream>
+
 using namespace mycad::geom;
 
 Point::Point(float x, float y, float z)
@@ -21,4 +23,12 @@ Point Line::atU(float u) const {
                  f(p1.y, p2.y),
                  f(p1.z, p2.z)
             );
+}
+
+std::ostream& mycad::geom::operator<<(
+        std::ostream& stream,
+        const mycad::geom::Point& p)
+{
+    stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
+    return stream;
 }

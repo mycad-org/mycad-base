@@ -8,20 +8,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
-set(MYCAD_EXT_TL_INCLUDE_DIR
-    "${CMAKE_PROJECT_SOURCE_DIR}/ext/TartanLlama/include"
-    CACHE
-    PATH "Path to the TartanLlama c++ headers, i.e. tl::expected"
-)
-
+include_directories(include ext/TartanLlama/include)
+add_subdirectory(src)
 include(CTest)
 
 if(BUILD_TESTING)
     add_subdirectory(ext/rapidcheck)
-
-    set(MYCAD_RAPIDCHECK_EXTRAS_DIR
-        "${CMAKE_PROJECT_SOURCE_DIR}/ext/rapidcheck/extras"
-    )
 
     add_subdirectory(test)
 endif()

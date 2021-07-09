@@ -1,11 +1,14 @@
 #ifndef MYCAD_GEOMETRY_HEADER
 #define MYCAD_GEOMETRY_HEADER
 
+#include <iostream>
+
 namespace mycad {
     namespace geom {
         struct Point {
             float x, y, z;
 
+            Point() = default;
             Point(float x, float y, float z);
 
             bool operator==(const Point& other) const;
@@ -40,6 +43,11 @@ namespace mycad {
             private:
                 Point p1, p2;
         };
-    }
-}
+
+        std::ostream& operator<<(std::ostream& stream, const mycad::geom::Point& p);
+
+    } // namespace geom
+}     // namespace mycad
+
+
 #endif // MYCAD_GEOMETRY_HEADER
