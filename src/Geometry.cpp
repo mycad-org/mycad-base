@@ -4,7 +4,7 @@
 
 using namespace mycad::geom;
 
-tl::expected<Line, std::string> Line::makeLine(const Point& p1, const Point& p2)
+auto Line::makeLine(const Point& p1, const Point& p2) -> EitherLine
 {
     if (p1 == p2)
     {
@@ -19,7 +19,8 @@ tl::expected<Line, std::string> Line::makeLine(const Point& p1, const Point& p2)
 Line::Line(const Point& p1, const Point& p2)
     : p1(p1), p2(p2){}
 
-Point Line::atU(float u) const {
+Point Line::atU(float u) const
+{
     if (u == 0)
     {
         return p1;
@@ -39,7 +40,8 @@ Point Line::atU(float u) const {
             );
 }
 
-bool Line::intersects(const Point& p) const {
+auto Line::intersects(const Point& p) const -> bool
+{
     if (p == p1 || p == p2)
     {
         return true;
@@ -60,17 +62,13 @@ bool Line::intersects(const Point& p) const {
     return p == this->atU(u);
 }
 
-std::ostream& mycad::geom::operator<<(
-        std::ostream& stream,
-        const mycad::geom::Point& p)
+auto mycad::geom::operator<<(std::ostream& stream, const Point& p) -> std::ostream&
 {
     stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
     return stream;
 }
 
-std::ostream& mycad::geom::operator<<(
-        std::ostream& stream,
-        const mycad::geom::Line& line)
+auto mycad::geom::operator<<(std::ostream& stream, const Line& line) -> std::ostream&
 {
     stream << "Line: " << line.atU(0) << " → " << line.atU(1);
     return stream;

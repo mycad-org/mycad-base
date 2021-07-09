@@ -35,22 +35,22 @@ using namespace mycad::topo;
  *  detail, but it suffices to know that this mechanism is what makes `topo1 !=
  *  topo2`
  */
-bool Topology::similar(const Topology& other) const
+auto Topology::similar(const Topology& other) const -> bool
 {
     return vertices == other.vertices && edges == other.edges;
 }
 
-bool Topology::hasVertex(VertexID v) const
+auto Topology::hasVertex(VertexID v) const -> bool
 {
     return detail::hasVertex(v, vertices).has_value();
 }
 
-bool Topology::hasEdge(EdgeID e) const
+auto Topology::hasEdge(EdgeID e) const -> bool
 {
     return detail::hasEdge(e, edges).has_value();
 }
 
-VertexID Topology::addFreeVertex()
+auto Topology::addFreeVertex() -> VertexID
 {
     VertexID v(lastVertexID++);
     vertices.emplace(v, detail::Vertex{});
@@ -77,7 +77,7 @@ VertexID Topology::addFreeVertex()
  * @returns error string if either of the vertices doesn't exist
  * @returns error string if an Edge already exists **from** @v1@ **to** @v2@
  */
-tl::expected<EdgeID, std::string> Topology::makeEdge(VertexID v1, VertexID v2)
+auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
 {
     if (not vertices.contains(v1))
     {
@@ -117,12 +117,12 @@ tl::expected<EdgeID, std::string> Topology::makeEdge(VertexID v1, VertexID v2)
     return edge;
 }
 
-EdgeID Topology::unsafe_makeEdge(VertexID v1, VertexID v2)
+auto Topology::unsafe_makeEdge(VertexID v1, VertexID v2) -> EdgeID
 {
     return makeEdge(v1, v2).value();
 }
 
-bool Topology::deleteEdge(EdgeID edge)
+auto Topology::deleteEdge(EdgeID edge) -> bool
 {
     if (not detail::hasEdge(edge, edges))
     {
@@ -153,8 +153,7 @@ bool Topology::deleteEdge(EdgeID edge)
     }
 }
 
-tl::expected<void, std::string>
-Topology::makeChain(EdgeID fromEdge, EdgeID toEdge)
+auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe
 {
     return
         detail::getCommonVertexID(fromEdge, toEdge, std::cref(edges))
@@ -163,8 +162,7 @@ Topology::makeChain(EdgeID fromEdge, EdgeID toEdge)
         });
 }
 
-tl::expected<std::vector<EdgeID>, std::string>
-Topology::edgesAdjacentToVertex(VertexID v) const
+auto Topology::edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs
 {
     return detail::hasVertex(v, vertices)
            .map([v, this]
@@ -181,13 +179,12 @@ Topology::edgesAdjacentToVertex(VertexID v) const
            });
 }
 
-std::vector<EdgeID> Topology::unsafe_edgesAdjacentToVertex(VertexID v) const
+auto Topology::unsafe_edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
 {
     return edgesAdjacentToVertex(v).value();
 }
 
-tl::expected<std::pair<VertexID, VertexID>, std::string>
-Topology::getEdgeVertices(EdgeID edge) const
+auto Topology::getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair
 {
     return detail::hasEdge(edge, edges)
            .map([edge, this]
@@ -197,13 +194,12 @@ Topology::getEdgeVertices(EdgeID edge) const
            });
 }
 
-std::pair<VertexID, VertexID> Topology::unsafe_getEdgeVertices(EdgeID edge) const
+auto Topology::unsafe_getEdgeVertices(EdgeID edge) const -> VertexIDPair
 {
     return getEdgeVertices(edge).value();
 }
 
-tl::expected<VertexID, std::string>
-Topology::oppositeVertex(VertexID v, EdgeID e) const
+auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID
 {
     return
         detail::hasVertex(v, vertices)
@@ -229,13 +225,12 @@ Topology::oppositeVertex(VertexID v, EdgeID e) const
         });
 }
 
-VertexID Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const
+auto Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID
 {
     return oppositeVertex(v, e).value();
 }
 
-tl::expected<std::list<EdgeID>, std::string>
-Topology::getChainEdges(VertexID vertex, EdgeID edge) const
+auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDChain
 {
     for (const auto& link : vertices.at(vertex).links)
     {
@@ -247,7 +242,7 @@ Topology::getChainEdges(VertexID vertex, EdgeID edge) const
     return {};
 }
 
-void Topology::streamTo(std::ostream& os) const
+auto Topology::streamTo(std::ostream& os) const -> void
 {
     os << "lastVertexID = " << lastVertexID << ", "
        << "lastEdgeID = " << lastEdgeID << std::endl;
@@ -275,19 +270,19 @@ void Topology::streamTo(std::ostream& os) const
     }
 }
 
-std::ostream& mycad::topo::operator<<(std::ostream& os, const VertexID& v)
+auto mycad::topo::operator<<(std::ostream& os, const VertexID& v) -> std::ostream&
 {
     os << "V" << std::to_string(v.index);
     return os;
 }
 
-std::ostream& mycad::topo::operator<<(std::ostream& os, const EdgeID& e)
+auto mycad::topo::operator<<(std::ostream& os, const EdgeID& e) -> std::ostream&
 {
     os << "E" << std::to_string(e.index);
     return os;
 }
 
-std::ostream& mycad::topo::operator<<(std::ostream& os, const Topology& topo)
+auto mycad::topo::operator<<(std::ostream& os, const Topology& topo) -> std::ostream&
 {
     topo.streamTo(os);
     return os;

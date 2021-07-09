@@ -11,6 +11,10 @@ namespace mycad::geom {
         auto operator<=>(const Point&) const = default;
     };
 
+    class Line;
+    using Error = std::string;
+    using EitherLine = tl::expected<Line, Error>;
+
     class Line {
         public:
             /** @brief Parametrized _from_ @param p1 _to_ @param p2
@@ -29,16 +33,16 @@ namespace mycad::geom {
              *
              *  @returns A Line if the two points are not equivalent
              */
-             static tl::expected<Line, std::string> makeLine(const Point& p1, const Point& p2);
+            auto static makeLine(const Point& p1, const Point& p2) -> EitherLine;
 
             /** @brief return the point at the given @param u
              *
              *  @returns Line#p1 when `u = 0`, Line#p2 when `u = 1`, the
              *           appropriate extrapolated point on the line otherwise
              */
-            Point atU(float u) const;
+            auto atU(float u) const -> Point;
 
-            bool intersects(const Point& p) const;
+            auto intersects(const Point& p) const -> bool;
 
         private:
             Line(const Point& p1, const Point& p2);
@@ -46,8 +50,8 @@ namespace mycad::geom {
             Point p1, p2;
     };
 
-    std::ostream& operator<<(std::ostream& stream, const mycad::geom::Point& p);
-    std::ostream& operator<<(std::ostream& stream, const mycad::geom::Line& line);
+    auto operator<<(std::ostream& stream, const Point& p) -> std::ostream&;
+    auto operator<<(std::ostream& stream, const Line& line)-> std::ostream&;
 
 } // namespace mycad::geom
 

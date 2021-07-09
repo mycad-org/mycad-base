@@ -26,6 +26,18 @@ namespace mycad::topo
         auto operator<=>(const EdgeID&) const = default;
     };
 
+    //! used instead of std::optional so that we can compose it with other tl::expected
+    using Error          = std::string;
+    using Maybe          = tl::expected<void, Error>;
+    using VertexIDPair   = std::pair<VertexID, VertexID>;
+    using EitherVertexIDPair = tl::expected<VertexIDPair, Error>;
+    using EitherVertexID = tl::expected<VertexID, Error>;
+    using EitherEdgeID   = tl::expected<EdgeID, Error>;
+    using EdgeIDs        = std::vector<EdgeID>;
+    using EitherEdgeIDs  = tl::expected<EdgeIDs, Error>;
+    using EdgeIDChain    = std::list<EdgeID>;
+    using EitherEdgeIDChain = tl::expected<EdgeIDChain, Error>;
+
     /**
      *  Any method that returns a `tl::expected` has built-in error checking.
      *  This is useful for chaining together operations that may return an
@@ -42,20 +54,19 @@ namespace mycad::topo
 
             /** @brief checks if two topologies are mostly equivalent
              */
-            bool similar(const Topology& other) const;
+            auto similar(const Topology& other) const -> bool;
 
-            bool hasVertex(VertexID v) const;
-            bool hasEdge(EdgeID e) const;
+            auto hasVertex(VertexID v) const -> bool;
+            auto hasEdge(EdgeID e) const -> bool;
 
             /** @brief A 'free' vertex does is not adajacent to anything
              */
-            VertexID addFreeVertex();
+            auto addFreeVertex() -> VertexID;
 
             /** @brief an Edge is always adjacent to exactly two Vertices
              */
-            tl::expected<EdgeID, std::string>
-            makeEdge(VertexID v1, VertexID v2);
-            EdgeID unsafe_makeEdge(VertexID v1, VertexID v2);
+            auto makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID;
+            auto unsafe_makeEdge(VertexID v1, VertexID v2) -> EdgeID;
 
             /** @brief creates a directional connection between two edges
              *  @returns error string if either edge doesn't exist in the
@@ -65,27 +76,22 @@ namespace mycad::topo
              *  @returns error string if the two Edge do not share a common
              *           Vertex
              */
-            tl::expected<void, std::string>
-            makeChain(EdgeID /*fromEdge*/, EdgeID /*toEdge*/);
-            void unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge);
+            auto makeChain(EdgeID /*fromEdge*/, EdgeID /*toEdge*/) -> Maybe;
+            auto unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge) -> void;
 
             /** @returns empty vector if valid vertex is 'free'
              *  @returns error sring if the vertex does not exist in the
              *           topology
              */
-            tl::expected<std::vector<EdgeID>, std::string>
-            edgesAdjacentToVertex(VertexID v) const;
-            std::vector<EdgeID>
-            unsafe_edgesAdjacentToVertex(VertexID v) const;
+            auto edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs;
+            auto unsafe_edgesAdjacentToVertex(VertexID v) const -> EdgeIDs;
 
             /** @returns A pair `(left, right)` of vertex IDs corresponding to
              *           this Edge
              *  @returns error sring if the edge does not exist in the topology
              */
-            tl::expected<std::pair<VertexID, VertexID>, std::string>
-            getEdgeVertices(EdgeID edge) const;
-            std::pair<VertexID, VertexID>
-            unsafe_getEdgeVertices(EdgeID edge) const;
+            auto getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair;
+            auto unsafe_getEdgeVertices(EdgeID edge) const -> VertexIDPair;
 
             /** @brief find the Vertex on the other side of the Edge
              *  @returns error string if either @v@ or @e@ does not exist in
@@ -93,9 +99,8 @@ namespace mycad::topo
              *  @returns error string if the Vertex and Edge are not adjacent to
              *           each other
              */
-            tl::expected<VertexID, std::string>
-            oppositeVertex(VertexID v, EdgeID e) const;
-            VertexID unsafe_oppositeVertex(VertexID v, EdgeID e) const;
+            auto oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID;
+            auto unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
 
             /** @brief returns all Edges in the Chain
              *
@@ -103,16 +108,14 @@ namespace mycad::topo
              *
              *  @returns error if the chain does not exist
              */
-            tl::expected<std::list<EdgeID>, std::string>
-            getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const;
-            std::list<EdgeID>
-            unsafe_getChainEdges(VertexID vertex, EdgeID edge) const;
+            auto getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const -> EitherEdgeIDChain;
+            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDChain;
 
             /** @returns false if the Edge doesn't exist
              */
-            bool deleteEdge(EdgeID e);
+            auto deleteEdge(EdgeID e) -> bool;
 
-            void streamTo(std::ostream& os) const;
+            auto streamTo(std::ostream& os) const -> void;
         private:
             // std::vector::size can't be relied upon for UID's since when
             // items are deleted the size scales appropriately.
@@ -124,9 +127,9 @@ namespace mycad::topo
     };
 
 
-    std::ostream& operator<<(std::ostream& os, const VertexID& v);
-    std::ostream& operator<<(std::ostream& os, const EdgeID& e);
-    std::ostream& operator<<(std::ostream& os, const Topology& topo);
+    auto operator<<(std::ostream& os, const VertexID& v) -> std::ostream&;
+    auto operator<<(std::ostream& os, const EdgeID& e) -> std::ostream&;
+    auto operator<<(std::ostream& os, const Topology& topo) -> std::ostream&;
 } // namespace mycad::topo
 
 
