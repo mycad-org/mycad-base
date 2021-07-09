@@ -1,12 +1,128 @@
-Provides the necessary geometric objects and algorithms needed to implement a
-CAD system.
+[![build_and_tests](https://github.com/mycad-org/mycad-base/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/mycad-org/mycad-base/actions/workflows/unit_tests.yml)
 
-Provides a `Topology` data structure that can be used to manage topological
-entities in a CAD application.
+Overview
+========
 
-Can be built as follows:
+This library provides the fundamental building blocks needed to implement a
+Computer Aided Design (CAD) package. It is broken into three libraries:
 
-This project can be built using cmake:
+- mycad-geometry
+- mycad-topology
+- [future] mycad-entity
+
+The `mycad-geometry` and `mycad-topology` libaries are completely independent of
+each other. Their only dependencies are the traditional c/c++ runtimes and
+standard libraries. You are welcome and encouraged to use either (or both) in
+your own projects.
+
+Example
+=======
+
+This example section will grow over time. For now, here is a small demo:
+
+```cpp
+#include "mycad/Geometry.h"
+#include "mycad/Topology.h"
+
+#include <iostream>
+#include <map>
+
+int main()
+{
+    // All functionality is provided in the `mycad` namespace
+
+    mycad::geom::Point p1(10, 20, 30);
+    mycad::geom::Point p2(40, 50, 60);
+
+    // Streaming operators for handy 'debugging'
+    std::cout << "P1 = " << p1 << '\n';
+    // output: P1 = (10, 20, 30)
+
+    std::cout << "P2 = " << p2 << '\n';
+    // output: P2 = (40, 50, 60)
+
+    // Return type is tl::unexpected - provides error handling
+    auto eitherLine1 = mycad::geom::makeLine(p1, p2);
+    auto eitherLine2 = mycad::geom::makeLine(p1, p1);
+
+    if (eitherLine1)
+    {
+        // this is safe now
+        mycad::geom::Line line = eitherLine1.value();
+
+        // Again, handy streaming operator
+        std::cout << line << '\n';
+        // output: Line: (10, 20, 30) → (40, 50, 60)
+    }
+
+    if(not eitherLine2)
+    {
+        // oh no, something happened!
+
+        std::cout << eitherLine2.error() << '\n';
+        // output: A line cannot be constructed with two equivalent points
+
+
+        // maybe ask the user to try again? in a loop?
+    }
+
+    //.... these geometric facilities will grow and scale with the needs of
+    //     mycad
+
+    /*======================================================================*/
+
+    // A topology is used to keep track of relationships
+    mycad::topo::Topology topo;
+
+    // A 'free' vertex is not connected to anything. Notice that Topology only
+    // return an "ID" to the Vertex, not the Vertex itself.
+    mycad::topo::VertexID v1 = topo.addFreeVertex();
+    mycad::topo::VertexID v2 = topo.addFreeVertex();
+
+    // Two free vertices can be connected by an Edge. Every Edge has exactly two
+    // vertices associated with it
+
+    // Here, we use the `unsafe_` version of `makeEdge`. You should be careful
+    // with this - probably use `hasVertex` first on both vertices to ensure you
+    // don't run into runtime errors. I prefer the safe, `makeEdge`
+    mycad::topo::EdgeID edge = topo.unsafe_makeEdge(v1, v2);
+
+    // Now, we can query the relationships
+    auto eitherVertices = topo.getEdgeVertices(edge);
+    if(eitherVertices)
+    {
+        // .value is safe now
+        auto [left, right] = eitherVertices.value();
+
+        std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
+                  << "    Vertex ID = " << left.index << '\n'
+                  << "    Vertex ID = " << right.index << '\n';
+        // output:
+        // The edge with ID = 0 is adjacent to:
+        //     Vertex ID = 0
+        //     Vertex ID = 1
+    }
+
+    /*======================================================================*/
+
+    // The plan is for mycad-entity to merge the functionalities of these two
+    // libraries in order to provide the building blocks for a boundary
+    // representation CAD package. Something like
+    std::map<mycad::topo::VertexID, mycad::geom::Point> vertices;
+    std::map<mycad::topo::EdgeID, mycad::geom::Line> curves;
+
+    // now the user can draw points, connect them inte lines, and then we can
+    // tell them later which are joined together.
+}
+```
+
+Building
+========
+
+This project can be built using cmake. It uses some c++20 features, so please
+check your compiler's compatibility with c++20 if you have problems.
+
+If the c++20 stuff is an issue for you, let me know and I can remove it.
 
 ```sh
 mkdir build
