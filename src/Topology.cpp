@@ -37,7 +37,14 @@ using namespace mycad::topo;
  */
 auto Topology::similar(const Topology& other) const -> bool
 {
-    return vertices == other.vertices && edges == other.edges;
+    const std::vector vals{
+        vertices == other.vertices,
+        vertices == other.vertices
+    };
+
+    auto isTrue = [](bool x){return x == true;};
+
+    return std::ranges::all_of(vals, isTrue);
 }
 
 auto Topology::hasVertex(VertexID v) const -> bool
