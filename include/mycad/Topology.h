@@ -131,6 +131,8 @@ namespace mycad
 
                 void streamTo(std::ostream& os) const;
             private:
+                // std::vector::size can't be relied upon for UID's since when
+                // items are deleted the size scales appropriately.
                 int lastVertexID = 0;
                 int lastEdgeID = 0;
 
