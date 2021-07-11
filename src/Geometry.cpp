@@ -9,8 +9,8 @@ auto Line::makeLine(const Point& p1, const Point& p2) -> EitherLine
 {
     if (p1 == p2)
     {
-        return tl::unexpected(
-            std::string("A line cannot be constructed with two equivalent Points"));
+        return tl::make_unexpected(
+            "A line cannot be constructed with two equivalent Points");
     }
     else
     {

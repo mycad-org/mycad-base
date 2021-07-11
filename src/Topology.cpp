@@ -88,26 +88,28 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
 {
     if (not vertices.contains(v1))
     {
-        return tl::unexpected(
-            std::string("The vertex v1 = ") + std::to_string(v1.index) +
-                        " does not exist in the topology");
+        return tl::make_unexpected(
+            "The vertex v1 = " + std::to_string(v1.index) +
+            " does not exist in the topology");
     }
     else if (not vertices.contains(v2))
     {
-        return tl::unexpected(
-            std::string("The vertex v2 = ") + std::to_string(v2.index) +
-                        " does not exist in the topology");
+        return tl::make_unexpected(
+            "The vertex v2 = " + std::to_string(v2.index) +
+            " does not exist in the topology");
     }
 
-    for (const auto& [key, edge] : edges)
+    auto hasSameVertices = [&v1, &v2](auto pair)
     {
+        auto [index, edge] = pair;
         auto [left, right] = edge;
-        if ((left == v1.index && right == v2.index) ||
-            (left == v2.index && right == v1.index))
-        {
-            return tl::unexpected(
-                std::string("Only one Edge can exist between any two Vertices"));
-        }
+        return (left == v1.index && right == v2.index) ||
+               (left == v2.index && right == v1.index);
+    };
+
+    if(std::ranges::any_of(edges, hasSameVertices))
+    {
+        return tl::make_unexpected("Only one Edge can exist between any two Vertices");
     }
 
     EdgeID edge(lastEdgeID++);
@@ -224,10 +226,9 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID
             }
             else
             {
-                return tl::unexpected(
-                       std::string("vertex with id = ") + std::to_string(v.index) +
-                                   " is not adjacent to edge with id ="  +
-                                   std::to_string(e.index));
+                return tl::make_unexpected(
+                    "vertex with id = " + std::to_string(v.index) +
+                    " is not adjacent to edge with id ="  + std::to_string(e.index));
             }
         });
 }
