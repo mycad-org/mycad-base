@@ -2,6 +2,6 @@
 	path = ext/rapidcheck
 	url = https://github.com/ezzieyguywuf/rapidcheck
 [submodule "ext/expected-1"]
-	path = ext/expected-1
+	path = ext/expected
 	url = https://github.com/ezzieyguywuf/expected-1
 	branch = monadic_bind
