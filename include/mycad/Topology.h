@@ -27,16 +27,16 @@ namespace mycad::topo
     };
 
     //! used instead of std::optional so that we can compose it with other tl::expected
-    using Error          = std::string;
-    using Maybe          = tl::expected<void, Error>;
-    using VertexIDPair   = std::pair<VertexID, VertexID>;
+    using Error              = std::string;
+    using Maybe              = tl::expected<void, Error>;
+    using VertexIDPair       = std::pair<VertexID, VertexID>;
     using EitherVertexIDPair = tl::expected<VertexIDPair, Error>;
-    using EitherVertexID = tl::expected<VertexID, Error>;
-    using EitherEdgeID   = tl::expected<EdgeID, Error>;
-    using EdgeIDs        = std::vector<EdgeID>;
-    using EitherEdgeIDs  = tl::expected<EdgeIDs, Error>;
-    using EdgeIDChain    = std::list<EdgeID>;
-    using EitherEdgeIDChain = tl::expected<EdgeIDChain, Error>;
+    using EitherVertexID     = tl::expected<VertexID, Error>;
+    using EitherEdgeID       = tl::expected<EdgeID, Error>;
+    using EdgeIDs            = std::vector<EdgeID>;
+    using EitherEdgeIDs      = tl::expected<EdgeIDs, Error>;
+    using EdgeIDChain        = std::list<EdgeID>;
+    using EitherEdgeIDChain  = tl::expected<EdgeIDChain, Error>;
 
     /**
      *  Any method that returns a `tl::expected` has built-in error checking.
