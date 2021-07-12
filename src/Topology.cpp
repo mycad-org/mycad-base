@@ -1,5 +1,4 @@
 #include "mycad/Topology.h"
-#include "detail/Topology.h"
 
 #include <algorithm>
 #include <iostream>
@@ -173,19 +172,26 @@ auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe
 
 auto Topology::edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs
 {
-    return detail::hasVertex(v, vertices)
-           .map([v, this]
-           {
-               std::vector<EdgeID> out;
-               for (const auto& [key, edge]: edges)
-               {
-                   if (edge.leftVertexID == v.index || edge.rightVertexID == v.index)
-                   {
-                       out.push_back(key);
-                   }
-               }
-               return out;
-           });
+    return
+        detail::hasVertex(v, vertices)
+        .map([v, this]()
+        {
+            auto vertexMatch =
+                [v](const auto& pair)
+                {
+                    const auto& [key, edge] = pair;
+                    return (edge.leftVertexID == v.index) ||
+                           (edge.rightVertexID == v.index);
+                };
+
+            auto view =
+                this->edges
+                | std::views::filter(vertexMatch)
+                | std::views::keys;
+
+            return EdgeIDs(view.begin(), view.end());
+        }
+        );
 }
 
 auto Topology::unsafe_edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
