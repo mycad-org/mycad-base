@@ -218,23 +218,24 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID
 {
     return
         detail::hasVertex(v, vertices)
-        .and_then(std::bind(detail::hasEdge, e, std::cref(edges)))
-        .and_then([v, e, this]() -> tl::expected<VertexID, std::string>
+        .and_then(std::bind(detail::hasEdge, e, edges))
+        .and_then(
+        [vid = v.index, eid = e.index, edge = edges.at(e)]() -> EitherVertexID
         {
-            auto [left, right] = edges.at(e);
-            if (left == v.index)
+            auto [left, right] = edge;
+            if (left == vid)
             {
                 return VertexID(right);
             }
-            else if (right == v.index )
+            else if (right == vid)
             {
                 return VertexID(left);
             }
             else
             {
                 return tl::make_unexpected(
-                    "vertex with id = " + std::to_string(v.index) +
-                    " is not adjacent to edge with id ="  + std::to_string(e.index));
+                    "vertex with id = " + std::to_string(vid) +
+                    " is not adjacent to edge with id ="  + std::to_string(eid));
             }
         });
 }
