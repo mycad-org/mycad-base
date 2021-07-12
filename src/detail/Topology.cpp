@@ -10,9 +10,8 @@ detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
 {
     if (vs.contains(v) == 0)
     {
-        return tl::unexpected(
-            std::string("Vertex with ID=") + 
-            std::to_string(v.index) + " not found"
+        return tl::make_unexpected(
+            "Vertex with ID=" + std::to_string(v.index) + " not found"
         );
     }
 
@@ -28,9 +27,9 @@ detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
     }
     else
     {
-        return tl::unexpected(
-            std::string("Edge with ID=") +
-            std::to_string(edge.index) + " not found");
+        return tl::make_unexpected(
+            "Edge with ID=" + std::to_string(edge.index) + " not found"
+        );
     }
 }
 
@@ -42,7 +41,7 @@ detail::getCommonVertexID(
 {
     return
         hasEdge(edge1, es)
-        .and_then(std::bind(hasEdge, edge2, std::cref(es)))
+        .and_then(std::bind(hasEdge, edge2, es))
         .and_then([edge1, edge2, &es]() -> tl::expected<int, std::string>
         {
             auto [v1, v2] = es.at(edge1);
@@ -66,9 +65,8 @@ detail::getCommonVertexID(
             }
             else
             {
-                return tl::unexpected(
-                    std::string("The two edges with IDs ") +
-                    std::to_string(edge1.index) +
+                return tl::make_unexpected(
+                    "The two edges with IDs " + std::to_string(edge1.index) +
                     " and " + std::to_string(edge2.index) +
                     " do not appear to share a common Vertex");
             }
