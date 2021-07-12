@@ -1,4 +1,5 @@
-#include "Topology.h" // detail/Topology.h NOT mycad/Topology.h
+#include "mycad/detail/Topology.h"
+#include "mycad/Topology.h"
 
 #include <algorithm>
 
