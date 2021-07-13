@@ -74,7 +74,7 @@ namespace mycad::topo
              *  @returns error string if the two Edge do not share a common
              *           Vertex
              */
-            auto makeChain(EdgeID /*fromEdge*/, EdgeID /*toEdge*/) -> Maybe;
+            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe;
             auto unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge) -> void;
 
             /** @returns empty vector if valid vertex is 'free'

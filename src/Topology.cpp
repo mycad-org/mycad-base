@@ -165,8 +165,28 @@ auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe
 {
     return
         detail::getCommonVertexID(fromEdge, toEdge, std::cref(edges))
-        .map([](int /*v*/) {
-            return;
+        .and_then([&toEdge, &fromEdge, this](VertexID const v) -> Maybe
+        {
+            // This Vertex should have a link connected to the fromEdge
+            auto fromLinkIndex = detail::getLinkIndex(v, fromEdge, vertices);
+            if (!fromLinkIndex)
+            {
+                return tl::make_unexpected(fromLinkIndex.error());
+            }
+
+            // And one connected to the toEdge
+            auto toLinkIndex = detail::getLinkIndex(v, toEdge, vertices);
+            if (!toLinkIndex)
+            {
+                return tl::make_unexpected(toLinkIndex.error());
+            }
+
+            detail::Link &fromLink = vertices.at(v).links.at(fromLinkIndex.value());
+            detail::Link const toLink = vertices.at(v).links.at(toLinkIndex.value());
+
+            fromLink.next = {{toLink.parentVertexIndex, toLink.parentEdgeIndex}};
+
+            return {};
         });
 }
 
@@ -247,20 +267,27 @@ auto Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID
 
 auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs
 {
-    auto const startLink = detail::getLink(vertex, edge, vertices);
-
-    if(startLink)
+    auto const oppVertex = oppositeVertex(vertex, edge);
+    if (!oppVertex)
     {
-        EdgeIDs out{};
+        return tl::make_unexpected(oppVertex.error());
+    }
+
+    auto const startLinkIndex = detail::getLinkIndex(oppVertex.value(), edge, vertices);
+
+    if(startLinkIndex)
+    {
+        int i = startLinkIndex.value();
+        EdgeIDs out{edge};
 
         // this is recursive
-        detail::crawlLinks(startLink.value(), out, vertices);
+        detail::crawlLinks(vertices.at(oppVertex.value()).links.at(i), out, vertices);
 
         return out;
     }
     else
     {
-        return tl::make_unexpected(startLink.error());
+        return tl::make_unexpected(startLinkIndex.error());
     }
 }
 
@@ -280,6 +307,12 @@ auto Topology::streamTo(std::ostream &os) const -> void
             os << "        link" << "\n"
                << "            parentVertex = " << link.parentVertexIndex << '\n'
                << "            parentEdge   = " << link.parentEdgeIndex << '\n';
+            if (link.next)
+            {
+                auto const [nextVertex, nextEdge] = link.next.value();
+                os << "            next = parentVertex = " << nextVertex << '\n'
+                   << "                   parentEdge   = " << nextEdge << '\n';
+            }
         }
     }
 

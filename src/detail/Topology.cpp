@@ -34,31 +34,31 @@ auto detail::hasEdge(EdgeID const &edge, std::map<EdgeID, Edge> const &es)
 }
 
 auto detail::getCommonVertexID(EdgeID const &edge1, EdgeID const &edge2, std::map<EdgeID, Edge> const &es)
--> tl::expected<int, std::string>
+-> tl::expected<VertexID, std::string>
 {
     return
         hasEdge(edge1, es)
         .and_then(std::bind(hasEdge, edge2, es))
-        .and_then([edge1, edge2, &es]() -> tl::expected<int, std::string>
+        .and_then([edge1, edge2, &es]() -> tl::expected<VertexID, std::string>
         {
             auto [v1, v2] = es.at(edge1);
             auto [v3, v4] = es.at(edge2);
 
             if (v1 == v3)
             {
-                return v1;
+                return {{v1}};
             }
             else if (v1 == v4)
             {
-                return v2;
+                return {{v1}};
             }
             else if (v2 == v3)
             {
-                return v2;
+                return {{v2}};
             }
             else if (v3 == v4)
             {
-                return v4;
+                return {{v3}};
             }
             else
             {
@@ -70,8 +70,8 @@ auto detail::getCommonVertexID(EdgeID const &edge1, EdgeID const &edge2, std::ma
         });
 }
 
-auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const &vs)
--> tl::expected<detail::Link, std::string>
+auto detail::getLinkIndex(VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const &vs)
+-> tl::expected<std::vector<Link>::size_type, std::string>
 {
     auto links = vs.at(v).links;
     auto match = [&e](detail::Link const &link){return link.parentEdgeIndex == e.index;};
@@ -84,7 +84,7 @@ auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> c
     }
     else
     {
-        return *ret;
+        return ret - links.begin();
     }
 }
 
@@ -96,10 +96,11 @@ auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain
         auto const [nextVertex, nextEdge] = curLink.next.value();
         chain.push_back(EdgeID(nextEdge));
 
-        auto nextLink = getLink(VertexID(nextVertex), EdgeID(nextEdge), vs);
-        if(nextLink)
+        auto nextLinkIndex = getLinkIndex(VertexID(nextVertex), EdgeID(nextEdge), vs);
+        if(nextLinkIndex)
         {
-            return crawlLinks(nextLink.value(), chain, vs);
+            detail::Link const &nextLink = vs.at(VertexID(nextVertex)).links.at(nextLinkIndex.value());
+            return crawlLinks(nextLink, chain, vs);
         }
     }
 

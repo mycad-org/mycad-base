@@ -49,10 +49,10 @@ namespace mycad::topo::detail
     -> tl::expected<void, std::string>;
 
     auto getCommonVertexID(EdgeID const &edge1, EdgeID const &edge2, std::map<EdgeID, Edge> const &es)
-    -> tl::expected<int, std::string>;
+    -> tl::expected<VertexID, std::string>;
 
-    auto getLink (VertexID const v, EdgeID const e, std::map<VertexID, detail::Vertex> const &vs)
-    -> tl::expected<detail::Link, std::string>;
+    auto getLinkIndex(VertexID const v, EdgeID const e, std::map<VertexID, detail::Vertex> const &vs)
+    -> tl::expected<std::vector<Link>::size_type, std::string>;
 
     // recursive function to collect all EdgeID
     auto crawlLinks ( detail::Link const &curLink, std::vector<EdgeID> &chain, std::map<VertexID, detail::Vertex> const &vs)
