@@ -16,14 +16,14 @@ namespace mycad::topo
     {
         int index;
 
-        auto operator<=>(const VertexID&) const = default;
+        auto operator<=>(VertexID const&) const = default;
     };
 
     struct EdgeID
     {
         int index;
 
-        auto operator<=>(const EdgeID&) const = default;
+        auto operator<=>(EdgeID const&) const = default;
     };
 
     //! used instead of std::optional so that we can compose it with other tl::expected
@@ -48,11 +48,11 @@ namespace mycad::topo
     class Topology
     {
         public:
-            bool operator==(const Topology&) const = default;
+            bool operator==(Topology const&) const = default;
 
             /** @brief checks if two topologies are mostly equivalent
              */
-            auto similar(const Topology& other) const -> bool;
+            auto similar(Topology const& other) const -> bool;
 
             auto hasVertex(VertexID v) const -> bool;
             auto hasEdge(EdgeID e) const -> bool;
@@ -122,9 +122,9 @@ namespace mycad::topo
     };
 
 
-    auto operator<<(std::ostream& os, const VertexID& v) -> std::ostream&;
-    auto operator<<(std::ostream& os, const EdgeID& e) -> std::ostream&;
-    auto operator<<(std::ostream& os, const Topology& topo) -> std::ostream&;
+    auto operator<<(std::ostream& os, VertexID const& v) -> std::ostream&;
+    auto operator<<(std::ostream& os, EdgeID const& e) -> std::ostream&;
+    auto operator<<(std::ostream& os, Topology const& topo) -> std::ostream&;
 } // namespace mycad::topo
 
 

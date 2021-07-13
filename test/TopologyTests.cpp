@@ -16,7 +16,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
     rc::prop("Each Vertex is given a unique ID",
         []()
         {
-            const auto n = *rc::gen::inRange<unsigned int>(1, 1000);
+            auto const n = *rc::gen::inRange<unsigned int>(1, 1000);
 
             std::set<int> vals;
 

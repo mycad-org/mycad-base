@@ -5,7 +5,7 @@
 
 using namespace mycad::topo;
 
-auto detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
+auto detail::hasVertex(VertexID const& v, std::map<VertexID, Vertex> const& vs)
 -> tl::expected<void, std::string>
 {
     if (vs.contains(v) == 0)
@@ -18,7 +18,7 @@ auto detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
     return {};
 }
 
-auto detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
+auto detail::hasEdge(EdgeID const& edge, std::map<EdgeID, Edge> const& es)
 -> tl::expected<void, std::string>
 {
     if (es.count(edge) == 1)
@@ -33,7 +33,7 @@ auto detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
     }
 }
 
-auto detail::getCommonVertexID( const EdgeID& edge1, const EdgeID& edge2, const std::map<EdgeID, Edge>& es)
+auto detail::getCommonVertexID(EdgeID const& edge1, EdgeID const& edge2, std::map<EdgeID, Edge> const& es)
 -> tl::expected<int, std::string>
 {
     return
@@ -70,11 +70,11 @@ auto detail::getCommonVertexID( const EdgeID& edge1, const EdgeID& edge2, const 
         });
 }
 
-auto detail::getLink (VertexID v, EdgeID e, const std::map<VertexID, detail::Vertex>& vs)
+auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const& vs)
 -> tl::expected<detail::Link, std::string>
 {
     auto links = vs.at(v).links;
-    auto match = [&e](const detail::Link& link){return link.parentEdgeIndex == e.index;};
+    auto match = [&e](detail::Link const& link){return link.parentEdgeIndex == e.index;};
     auto ret   = std::ranges::find_if(links, match);
     if (ret == links.end())
     {
@@ -88,12 +88,12 @@ auto detail::getLink (VertexID v, EdgeID e, const std::map<VertexID, detail::Ver
     }
 }
 
-auto detail::crawlLinks (const detail::Link& curLink, std::vector<EdgeID>& chain, const std::map<VertexID, detail::Vertex>& vs)
+auto detail::crawlLinks (detail::Link const& curLink, std::vector<EdgeID>& chain, std::map<VertexID, detail::Vertex> const& vs)
 -> std::vector<EdgeID>&
 {
     if(curLink.next)
     {
-        const auto [nextVertex, nextEdge] = curLink.next.value();
+        auto const [nextVertex, nextEdge] = curLink.next.value();
         chain.push_back(EdgeID(nextEdge));
 
         auto nextLink = getLink(VertexID(nextVertex), EdgeID(nextEdge), vs);

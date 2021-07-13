@@ -24,14 +24,14 @@ namespace mycad::topo::detail
         // but I'd rather keep it simple like this for now.
         std::optional<std::pair<int, int>> next = {};
 
-        auto operator<=>(const Link& other) const = default;
+        auto operator<=>(Link const& other) const = default;
     };
 
     struct Vertex
     {
         std::vector<Link> links{};
 
-        auto operator<=>(const Vertex& other) const = default;
+        auto operator<=>(Vertex const& other) const = default;
     };
 
     struct Edge
@@ -39,23 +39,23 @@ namespace mycad::topo::detail
         int leftVertexID;
         int rightVertexID;
 
-        auto operator<=>(const Edge& other) const = default;
+        auto operator<=>(Edge const& other) const = default;
     };
 
-    auto hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
+    auto hasVertex(VertexID const& v, std::map<VertexID, Vertex> const& vs)
     -> tl::expected<void, std::string>;
 
-    auto hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
+    auto hasEdge(EdgeID const& edge, std::map<EdgeID, Edge> const& es)
     -> tl::expected<void, std::string>;
 
-    auto getCommonVertexID(const EdgeID& edge1, const EdgeID& edge2, const std::map<EdgeID, Edge>& es)
+    auto getCommonVertexID(EdgeID const& edge1, EdgeID const& edge2, std::map<EdgeID, Edge> const& es)
     -> tl::expected<int, std::string>;
 
-    auto getLink (VertexID v, EdgeID e, const std::map<VertexID, detail::Vertex>& vs)
+    auto getLink (VertexID const v, EdgeID const e, std::map<VertexID, detail::Vertex> const& vs)
     -> tl::expected<detail::Link, std::string>;
 
     // recursive function to collect all EdgeID
-    auto crawlLinks ( const detail::Link& curLink, std::vector<EdgeID>& chain, const std::map<VertexID, detail::Vertex>& vs)
+    auto crawlLinks ( detail::Link const& curLink, std::vector<EdgeID>& chain, std::map<VertexID, detail::Vertex> const& vs)
     -> std::vector<EdgeID>&;
 } // mycad::topo::detail
 
