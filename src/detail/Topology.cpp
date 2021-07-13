@@ -5,8 +5,8 @@
 
 using namespace mycad::topo;
 
-tl::expected<void, std::string>
-detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
+auto detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
+-> tl::expected<void, std::string>
 {
     if (vs.contains(v) == 0)
     {
@@ -18,8 +18,8 @@ detail::hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
     return {};
 }
 
-tl::expected<void, std::string>
-detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
+auto detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
+-> tl::expected<void, std::string>
 {
     if (es.count(edge) == 1)
     {
@@ -33,11 +33,8 @@ detail::hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
     }
 }
 
-tl::expected<int, std::string>
-detail::getCommonVertexID(
-    const EdgeID& edge1,
-    const EdgeID& edge2,
-    const std::map<EdgeID, Edge>& es)
+auto detail::getCommonVertexID( const EdgeID& edge1, const EdgeID& edge2, const std::map<EdgeID, Edge>& es)
+-> tl::expected<int, std::string>
 {
     return
         hasEdge(edge1, es)

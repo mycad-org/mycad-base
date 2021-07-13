@@ -39,15 +39,15 @@ namespace mycad::topo::detail
         auto operator<=>(const Edge& other) const = default;
     };
 
-    tl::expected<void, std::string>
-    hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs);
+    auto hasVertex(const VertexID& v, const std::map<VertexID, Vertex>& vs)
+    -> tl::expected<void, std::string>;
 
-    tl::expected<void, std::string>
-    hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es);
+    auto hasEdge(const EdgeID& edge, const std::map<EdgeID, Edge>& es)
+    -> tl::expected<void, std::string>;
 
-    tl::expected<int, std::string>
-    getCommonVertexID(const EdgeID& edge1, const EdgeID& edge2,
-                      const std::map<EdgeID, Edge>& es);
+    auto getCommonVertexID(const EdgeID& edge1, const EdgeID& edge2, const std::map<EdgeID, Edge>& es)
+    -> tl::expected<int, std::string>;
+
 } // mycad::topo::detail
 
 #endif
