@@ -155,17 +155,17 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
                 REQUIRE(std::ranges::count(eitherEdges.value(), edge2) == 1);
             }
 
-            WHEN("A Chain is made between both edges")
-            {
-                REQUIRE(topo.makeChain(edge, edge2).has_value());
+            /* WHEN("A Chain is made between both edges") */
+            /* { */
+            /*     REQUIRE(topo.makeChain(edge, edge2).has_value()); */
 
-                THEN("We can recover both Edges in order")
-                {
-                    REQUIRE(
-                        topo.getChainEdges(v1, edge).value() ==
-                        std::vector<EdgeID>{edge, edge2});
-                }
-            }
+            /*     THEN("We can recover both Edges in order") */
+            /*     { */
+            /*         REQUIRE( */
+            /*             topo.getChainEdges(v1, edge).value() == */
+            /*             std::vector<EdgeID>{edge, edge2}); */
+            /*     } */
+            /* } */
 
             WHEN("The second Edge is deleted before making a Chain")
             {
