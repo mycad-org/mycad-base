@@ -5,7 +5,7 @@
 
 using namespace mycad::geom;
 
-auto Line::makeLine(const Point& p1, const Point& p2) -> EitherLine
+auto Line::makeLine(Point const &p1, Point const &p2) -> EitherLine
 {
     if (p1 == p2)
     {
@@ -18,7 +18,7 @@ auto Line::makeLine(const Point& p1, const Point& p2) -> EitherLine
     }
 }
 
-Line::Line(const Point& p1, const Point& p2)
+Line::Line(Point const &p1, Point const &p2)
     : p1(p1), p2(p2){}
 
 Point Line::atU(float u) const
@@ -38,7 +38,7 @@ Point Line::atU(float u) const
             );
 }
 
-auto Line::intersects(const Point& p) const -> bool
+auto Line::intersects(Point const &p) const -> bool
 {
     if (p == p1 || p == p2)
     {
@@ -60,13 +60,13 @@ auto Line::intersects(const Point& p) const -> bool
     return p == this->atU(u);
 }
 
-auto mycad::geom::operator<<(std::ostream& stream, const Point& p) -> std::ostream&
+auto mycad::geom::operator<<(std::ostream &stream, Point const &p) -> std::ostream &
 {
     stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
     return stream;
 }
 
-auto mycad::geom::operator<<(std::ostream& stream, const Line& line) -> std::ostream&
+auto mycad::geom::operator<<(std::ostream &stream, Line const &line) -> std::ostream &
 {
     stream << "Line: " << line.atU(0) << " → " << line.atU(1);
     return stream;

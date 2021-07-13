@@ -5,7 +5,7 @@
 
 using namespace mycad::topo;
 
-auto detail::hasVertex(VertexID const& v, std::map<VertexID, Vertex> const& vs)
+auto detail::hasVertex(VertexID const &v, std::map<VertexID, Vertex> const &vs)
 -> tl::expected<void, std::string>
 {
     if (vs.contains(v) == 0)
@@ -18,7 +18,7 @@ auto detail::hasVertex(VertexID const& v, std::map<VertexID, Vertex> const& vs)
     return {};
 }
 
-auto detail::hasEdge(EdgeID const& edge, std::map<EdgeID, Edge> const& es)
+auto detail::hasEdge(EdgeID const &edge, std::map<EdgeID, Edge> const &es)
 -> tl::expected<void, std::string>
 {
     if (es.count(edge) == 1)
@@ -33,7 +33,7 @@ auto detail::hasEdge(EdgeID const& edge, std::map<EdgeID, Edge> const& es)
     }
 }
 
-auto detail::getCommonVertexID(EdgeID const& edge1, EdgeID const& edge2, std::map<EdgeID, Edge> const& es)
+auto detail::getCommonVertexID(EdgeID const &edge1, EdgeID const &edge2, std::map<EdgeID, Edge> const &es)
 -> tl::expected<int, std::string>
 {
     return
@@ -70,11 +70,11 @@ auto detail::getCommonVertexID(EdgeID const& edge1, EdgeID const& edge2, std::ma
         });
 }
 
-auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const& vs)
+auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const &vs)
 -> tl::expected<detail::Link, std::string>
 {
     auto links = vs.at(v).links;
-    auto match = [&e](detail::Link const& link){return link.parentEdgeIndex == e.index;};
+    auto match = [&e](detail::Link const &link){return link.parentEdgeIndex == e.index;};
     auto ret   = std::ranges::find_if(links, match);
     if (ret == links.end())
     {
@@ -88,8 +88,8 @@ auto detail::getLink (VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> c
     }
 }
 
-auto detail::crawlLinks (detail::Link const& curLink, std::vector<EdgeID>& chain, std::map<VertexID, detail::Vertex> const& vs)
--> std::vector<EdgeID>&
+auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain, std::map<VertexID, detail::Vertex> const &vs)
+-> std::vector<EdgeID> &
 {
     if(curLink.next)
     {

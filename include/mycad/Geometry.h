@@ -33,7 +33,7 @@ namespace mycad::geom {
              *
              *  @returns A Line if the two points are not equivalent
              */
-            auto static makeLine(Point const& p1, Point const& p2) -> EitherLine;
+            auto static makeLine(Point const &p1, Point const &p2) -> EitherLine;
 
             /** @brief return the point at the given @param u
              *
@@ -42,16 +42,16 @@ namespace mycad::geom {
              */
             auto atU(float u) const -> Point;
 
-            auto intersects(Point const& p) const -> bool;
+            auto intersects(Point const &p) const -> bool;
 
         private:
-            Line(Point const& p1, Point const& p2);
+            Line(Point const &p1, Point const &p2);
 
             Point p1, p2;
     };
 
-    auto operator<<(std::ostream& stream, Point const& p) -> std::ostream&;
-    auto operator<<(std::ostream& stream, Line const& line)-> std::ostream&;
+    auto operator<<(std::ostream &stream, Point const &p) -> std::ostream &;
+    auto operator<<(std::ostream &stream, Line const &line)-> std::ostream &;
 
 } // namespace mycad::geom
 

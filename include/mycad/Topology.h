@@ -52,7 +52,7 @@ namespace mycad::topo
 
             /** @brief checks if two topologies are mostly equivalent
              */
-            auto similar(Topology const& other) const -> bool;
+            auto similar(Topology const &other) const -> bool;
 
             auto hasVertex(VertexID v) const -> bool;
             auto hasEdge(EdgeID e) const -> bool;
@@ -110,7 +110,7 @@ namespace mycad::topo
              */
             auto deleteEdge(EdgeID e) -> bool;
 
-            auto streamTo(std::ostream& os) const -> void;
+            auto streamTo(std::ostream &os) const -> void;
         private:
             // std::vector::size can't be relied upon for UID's since when
             // items are deleted the size scales appropriately.
@@ -122,9 +122,9 @@ namespace mycad::topo
     };
 
 
-    auto operator<<(std::ostream& os, VertexID const& v) -> std::ostream&;
-    auto operator<<(std::ostream& os, EdgeID const& e) -> std::ostream&;
-    auto operator<<(std::ostream& os, Topology const& topo) -> std::ostream&;
+    auto operator<<(std::ostream &os, VertexID const &v) -> std::ostream &;
+    auto operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &;
+    auto operator<<(std::ostream &os, Topology const &topo) -> std::ostream &;
 } // namespace mycad::topo
 
 

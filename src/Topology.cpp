@@ -34,7 +34,7 @@ using namespace mycad::topo;
  *  detail, but it suffices to know that this mechanism is what makes `topo1 !=
  *  topo2`
  */
-auto Topology::similar(const Topology& other) const -> bool
+auto Topology::similar(Topology const &other) const -> bool
 {
     const std::vector vals{
         vertices == other.vertices,
@@ -100,8 +100,8 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
 
     auto hasSameVertices = [&v1, &v2](auto pair)
     {
-        auto [index, edge] = pair;
-        auto [left, right] = edge;
+        auto const [index, edge] = pair;
+        auto const [left, right] = edge;
         return (left == v1.index && right == v2.index) ||
                (left == v2.index && right == v1.index);
     };
@@ -115,8 +115,8 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
     edges.emplace(edge, detail::Edge{v1.index, v2.index});
 
     // Gather our data from storage
-    detail::Vertex& leftVertex = vertices.at(v1);
-    detail::Vertex& rightVertex = vertices.at(v2);
+    detail::Vertex &leftVertex = vertices.at(v1);
+    detail::Vertex &rightVertex = vertices.at(v2);
 
     // Update vertices with the appropriate links
     leftVertex.links.emplace_back(v1.index, edge.index);
@@ -142,17 +142,17 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
         edges.erase(edge);
 
         // Now we have to remove any links from the vertex map
-        auto rm =
-            [edge](const detail::Link& link)
+        auto parentEdgeMatches =
+            [edge](detail::Link const &link)
                 {
                     return link.parentEdgeIndex == edge.index;
                 };
 
         std::ranges::for_each(vertices,
-            [&rm](auto& pair)
+            [&parentEdgeMatches](auto &pair)
             {
-                detail::Vertex& vertex = pair.second;
-                const auto rem = std::ranges::remove_if(vertex.links, rm); 
+                detail::Vertex &vertex = pair.second;
+                auto const rem = std::ranges::remove_if(vertex.links, parentEdgeMatches); 
                 vertex.links.erase(rem.begin(), rem.end());
             }
         );
@@ -177,9 +177,9 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs
         .map([v, this]()
         {
             auto vertexMatch =
-                [v](const auto& pair)
+                [v](auto const &pair)
                 {
-                    const auto& [key, edge] = pair;
+                    auto const &[key, edge] = pair;
                     return (edge.leftVertexID == v.index) ||
                            (edge.rightVertexID == v.index);
                 };
@@ -204,7 +204,7 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair
     return detail::hasEdge(edge, edges)
            .map([edge, this]
            {
-               auto [left, right] = edges.at(edge);
+               auto const [left, right] = edges.at(edge);
                return std::make_pair(VertexID(left), VertexID(right));
            });
 }
@@ -222,7 +222,7 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID
         .and_then(
         [vid = v.index, eid = e.index, edge = edges.at(e)]() -> EitherVertexID
         {
-            auto [left, right] = edge;
+            auto const [left, right] = edge;
             if (left == vid)
             {
                 return VertexID(right);
@@ -247,7 +247,7 @@ auto Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID
 
 auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs
 {
-    const auto startLink = detail::getLink(vertex, edge, vertices);
+    auto const startLink = detail::getLink(vertex, edge, vertices);
 
     if(startLink)
     {
@@ -264,18 +264,18 @@ auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeID
     }
 }
 
-auto Topology::streamTo(std::ostream& os) const -> void
+auto Topology::streamTo(std::ostream &os) const -> void
 {
     os << "lastVertexID = " << lastVertexID << ", "
        << "lastEdgeID = " << lastEdgeID << std::endl;
 
     os << "vertexIDs:" << std::endl;;
 
-    for (const auto& [key, v] : vertices)
+    for (auto const &[key, v] : vertices)
     {
         os << "    vid: " << key.index << std::endl;
 
-        for (const auto& link : v.links)
+        for (auto const &link : v.links)
         {
             os << "        link" << "\n"
                << "            parentVertex = " << link.parentVertexIndex << '\n'
@@ -284,7 +284,7 @@ auto Topology::streamTo(std::ostream& os) const -> void
     }
 
     os << "edges:" << std::endl;
-    for (const auto& [key, edge] : edges)
+    for (auto const &[key, edge] : edges)
     {
         os << "    eid: " << key.index << ", "
            << "        leftVertexID = " << edge.leftVertexID << ", "
@@ -292,19 +292,19 @@ auto Topology::streamTo(std::ostream& os) const -> void
     }
 }
 
-auto mycad::topo::operator<<(std::ostream& os, const VertexID& v) -> std::ostream&
+auto mycad::topo::operator<<(std::ostream &os, VertexID const &v) -> std::ostream &
 {
     os << "V" << std::to_string(v.index);
     return os;
 }
 
-auto mycad::topo::operator<<(std::ostream& os, const EdgeID& e) -> std::ostream&
+auto mycad::topo::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
 {
     os << "E" << std::to_string(e.index);
     return os;
 }
 
-auto mycad::topo::operator<<(std::ostream& os, const Topology& topo) -> std::ostream&
+auto mycad::topo::operator<<(std::ostream &os, Topology const &topo) -> std::ostream &
 {
     topo.streamTo(os);
     return os;
