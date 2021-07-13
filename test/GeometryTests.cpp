@@ -35,7 +35,7 @@ namespace rc{
 
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     rc::prop("A line cannot be constructed with only one point",
-        [](const Point& p1) {
+        [](Point const &p1) {
             EitherLineOrString eLine = Line::makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
         },
@@ -50,23 +50,23 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             EitherLineOrString eLine = Line::makeLine(p1, p2);
             RC_ASSERT(eLine.has_value());
 
-            const Line& line = eLine.value();
+            Line const &line = eLine.value();
             RC_ASSERT(line.atU(0) == p1);
             RC_ASSERT(line.atU(1) == p2);
         }
     );
 
     rc::prop("Any point on the line intersects the line",
-        [](const Line& line) {
+        [](Line const &line) {
             float u = *rc::gen::inRange(0, 1);
-            const Point& p = line.atU(u);
+            Point const &p = line.atU(u);
             RC_ASSERT(line.intersects(p));
         },
         /* verbose= */ true
     );
 
     rc::prop("Any point off the line does not intersect the line",
-        [](const Line& line) {
+        [](Line const &line) {
             float u = *rc::gen::inRange(0, 1);
             Point p = line.atU(u);
 
