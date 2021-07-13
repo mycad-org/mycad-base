@@ -163,7 +163,7 @@ SCENARIO("002: Edge Topology", "[topology][edge]")
                 {
                     REQUIRE(
                         topo.getChainEdges(v1, edge).value() ==
-                        std::list<EdgeID>{edge, edge2});
+                        std::vector<EdgeID>{edge, edge2});
                 }
             }
 

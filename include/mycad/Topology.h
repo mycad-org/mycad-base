@@ -35,8 +35,6 @@ namespace mycad::topo
     using EitherEdgeID       = tl::expected<EdgeID, Error>;
     using EdgeIDs            = std::vector<EdgeID>;
     using EitherEdgeIDs      = tl::expected<EdgeIDs, Error>;
-    using EdgeIDChain        = std::list<EdgeID>;
-    using EitherEdgeIDChain  = tl::expected<EdgeIDChain, Error>;
 
     /**
      *  Any method that returns a `tl::expected` has built-in error checking.
@@ -103,13 +101,10 @@ namespace mycad::topo
             auto unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
 
             /** @brief returns all Edges in the Chain
-             *
-             *  The Edge are returns as a std::list to maintain their order
-             *
              *  @returns error if the chain does not exist
              */
-            auto getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const -> EitherEdgeIDChain;
-            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDChain;
+            auto getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const -> EitherEdgeIDs;
+            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs;
 
             /** @returns false if the Edge doesn't exist
              */

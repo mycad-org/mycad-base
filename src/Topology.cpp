@@ -245,16 +245,23 @@ auto Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     return oppositeVertex(v, e).value();
 }
 
-auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDChain
+auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs
 {
-    for (const auto& link : vertices.at(vertex).links)
-    {
-        if (link.parentEdgeIndex == edge.index)
-        {
+    const auto startLink = detail::getLink(vertex, edge, vertices);
 
-        }
+    if(startLink)
+    {
+        EdgeIDs out{};
+
+        // this is recursive
+        detail::crawlLinks(startLink.value(), out, vertices);
+
+        return out;
     }
-    return {};
+    else
+    {
+        return tl::make_unexpected(startLink.error());
+    }
 }
 
 auto Topology::streamTo(std::ostream& os) const -> void

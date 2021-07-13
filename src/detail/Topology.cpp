@@ -69,3 +69,40 @@ auto detail::getCommonVertexID( const EdgeID& edge1, const EdgeID& edge2, const 
             }
         });
 }
+
+auto detail::getLink (VertexID v, EdgeID e, const std::map<VertexID, detail::Vertex>& vs)
+-> tl::expected<detail::Link, std::string>
+{
+    auto links = vs.at(v).links;
+    auto match = [&e](const detail::Link& link){return link.parentEdgeIndex == e.index;};
+    auto ret   = std::ranges::find_if(links, match);
+    if (ret == links.end())
+    {
+        return tl::make_unexpected(
+            "There is no Link between Vertex with ID = " + std::to_string(v.index) +
+            " and Edge with ID = " + std::to_string(e.index));
+    }
+    else
+    {
+        return *ret;
+    }
+}
+
+auto detail::crawlLinks (const detail::Link& curLink, std::vector<EdgeID>& chain, const std::map<VertexID, detail::Vertex>& vs)
+-> std::vector<EdgeID>&
+{
+    if(curLink.next)
+    {
+        const auto [nextVertex, nextEdge] = curLink.next.value();
+        chain.push_back(EdgeID(nextEdge));
+
+        auto nextLink = getLink(VertexID(nextVertex), EdgeID(nextEdge), vs);
+        if(nextLink)
+        {
+            return crawlLinks(nextLink.value(), chain, vs);
+        }
+    }
+
+    return chain;
+}
+
