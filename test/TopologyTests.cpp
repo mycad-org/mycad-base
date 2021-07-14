@@ -33,39 +33,22 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
         /* verbose= */ true
     );
 
-/*     GIVEN("Two Vertices") */
-/*     { */
-/*         Topology topo; */
-/*         Topology unsafe_topo; */
+    GIVEN("Two Vertices")
+    {
+        Topology topo;
 
-/*         VertexID v1 = topo.addFreeVertex(); */
-/*         VertexID v2 = topo.addFreeVertex(); */
+        VertexID v1 = topo.addFreeVertex();
+        VertexID v2 = topo.addFreeVertex();
 
-/*         VertexID unsafe_v1 = unsafe_topo.addFreeVertex(); */
-/*         VertexID unsafe_v2 = unsafe_topo.addFreeVertex(); */
+        WHEN("An Edge is created between them")
+        {
+            Topology orig = topo;
+            EdgeID e = topo.makeEdge(v1, v2);
 
-/*         REQUIRE(unsafe_topo.hasVertex(unsafe_v1)); */
-/*         REQUIRE(unsafe_topo.hasVertex(unsafe_v2)); */
-
-/*         WHEN("An Edge is created between them") */
-/*         { */
-/*             Topology orig = topo; */
-/*             auto eitherEdge = topo.makeEdge(v1, v2); */
-/*             EdgeID unsafe_edge = unsafe_topo.unsafe_makeEdge(unsafe_v1, unsafe_v2); */
-
-/*             REQUIRE(unsafe_topo.hasEdge(unsafe_edge)); */
-
-/*             if (not eitherEdge.has_value()) */
-/*             { */
-/*                 std::cout << eitherEdge.error() << '\n'; */
-/*             } */
-
-/*             THEN("A unique ID is returned for that Edge") */
-/*             { */
-/*                 REQUIRE(eitherEdge.has_value()); */
-/*             } */
-
-/*             EdgeID edge = eitherEdge.value(); */
+            THEN("The returned Edge is valid within the Topology")
+            {
+                REQUIRE(topo.hasEdge(e));
+            }
 
 /*             THEN("An adjacency exists between each Vertex and the new Edge") */
 /*             { */
@@ -118,19 +101,21 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 /*                     REQUIRE(orig.similar(topo)); */
 /*                 } */
 /*             } */
-/*         } */
+        }
 
-/*         WHEN("There's already an Edge between them") */
-/*         { */
-/*             auto eitherEdge = topo.makeEdge(v1, v2); */
+        WHEN("There's already an Edge between them")
+        {
+            topo.makeEdge(v1, v2);
 
-/*             THEN("We cannot create a second Edge") */
-/*             { */
-/*                 CHECK_FALSE(topo.makeEdge(v1, v2).has_value()); */
-/*                 REQUIRE_FALSE(topo.makeEdge(v2, v1).has_value()); */
-/*             } */
-/*         } */
-/*     } */
+            THEN("We cannot create a second Edge")
+            {
+                EdgeID sameOrder = topo.makeEdge(v1, v2);
+                EdgeID revOrder  = topo.makeEdge(v2, v1);
+                CHECK_FALSE(topo.hasEdge(sameOrder));
+                REQUIRE_FALSE(topo.hasEdge(revOrder));
+            }
+        }
+    }
 
 }
 

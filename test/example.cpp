@@ -58,11 +58,7 @@ int main()
 
     // Two free vertices can be connected by an Edge. Every Edge has exactly two
     // vertices associated with it
-
-    // Here, we use the `unsafe_` version of `makeEdge`. You should be careful
-    // with this - probably use `hasVertex` first on both vertices to ensure you
-    // don't run into runtime errors. I prefer the safe, `makeEdge`
-    mycad::topo::EdgeID edge = topo.unsafe_makeEdge(v1, v2);
+    mycad::topo::EdgeID edge = topo.makeEdge(v1, v2);
 
     // Now, we can query the relationships
     auto eitherVertices = topo.getEdgeVertices(edge);

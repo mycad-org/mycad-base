@@ -69,8 +69,7 @@ namespace mycad::topo
 
             /** @brief an Edge is always adjacent to exactly two Vertices
              */
-            auto makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID;
-            auto unsafe_makeEdge(VertexID v1, VertexID v2) -> EdgeID;
+            auto makeEdge(VertexID v1, VertexID v2) -> EdgeID;
 
             /** @brief creates a directional connection between two edges
              *  @returns error string if either edge doesn't exist in the

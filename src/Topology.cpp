@@ -67,35 +67,16 @@ auto Topology::addFreeVertex() -> VertexID
  * The two Vertices **can** be the same, in which case the Edge would be
  * considered a "loop" edge.
  *
- * Only a single Edge can exist between two Vertices in a given direction, so
- * that if this method is called twice with the same vertices an error is
- * returned.
+ * An invalid EdgeID is returned if:
  *
- * However, if this method is called a second time with the parameters reversed,
- * this is valid and results in an Edge going "in the other direction".
- *
- * Visually:
- *
- * makeEdge(v1, v2): V₁ → V₂
- * makeEdge(v1, v2): error
- * makeEdge(v2, v1): V₁ ↔ V₂
- *
- * @returns error string if either of the vertices doesn't exist
- * @returns error string if an Edge already exists **from** @v1@ **to** @v2@
+ * 1. either or both vertices don't exist in the topology
+ * 2. an Edge already exists between v1 and v2
  */
-auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
+auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 {
-    if (not vertices.contains(v1))
+    if (not (vertices.contains(v1) && vertices.contains(v2)))
     {
-        return tl::make_unexpected(
-            "The vertex v1 = " + std::to_string(v1.index) +
-            " does not exist in the topology");
-    }
-    else if (not vertices.contains(v2))
-    {
-        return tl::make_unexpected(
-            "The vertex v2 = " + std::to_string(v2.index) +
-            " does not exist in the topology");
+        return {-1};
     }
 
     auto hasSameVertices = [&v1, &v2](auto pair)
@@ -108,7 +89,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
 
     if(std::ranges::any_of(edges, hasSameVertices))
     {
-        return tl::make_unexpected("Only one Edge can exist between any two Vertices");
+        return {-1};
     }
 
     EdgeID edge(lastEdgeID++);
@@ -123,11 +104,6 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EitherEdgeID
     rightVertex.links.emplace_back(v2.index, edge.index);
 
     return edge;
-}
-
-auto Topology::unsafe_makeEdge(VertexID v1, VertexID v2) -> EdgeID
-{
-    return makeEdge(v1, v2).value();
 }
 
 auto Topology::deleteEdge(EdgeID edge) -> bool
