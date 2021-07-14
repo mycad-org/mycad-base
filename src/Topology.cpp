@@ -319,8 +319,8 @@ auto Topology::streamTo(std::ostream &os) const -> void
     os << "edges:" << std::endl;
     for (auto const &[key, edge] : edges)
     {
-        os << "    eid: " << key.index << ", "
-           << "        leftVertexID = " << edge.leftVertexID << ", "
+        os << "    eid: " << key.index << "\n"
+           << "        leftVertexID = " << edge.leftVertexID << "\n"
            << "        rightVertexID = " << edge.rightVertexID << std::endl;
     }
 }
