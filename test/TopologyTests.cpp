@@ -62,13 +62,11 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
                 REQUIRE(topo.getEdgeVertices(edge) == VertexIDPair{v1, v2});
             }
 
-/*             THEN("Either Vertex can be used to find the other across the Edge") */
-/*             { */
-/*                 REQUIRE(topo.oppositeVertex(v1, edge).value() == v2); */
-/*                 REQUIRE(topo.oppositeVertex(v2, edge).value() == v1); */
-/*                 REQUIRE( unsafe_topo.unsafe_oppositeVertex(unsafe_v1, unsafe_edge) == unsafe_v2); */
-/*                 REQUIRE( unsafe_topo.unsafe_oppositeVertex(unsafe_v2, unsafe_edge) == unsafe_v1); */
-/*             } */
+            THEN("Either Vertex can be used to find the other across the Edge")
+            {
+                REQUIRE(topo.oppositeVertex(v1, edge) == v2);
+                REQUIRE(topo.oppositeVertex(v2, edge) == v1);
+            }
 
 /*             WHEN("The Edge is deleted") */
 /*             { */

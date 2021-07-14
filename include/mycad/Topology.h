@@ -96,13 +96,12 @@ namespace mycad::topo
             auto getEdgeVertices(EdgeID edge) const -> VertexIDPair;
 
             /** @brief find the Vertex on the other side of the Edge
-             *  @returns error string if either @v@ or @e@ does not exist in
-             *           the topology
-             *  @returns error string if the Vertex and Edge are not adjacent to
-             *           each other
+             *  @returns invalid Vertex if:
+             *      1. The provided Vertex does not exist in the topology
+             *      2. The provided Edge does not exist in the topology
+             *      3. The Vertex and Edge are not adjacent
              */
-            auto oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID;
-            auto unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
+            auto oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
 
             /** @brief returns all Edges in the Chain
              *  @returns error if the chain does not exist
