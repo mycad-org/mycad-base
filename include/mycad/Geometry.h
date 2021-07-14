@@ -15,25 +15,27 @@ namespace mycad::geom {
     using Error = std::string;
     using EitherLine = tl::expected<Line, Error>;
 
+    /** @brief Parametrized _from_ @param p1 _to_ @param p2
+     *
+     *  The paramatetrization results in a line described by:
+     *
+     *  @f[
+     *      x = f(u)
+     *      y = g(u)
+     *      z = h(u)
+     *  @f]
+     *
+     *  such that when @f$i u=0 @f$,
+     *  @f$ x = p1.x, y = p1.y, z = y1.z @f$, and similarly for
+     *  @f$ u=1 @f$ and @param p2.
+     *
+     *  @returns A Line if the two points are not equivalent
+     */
+    EitherLine makeLine(Point const &p1, Point const &p2);
+
     class Line {
         public:
-            /** @brief Parametrized _from_ @param p1 _to_ @param p2
-             *
-             *  The paramatetrization results in a line described by:
-             *
-             *  @f[
-             *      x = f(u)
-             *      y = g(u)
-             *      z = h(u)
-             *  @f]
-             *
-             *  such that when @f$i u=0 @f$,
-             *  @f$ x = p1.x, y = p1.y, z = y1.z @f$, and similarly for
-             *  @f$ u=1 @f$ and @param p2.
-             *
-             *  @returns A Line if the two points are not equivalent
-             */
-            auto static makeLine(Point const &p1, Point const &p2) -> EitherLine;
+            friend EitherLine makeLine(Point const &p1, Point const &p2);
 
             /** @brief return the point at the given @param u
              *

@@ -5,7 +5,7 @@
 
 using namespace mycad::geom;
 
-auto Line::makeLine(Point const &p1, Point const &p2) -> EitherLine
+auto mycad::geom::makeLine(Point const &p1, Point const &p2) -> EitherLine
 {
     if (p1 == p2)
     {

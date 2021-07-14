@@ -26,7 +26,7 @@ namespace rc{
             return gen::exec([]() {
                 Point p1 = *gen::arbitrary<Point>();
                 Point p2 = *gen::distinctFrom(p1);
-                return Line::makeLine(p1, p2).value();
+                return makeLine(p1, p2).value();
                 }
             );
         }
@@ -36,7 +36,7 @@ namespace rc{
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     rc::prop("A line cannot be constructed with only one point",
         [](Point const &p1) {
-            EitherLineOrString eLine = Line::makeLine(p1, p1);
+            EitherLineOrString eLine = makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
         },
         /* verbose= */ true
@@ -47,7 +47,7 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             Point p1 = *rc::gen::arbitrary<Point>();
             Point p2 = *rc::gen::distinctFrom(p1);
 
-            EitherLineOrString eLine = Line::makeLine(p1, p2);
+            EitherLineOrString eLine = makeLine(p1, p2);
             RC_ASSERT(eLine.has_value());
 
             Line const &line = eLine.value();
