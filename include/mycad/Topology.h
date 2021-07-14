@@ -86,8 +86,7 @@ namespace mycad::topo
              *  @returns error sring if the vertex does not exist in the
              *           topology
              */
-            auto edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs;
-            auto unsafe_edgesAdjacentToVertex(VertexID v) const -> EdgeIDs;
+            auto edgesAdjacentToVertex(VertexID v) const -> EdgeIDs;
 
             /** @returns A pair `(left, right)` of vertex IDs corresponding to
              *           this Edge

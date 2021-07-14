@@ -43,34 +43,19 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
         WHEN("An Edge is created between them")
         {
             Topology orig = topo;
-            EdgeID e = topo.makeEdge(v1, v2);
+            EdgeID edge   = topo.makeEdge(v1, v2);
 
             THEN("The returned Edge is valid within the Topology")
             {
-                REQUIRE(topo.hasEdge(e));
+                REQUIRE(topo.hasEdge(edge));
             }
 
-/*             THEN("An adjacency exists between each Vertex and the new Edge") */
-/*             { */
-/*                 // Either Edge ID from V₁ */
-/*                 REQUIRE( */
-/*                     topo.edgesAdjacentToVertex(v1).value()== */
-/*                     std::vector<EdgeID>{edge} */
-/*                 ); */
-/*                 REQUIRE( */
-/*                     topo.edgesAdjacentToVertex(v2).value() == */
-/*                     std::vector<EdgeID>{edge} */
-/*                 ); */
-/*                 REQUIRE( */
-/*                     unsafe_topo.unsafe_edgesAdjacentToVertex(unsafe_v1) == */
-/*                     std::vector<EdgeID>{unsafe_edge} */
-/*                 ); */
-
-/*                 REQUIRE( */
-/*                     unsafe_topo.unsafe_edgesAdjacentToVertex(unsafe_v2) == */
-/*                     std::vector<EdgeID>{unsafe_edge} */
-/*                 ); */
-/*             } */
+            THEN("An adjacency exists between each Vertex and the new Edge")
+            {
+                // Either Edge ID from V₁
+                REQUIRE( topo.edgesAdjacentToVertex(v1) == EdgeIDs{edge});
+                REQUIRE( topo.edgesAdjacentToVertex(v2) == EdgeIDs{edge});
+            }
 
 /*             THEN("Both Vertices are adjacent to the Edge") */
 /*             { */

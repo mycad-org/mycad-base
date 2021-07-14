@@ -167,33 +167,26 @@ auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> EitherChain
         });
 }
 
-auto Topology::edgesAdjacentToVertex(VertexID v) const -> EitherEdgeIDs
+auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
 {
-    return
-        detail::hasVertex(v, vertices)
-        .map([v, this]()
+    if (not vertices.contains(v))
+    {
+        return {};
+    }
+
+    auto vertexMatch =
+        [v](auto const &pair)
         {
-            auto vertexMatch =
-                [v](auto const &pair)
-                {
-                    auto const &[key, edge] = pair;
-                    return (edge.leftVertexID == v.index) ||
-                           (edge.rightVertexID == v.index);
-                };
+            auto const &[key, e] = pair;
+            return (e.leftVertexID == v.index) || (e.rightVertexID == v.index);
+        };
 
-            auto view =
-                this->edges
-                | std::views::filter(vertexMatch)
-                | std::views::keys;
+    auto view =
+        this->edges
+        | std::views::filter(vertexMatch)
+        | std::views::keys;
 
-            return EdgeIDs(view.begin(), view.end());
-        }
-        );
-}
-
-auto Topology::unsafe_edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
-{
-    return edgesAdjacentToVertex(v).value();
+    return EdgeIDs(view.begin(), view.end());
 }
 
 auto Topology::getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair
