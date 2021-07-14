@@ -68,15 +68,15 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
                 REQUIRE(topo.oppositeVertex(v2, edge) == v1);
             }
 
-/*             WHEN("The Edge is deleted") */
-/*             { */
-/*                 CHECK(topo.deleteEdge(edge)); */
+            WHEN("The Edge is deleted")
+            {
+                CHECK(topo.deleteEdge(edge));
 
-/*                 THEN("The Topology reverts to the previous state") */
-/*                 { */
-/*                     REQUIRE(orig.similar(topo)); */
-/*                 } */
-/*             } */
+                THEN("The Topology reverts to the previous state")
+                {
+                    REQUIRE(orig.similar(topo));
+                }
+            }
         }
 
         WHEN("There's already an Edge between them")
