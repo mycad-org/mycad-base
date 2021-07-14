@@ -157,12 +157,14 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 
             WHEN("A Chain is made between both edges")
             {
-                REQUIRE(topo.makeChain(edge, edge2).has_value());
+                auto eitherChain = topo.makeChain(edge, edge2);
+                REQUIRE(eitherChain.has_value());
 
-                THEN("We can recover both Edges in order")
+                THEN("We can recover both Edges in order using the returned Chain")
                 {
+                    Chain chain = eitherChain.value();
                     REQUIRE(
-                        topo.getChainEdges(v1, edge).value() ==
+                        topo.getChainEdges(chain).value() ==
                         std::vector<EdgeID>{edge, edge2});
                 }
             }
@@ -208,11 +210,13 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("The first two are connected")
         {
-            topo.makeChain(e1, e2);
+            auto eitherChain = topo.makeChain(e1, e2);
+            REQUIRE(eitherChain.has_value());
+            Chain chain = *eitherChain;
 
             THEN("The third is not part of the chain")
             {
-                auto eitherEdges = topo.getChainEdges(v1, e1);
+                auto eitherEdges = topo.getChainEdges({v1, e1});
 
                 REQUIRE(eitherEdges.has_value());
                 REQUIRE(std::ranges::count(eitherEdges.value(), e3) == 0);
@@ -224,7 +228,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
                 THEN("The third is still not part of the original chain")
                 {
-                    auto eitherEdges = topo.getChainEdges(v1, e1);
+                    auto eitherEdges = topo.getChainEdges(chain);
 
                     REQUIRE(eitherEdges.has_value());
                     REQUIRE(std::ranges::count(eitherEdges.value(), e3) == 0);
@@ -232,7 +236,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
                 THEN("The third can be retrieved using v2 and e2")
                 {
-                    auto eitherEdges = topo.getChainEdges(v2, e2);
+                    auto eitherEdges = topo.getChainEdges({v2, e2});
 
                     REQUIRE(eitherEdges.has_value());
                     REQUIRE(eitherEdges.value() ==

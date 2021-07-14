@@ -26,13 +26,19 @@ namespace mycad::topo
         auto operator<=>(EdgeID const&) const = default;
     };
 
+    struct Chain
+    {
+        VertexID vStart;
+        EdgeID eStart;
+    };
+
     //! used instead of std::optional so that we can compose it with other tl::expected
     using Error              = std::string;
-    using Maybe              = tl::expected<void, Error>;
     using VertexIDPair       = std::pair<VertexID, VertexID>;
     using EitherVertexIDPair = tl::expected<VertexIDPair, Error>;
     using EitherVertexID     = tl::expected<VertexID, Error>;
     using EitherEdgeID       = tl::expected<EdgeID, Error>;
+    using EitherChain        = tl::expected<Chain, Error>;
     using EdgeIDs            = std::vector<EdgeID>;
     using EitherEdgeIDs      = tl::expected<EdgeIDs, Error>;
 
@@ -74,8 +80,8 @@ namespace mycad::topo
              *  @returns error string if the two Edge do not share a common
              *           Vertex
              */
-            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe;
-            auto unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge) -> void;
+            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> EitherChain;
+            auto unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain;
 
             /** @returns empty vector if valid vertex is 'free'
              *  @returns error sring if the vertex does not exist in the
@@ -103,8 +109,8 @@ namespace mycad::topo
             /** @brief returns all Edges in the Chain
              *  @returns error if the chain does not exist
              */
-            auto getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const -> EitherEdgeIDs;
-            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDs;
+            auto getChainEdges(Chain chain) const -> EitherEdgeIDs;
+            auto unsafe_getChainEdges(Chain chain) const -> EdgeIDs;
 
             /** @returns false if the Edge doesn't exist
              */

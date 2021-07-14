@@ -161,11 +161,11 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
     }
 }
 
-auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe
+auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> EitherChain
 {
     return
         detail::getCommonVertexID(fromEdge, toEdge, std::cref(edges))
-        .and_then([&toEdge, &fromEdge, this](VertexID const v) -> Maybe
+        .and_then([&toEdge, &fromEdge, this](VertexID const v) -> EitherChain
         {
             // This Vertex should have a link connected to the fromEdge
             auto fromLinkIndex = detail::getLinkIndex(v, fromEdge, vertices);
@@ -186,7 +186,8 @@ auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Maybe
 
             fromLink.next = {{toLink.parentVertexIndex, toLink.parentEdgeIndex}};
 
-            return {};
+            VertexID fromVertex = oppositeVertex(v, fromEdge).value();
+            return {Chain(fromVertex, fromEdge)};
         });
 }
 
@@ -265,8 +266,9 @@ auto Topology::unsafe_oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     return oppositeVertex(v, e).value();
 }
 
-auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs
+auto Topology::getChainEdges(Chain chain) const -> EitherEdgeIDs
 {
+    auto [vertex, edge] = chain;
     auto const oppVertex = oppositeVertex(vertex, edge);
     if (!oppVertex)
     {
@@ -291,9 +293,9 @@ auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeID
     }
 }
 
-auto Topology::unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDs
+auto Topology::unsafe_getChainEdges(Chain chain) const -> EdgeIDs
 {
-    return getChainEdges(vertex, edge).value();
+    return getChainEdges(chain).value();
 }
 
 auto Topology::streamTo(std::ostream &os) const -> void
