@@ -217,6 +217,28 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                 REQUIRE(eitherEdges.has_value());
                 REQUIRE(std::ranges::count(eitherEdges.value(), e3) == 0);
             }
+
+            WHEN("The second two are connected")
+            {
+                topo.makeChain(e2, e3);
+
+                THEN("The third is still not part of the original chain")
+                {
+                    auto eitherEdges = topo.getChainEdges(v1, e1);
+
+                    REQUIRE(eitherEdges.has_value());
+                    REQUIRE(std::ranges::count(eitherEdges.value(), e3) == 0);
+                }
+
+                THEN("The third can be retrieved using v2 and e2")
+                {
+                    auto eitherEdges = topo.getChainEdges(v2, e2);
+
+                    REQUIRE(eitherEdges.has_value());
+                    REQUIRE(eitherEdges.value() ==
+                            std::vector<EdgeID>{e2, e3});
+                }
+            }
         }
     }
 }
