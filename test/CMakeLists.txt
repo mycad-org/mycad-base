@@ -33,3 +33,6 @@ target_include_directories(
 
 include(Catch REQUIRED) # provides catch_discover_tests
 catch_discover_tests(mycad_tests)
+
+add_executable(mycad_example example.cpp)
+target_link_libraries(mycad_example mycad-geometry mycad-topology)
