@@ -189,19 +189,15 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
     return EdgeIDs(view.begin(), view.end());
 }
 
-auto Topology::getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair
+auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
 {
-    return detail::hasEdge(edge, edges)
-           .map([edge, this]
-           {
-               auto const [left, right] = edges.at(edge);
-               return std::make_pair(VertexID(left), VertexID(right));
-           });
-}
+    if (not hasEdge(edge))
+    {
+        return {VertexID(-1), VertexID(-1)};
+    }
 
-auto Topology::unsafe_getEdgeVertices(EdgeID edge) const -> VertexIDPair
-{
-    return getEdgeVertices(edge).value();
+   auto const [left, right] = edges.at(edge);
+   return std::make_pair(VertexID(left), VertexID(right));
 }
 
 auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> EitherVertexID

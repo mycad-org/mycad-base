@@ -57,17 +57,10 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
                 REQUIRE( topo.edgesAdjacentToVertex(v2) == EdgeIDs{edge});
             }
 
-/*             THEN("Both Vertices are adjacent to the Edge") */
-/*             { */
-/*                 REQUIRE( */
-/*                     topo.getEdgeVertices(edge).value() == */
-/*                     std::pair<VertexID, VertexID>(v1, v2) */
-/*                 ); */
-/*                 REQUIRE( */
-/*                     unsafe_topo.unsafe_getEdgeVertices(unsafe_edge) == */
-/*                     std::pair<VertexID, VertexID>(unsafe_v1, unsafe_v2) */
-/*                 ); */
-/*             } */
+            THEN("Both Vertices are adjacent to the Edge")
+            {
+                REQUIRE(topo.getEdgeVertices(edge) == VertexIDPair{v1, v2});
+            }
 
 /*             THEN("Either Vertex can be used to find the other across the Edge") */
 /*             { */

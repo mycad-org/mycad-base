@@ -61,20 +61,15 @@ int main()
     mycad::topo::EdgeID edge = topo.makeEdge(v1, v2);
 
     // Now, we can query the relationships
-    auto eitherVertices = topo.getEdgeVertices(edge);
-    if(eitherVertices)
-    {
-        // .value is safe now
-        auto [left, right] = eitherVertices.value();
+    auto [left, right] = topo.getEdgeVertices(edge);
 
-        std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
-                  << "    Vertex ID = " << left.index << '\n'
-                  << "    Vertex ID = " << right.index << '\n';
-        // output:
-        // The edge with ID = 0 is adjacent to:
-        //     Vertex ID = 0
-        //     Vertex ID = 1
-    }
+    std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
+              << "    Vertex ID = " << left.index << '\n'
+              << "    Vertex ID = " << right.index << '\n';
+    // output:
+    // The edge with ID = 0 is adjacent to:
+    //     Vertex ID = 0
+    //     Vertex ID = 1
 
     /*======================================================================*/
 

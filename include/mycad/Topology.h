@@ -90,10 +90,10 @@ namespace mycad::topo
 
             /** @returns A pair `(left, right)` of vertex IDs corresponding to
              *           this Edge
-             *  @returns error sring if the edge does not exist in the topology
+             *  @returns invalid Vertices if the provided Edge does not exist in
+             *           the topology
              */
-            auto getEdgeVertices(EdgeID edge) const -> EitherVertexIDPair;
-            auto unsafe_getEdgeVertices(EdgeID edge) const -> VertexIDPair;
+            auto getEdgeVertices(EdgeID edge) const -> VertexIDPair;
 
             /** @brief find the Vertex on the other side of the Edge
              *  @returns error string if either @v@ or @e@ does not exist in
