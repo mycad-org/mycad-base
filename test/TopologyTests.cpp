@@ -190,3 +190,33 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
         }
     }
 }
+
+SCENARIO("004: Chain Topology", "[topology][chain]")
+{
+    GIVEN("A series of three Edges")
+    {
+        Topology topo;
+        auto v1 = topo.addFreeVertex();
+        auto v2 = topo.addFreeVertex();
+        auto v3 = topo.addFreeVertex();
+        auto v4 = topo.addFreeVertex();
+        // unsafe_makeEdge here is "ok" since we **know** that there four
+        // vertices exist in the topology. generally though, avoid this.
+        auto e1 = topo.unsafe_makeEdge(v1, v2);
+        auto e2 = topo.unsafe_makeEdge(v2, v3);
+        auto e3 = topo.unsafe_makeEdge(v3, v4);
+
+        WHEN("The first two are connected")
+        {
+            topo.makeChain(e1, e2);
+
+            THEN("The third is not part of the chain")
+            {
+                auto eitherEdges = topo.getChainEdges(v1, e1);
+
+                REQUIRE(eitherEdges.has_value());
+                REQUIRE(std::ranges::count(eitherEdges.value(), e3) == 0);
+            }
+        }
+    }
+}

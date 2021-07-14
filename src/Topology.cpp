@@ -291,6 +291,11 @@ auto Topology::getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeID
     }
 }
 
+auto Topology::unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDs
+{
+    return getChainEdges(vertex, edge).value();
+}
+
 auto Topology::streamTo(std::ostream &os) const -> void
 {
     os << "lastVertexID = " << lastVertexID << ", "

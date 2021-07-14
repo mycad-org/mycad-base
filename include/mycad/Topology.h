@@ -104,7 +104,7 @@ namespace mycad::topo
              *  @returns error if the chain does not exist
              */
             auto getChainEdges(VertexID /*vertex*/, EdgeID /*edge*/) const -> EitherEdgeIDs;
-            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EitherEdgeIDs;
+            auto unsafe_getChainEdges(VertexID vertex, EdgeID edge) const -> EdgeIDs;
 
             /** @returns false if the Edge doesn't exist
              */
