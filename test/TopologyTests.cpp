@@ -134,7 +134,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
 }
 
-SCENARIO("002: Edge Topology", "[topology][edge]")
+SCENARIO("003: Edge Topology", "[topology][edge]")
 {
     GIVEN("A topology with a single Edge")
     {
