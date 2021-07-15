@@ -251,7 +251,7 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
         return {};
     }
 
-    auto links = vertices.at(vertex).links;
+    auto links = vertices.at(oppVertex).links;
     auto const linkIt = ranges::find_if(links, linkedToEdge(edge));
 
     if(linkIt != links.end())
@@ -310,6 +310,12 @@ auto mycad::topo::operator<<(std::ostream &os, VertexID const &v) -> std::ostrea
 auto mycad::topo::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
 {
     os << "E" << std::to_string(e.index);
+    return os;
+}
+
+auto mycad::topo::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
+{
+    os << "Chain: " << c.vStart << ", " << c.eStart;
     return os;
 }
 

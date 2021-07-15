@@ -122,6 +122,7 @@ namespace mycad::topo
 
     auto operator<<(std::ostream &os, VertexID const &v) -> std::ostream &;
     auto operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &;
+    auto operator<<(std::ostream &os, Chain const &c) -> std::ostream &;
     auto operator<<(std::ostream &os, Topology const &topo) -> std::ostream &;
 } // namespace mycad::topo
 

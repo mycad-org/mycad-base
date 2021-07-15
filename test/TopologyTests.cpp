@@ -118,6 +118,7 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
             WHEN("A Chain is made between both edges")
             {
                 auto chain = topo.makeChain(edge, edge2);
+                std::cout << chain << '\n';
                 std::cout << topo;
 
                 THEN("We can recover both Edges in order using the returned Chain")
