@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "tl/expected.hpp"
-
 namespace mycad::topo
 {
     struct VertexID;
@@ -41,12 +39,6 @@ namespace mycad::topo::detail
 
         auto operator<=>(Edge const &other) const = default;
     };
-
-    auto hasVertex(VertexID const &v, std::map<VertexID, Vertex> const &vs)
-    -> tl::expected<void, std::string>;
-
-    auto hasEdge(EdgeID const &edge, std::map<EdgeID, Edge> const &es)
-    -> tl::expected<void, std::string>;
 
     auto getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
                            std::map<EdgeID, Edge> const &es) -> VertexID;

@@ -18,28 +18,23 @@ int main()
     std::cout << "P2 = " << p2 << '\n';
     // output: P2 = (40, 50, 60)
 
-    // Return type is tl::unexpected - provides error handling
-    auto eitherLine1 = mycad::geom::makeLine(p1, p2);
-    auto eitherLine2 = mycad::geom::makeLine(p1, p1);
+    // Return type is std::optional
+    auto maybeLine1 = mycad::geom::makeLine(p1, p2);
+    auto maybeLine2 = mycad::geom::makeLine(p1, p1);
 
-    if (eitherLine1)
+    if (maybeLine1)
     {
         // this is safe now
-        mycad::geom::Line line = eitherLine1.value();
+        mycad::geom::Line line = maybeLine1.value();
 
         // Again, handy streaming operator
         std::cout << line << '\n';
         // output: Line: (10, 20, 30) → (40, 50, 60)
     }
 
-    if(not eitherLine2)
+    if(not maybeLine2)
     {
         // oh no, something happened!
-
-        std::cout << eitherLine2.error() << '\n';
-        // output: A line cannot be constructed with two equivalent points
-
-
         // maybe ask the user to try again? in a loop?
     }
 
@@ -84,7 +79,7 @@ int main()
     //
     std::cout << "P1: " << p1 << '\n'
               << "P2: " << p2 << '\n'
-              << "L1: " << eitherLine1.value() << '\n'
+              << "L1: " << maybeLine1.value() << '\n'
               << topo << '\n';
 }
 

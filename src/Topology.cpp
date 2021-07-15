@@ -49,12 +49,12 @@ auto Topology::similar(Topology const &other) const -> bool
 
 auto Topology::hasVertex(VertexID v) const -> bool
 {
-    return detail::hasVertex(v, vertices).has_value();
+    return vertices.contains(v);
 }
 
 auto Topology::hasEdge(EdgeID e) const -> bool
 {
-    return detail::hasEdge(e, edges).has_value();
+    return edges.count(e) == 1;
 }
 
 auto Topology::hasChain(Chain c) const -> bool
@@ -116,7 +116,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 
 auto Topology::deleteEdge(EdgeID edge) -> bool
 {
-    if (not detail::hasEdge(edge, edges))
+    if (not hasEdge(edge))
     {
         return false;
     }

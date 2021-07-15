@@ -8,7 +8,6 @@
 #include <string>
 #include <utility> // std::pair
 #include <vector>
-#include "tl/expected.hpp"
 
 namespace mycad::topo
 {
@@ -32,25 +31,9 @@ namespace mycad::topo
         EdgeID eStart;
     };
 
-    //! used instead of std::optional so that we can compose it with other tl::expected
-    using Error              = std::string;
     using VertexIDPair       = std::pair<VertexID, VertexID>;
-    using EitherVertexIDPair = tl::expected<VertexIDPair, Error>;
-    using EitherVertexID     = tl::expected<VertexID, Error>;
-    using EitherEdgeID       = tl::expected<EdgeID, Error>;
-    using EitherChain        = tl::expected<Chain, Error>;
     using EdgeIDs            = std::vector<EdgeID>;
-    using EitherEdgeIDs      = tl::expected<EdgeIDs, Error>;
 
-    /**
-     *  Any method that returns a `tl::expected` has built-in error checking.
-     *  This is useful for chaining together operations that may return an
-     *  error, short-circuiting on the first error.
-     *
-     *  Each of these functions has an 'unsafe' version which does not perform
-     *  the error-checking. You'll be responsible for making sure you call them
-     *  appropriately.
-     */
     class Topology
     {
         public:

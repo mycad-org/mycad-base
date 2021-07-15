@@ -5,34 +5,6 @@
 
 using namespace mycad::topo;
 
-auto detail::hasVertex(VertexID const &v, std::map<VertexID, Vertex> const &vs)
--> tl::expected<void, std::string>
-{
-    if (vs.contains(v) == 0)
-    {
-        return tl::make_unexpected(
-            "Vertex with ID=" + std::to_string(v.index) + " not found"
-        );
-    }
-
-    return {};
-}
-
-auto detail::hasEdge(EdgeID const &edge, std::map<EdgeID, Edge> const &es)
--> tl::expected<void, std::string>
-{
-    if (es.count(edge) == 1)
-    {
-        return {};
-    }
-    else
-    {
-        return tl::make_unexpected(
-            "Edge with ID=" + std::to_string(edge.index) + " not found"
-        );
-    }
-}
-
 auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
                                std::map<EdgeID, Edge> const &es) -> VertexID
 {

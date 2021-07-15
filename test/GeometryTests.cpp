@@ -6,7 +6,6 @@
 #include "rapidcheck/catch.h"
 
 using namespace mycad::geom;
-using EitherLineOrString = tl::expected<Line, std::string>;
 
 namespace rc{
     template<>
@@ -36,7 +35,7 @@ namespace rc{
 SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     rc::prop("A line cannot be constructed with only one point",
         [](Point const &p1) {
-            EitherLineOrString eLine = makeLine(p1, p1);
+            MaybeLine eLine = makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
         },
         /* verbose= */ true
@@ -47,7 +46,7 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
             Point p1 = *rc::gen::arbitrary<Point>();
             Point p2 = *rc::gen::distinctFrom(p1);
 
-            EitherLineOrString eLine = makeLine(p1, p2);
+            MaybeLine eLine = makeLine(p1, p2);
             RC_ASSERT(eLine.has_value());
 
             Line const &line = eLine.value();

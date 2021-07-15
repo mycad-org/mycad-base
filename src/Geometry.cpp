@@ -5,16 +5,15 @@
 
 using namespace mycad::geom;
 
-auto mycad::geom::makeLine(Point const &p1, Point const &p2) -> EitherLine
+auto mycad::geom::makeLine(Point const &p1, Point const &p2) -> MaybeLine
 {
     if (p1 == p2)
     {
-        return tl::make_unexpected(
-            "A line cannot be constructed with two equivalent Points");
+        return std::nullopt;
     }
     else
     {
-        return Line(p1, p2);
+        return {Line(p1, p2)};
     }
 }
 

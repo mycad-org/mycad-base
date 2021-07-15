@@ -2,7 +2,8 @@
 #define MYCAD_GEOMETRY_HEADER
 
 #include <iostream>
-#include "tl/expected.hpp"
+#include <optional>
+#include <utility>
 
 namespace mycad::geom {
     struct Point {
@@ -12,8 +13,7 @@ namespace mycad::geom {
     };
 
     class Line;
-    using Error = std::string;
-    using EitherLine = tl::expected<Line, Error>;
+    using MaybeLine  = std::optional<Line>;
 
     /** @brief Parametrized _from_ @param p1 _to_ @param p2
      *
@@ -31,11 +31,11 @@ namespace mycad::geom {
      *
      *  @returns A Line if the two points are not equivalent
      */
-    EitherLine makeLine(Point const &p1, Point const &p2);
+    auto makeLine(Point const &p1, Point const &p2) -> MaybeLine;
 
     class Line {
         public:
-            friend EitherLine makeLine(Point const &p1, Point const &p2);
+            friend auto  makeLine(Point const &p1, Point const &p2) -> MaybeLine;
 
             /** @brief return the point at the given @param u
              *
