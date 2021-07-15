@@ -72,15 +72,11 @@ namespace mycad::topo
             auto makeEdge(VertexID v1, VertexID v2) -> EdgeID;
 
             /** @brief creates a directional connection between two edges
-             *  @returns error string if either edge doesn't exist in the
-             *           topology
-             *  @returns error string if a Chain from \param fromEdge to \param
-             *           toEdge already exists
-             *  @returns error string if the two Edge do not share a common
-             *           Vertex
+             *  @returns an invalid Chain if:
+             *      1. either Edge does not exist in the Toploogy
+             *      2. the two Edge do not share a common vertex
              */
-            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> EitherChain;
-            auto unsafe_makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain;
+            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain;
 
             /** @returns empty vector if valid vertex is 'free'
              *  @returns error sring if the vertex does not exist in the
@@ -104,10 +100,8 @@ namespace mycad::topo
             auto oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
 
             /** @brief returns all Edges in the Chain
-             *  @returns error if the chain does not exist
              */
-            auto getChainEdges(Chain chain) const -> EitherEdgeIDs;
-            auto unsafe_getChainEdges(Chain chain) const -> EdgeIDs;
+            auto getChainEdges(Chain chain) const -> EdgeIDs;
 
             /** @returns false if the Edge doesn't exist
              */

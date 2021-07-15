@@ -33,62 +33,50 @@ auto detail::hasEdge(EdgeID const &edge, std::map<EdgeID, Edge> const &es)
     }
 }
 
-auto detail::getCommonVertexID(EdgeID const &edge1, EdgeID const &edge2, std::map<EdgeID, Edge> const &es)
--> tl::expected<VertexID, std::string>
+auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
+                               std::map<EdgeID, Edge> const &es) -> VertexID
 {
-    return
-        hasEdge(edge1, es)
-        .and_then(std::bind(hasEdge, edge2, es))
-        .and_then([edge1, edge2, &es]() -> tl::expected<VertexID, std::string>
-        {
-            auto [v1, v2] = es.at(edge1);
-            auto [v3, v4] = es.at(edge2);
-
-            if (v1 == v3)
-            {
-                return {{v1}};
-            }
-            else if (v1 == v4)
-            {
-                return {{v1}};
-            }
-            else if (v2 == v3)
-            {
-                return {{v2}};
-            }
-            else if (v3 == v4)
-            {
-                return {{v3}};
-            }
-            else
-            {
-                return tl::make_unexpected(
-                    "The two edges with IDs " + std::to_string(edge1.index) +
-                    " and " + std::to_string(edge2.index) +
-                    " do not appear to share a common Vertex");
-            }
-        });
-}
-
-auto detail::getLinkIndex(VertexID v, EdgeID e, std::map<VertexID, detail::Vertex> const &vs)
--> tl::expected<std::vector<Link>::size_type, std::string>
-{
-    auto links = vs.at(v).links;
-    auto match = [&e](detail::Link const &link){return link.parentEdgeIndex == e.index;};
-    auto ret   = std::ranges::find_if(links, match);
-    if (ret == links.end())
+    auto pair1 = es.find(edge1);
+    auto pair2 = es.find(edge2);
+    if (pair1 == es.end() || pair2 == es.end())
     {
-        return tl::make_unexpected(
-            "There is no Link between Vertex with ID = " + std::to_string(v.index) +
-            " and Edge with ID = " + std::to_string(e.index));
+        return {-1};
+    }
+
+    auto [v1, v2] = pair1->second;
+    auto [v3, v4] = pair2->second;
+
+    if (v1 == v3)
+    {
+        return {v1};
+    }
+    else if (v1 == v4)
+    {
+        return {v1};
+    }
+    else if (v2 == v3)
+    {
+        return {v2};
+    }
+    else if (v3 == v4)
+    {
+        return {v3};
     }
     else
     {
-        return ret - links.begin();
+        return {-1};
     }
 }
 
-auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain, std::map<VertexID, detail::Vertex> const &vs)
+auto detail::linkedToEdge(EdgeID const e)
+{
+    return [e](detail::Link const l)
+           {return l.parentEdgeIndex == e.index;};
+}
+
+
+auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain,
+                         std::map<VertexID, detail::Vertex> const &vs)
 -> std::vector<EdgeID> &
 {
     if(curLink.next)
@@ -96,11 +84,11 @@ auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain
         auto const [nextVertex, nextEdge] = curLink.next.value();
         chain.push_back(EdgeID(nextEdge));
 
-        auto nextLinkIndex = getLinkIndex(VertexID(nextVertex), EdgeID(nextEdge), vs);
-        if(nextLinkIndex)
+        auto const &links = vs.at({nextVertex}).links;
+        auto nextLinkIt = std::ranges::find_if(links, linkedToEdge(EdgeID(nextEdge)));
+        if(nextLinkIt != links.end())
         {
-            detail::Link const &nextLink = vs.at(VertexID(nextVertex)).links.at(nextLinkIndex.value());
-            return crawlLinks(nextLink, chain, vs);
+            return crawlLinks(*nextLinkIt, chain, vs);
         }
     }
 

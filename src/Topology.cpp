@@ -4,6 +4,7 @@
 #include <iostream>
 
 using namespace mycad::topo;
+namespace ranges = std::ranges;
 
 /**
  *
@@ -43,7 +44,7 @@ auto Topology::similar(Topology const &other) const -> bool
 
     auto isTrue = [](bool x){return x == true;};
 
-    return std::ranges::all_of(vals, isTrue);
+    return ranges::all_of(vals, isTrue);
 }
 
 auto Topology::hasVertex(VertexID v) const -> bool
@@ -87,7 +88,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
                (left == v2.index && right == v1.index);
     };
 
-    if(std::ranges::any_of(edges, hasSameVertices))
+    if(ranges::any_of(edges, hasSameVertices))
     {
         return {-1};
     }
@@ -124,11 +125,11 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
                     return link.parentEdgeIndex == edge.index;
                 };
 
-        std::ranges::for_each(vertices,
+        ranges::for_each(vertices,
             [&parentEdgeMatches](auto &pair)
             {
                 detail::Vertex &vertex = pair.second;
-                auto const rem = std::ranges::remove_if(vertex.links, parentEdgeMatches); 
+                auto const rem = ranges::remove_if(vertex.links, parentEdgeMatches); 
                 vertex.links.erase(rem.begin(), rem.end());
             }
         );
@@ -137,35 +138,42 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
     }
 }
 
-/* auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> EitherChain */
-/* { */
-/*     return */
-/*         detail::getCommonVertexID(fromEdge, toEdge, std::cref(edges)) */
-/*         .and_then([&toEdge, &fromEdge, this](VertexID const v) -> EitherChain */
-/*         { */
-/*             // This Vertex should have a link connected to the fromEdge */
-/*             auto fromLinkIndex = detail::getLinkIndex(v, fromEdge, vertices); */
-/*             if (!fromLinkIndex) */
-/*             { */
-/*                 return tl::make_unexpected(fromLinkIndex.error()); */
-/*             } */
+auto linkedToEdge(EdgeID const e)
+{
+    return [e](detail::Link const l)
+           {return l.parentEdgeIndex == e.index;};
+}
 
-/*             // And one connected to the toEdge */
-/*             auto toLinkIndex = detail::getLinkIndex(v, toEdge, vertices); */
-/*             if (!toLinkIndex) */
-/*             { */
-/*                 return tl::make_unexpected(toLinkIndex.error()); */
-/*             } */
+auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain
+{
+    auto const v = detail::getCommonVertexID(fromEdge, toEdge, edges);
 
-/*             detail::Link &fromLink = vertices.at(v).links.at(fromLinkIndex.value()); */
-/*             detail::Link const toLink = vertices.at(v).links.at(toLinkIndex.value()); */
+    if (not hasVertex(v))
+    {
+        return Chain({-1}, {-1});
+    }
 
-/*             fromLink.next = {{toLink.parentVertexIndex, toLink.parentEdgeIndex}}; */
+    auto &links = vertices.at(v).links;
 
-/*             VertexID fromVertex = oppositeVertex(v, fromEdge); */
-/*             return {Chain(fromVertex, fromEdge)}; */
-/*         }); */
-/* } */
+    // The common Vertex should have a Link to the fromEdge
+    auto fromLinkIt = ranges::find_if(links, linkedToEdge(fromEdge));
+    if (fromLinkIt == links.end())
+    {
+        return Chain({-1}, {-1});
+    }
+
+    // And one connected to the toEdge
+    auto const toLinkIt = ranges::find_if(links, linkedToEdge(toEdge));
+    if (toLinkIt == links.end())
+    {
+        return Chain({-1}, {-1});
+    }
+
+    fromLinkIt->next = {{toLinkIt->parentVertexIndex, toLinkIt->parentEdgeIndex}};
+
+    VertexID fromVertex = oppositeVertex(v, fromEdge);
+    return {Chain(fromVertex, fromEdge)};
+}
 
 auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
 {
@@ -222,36 +230,34 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     }
 }
 
-/* auto Topology::getChainEdges(Chain chain) const -> EitherEdgeIDs */
-/* { */
-/*     auto [vertex, edge] = chain; */
-/*     auto const oppVertex = oppositeVertex(vertex, edge); */
-/*     if (!oppVertex) */
-/*     { */
-/*         return tl::make_unexpected(oppVertex.error()); */
-/*     } */
-
-/*     auto const startLinkIndex = detail::getLinkIndex(oppVertex.value(), edge, vertices); */
-
-/*     if(startLinkIndex) */
-/*     { */
-/*         int i = startLinkIndex.value(); */
-/*         EdgeIDs out{edge}; */
-
-/*         // this is recursive */
-/*         detail::crawlLinks(vertices.at(oppVertex.value()).links.at(i), out, vertices); */
-
-/*         return out; */
-/*     } */
-/*     else */
-/*     { */
-/*         return tl::make_unexpected(startLinkIndex.error()); */
-/*     } */
-/* } */
-
-auto Topology::unsafe_getChainEdges(Chain chain) const -> EdgeIDs
+auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
 {
-    return getChainEdges(chain).value();
+    auto [vertex, edge] = chain;
+    if (not (hasVertex(vertex) || hasEdge(edge)))
+    {
+        return {};
+    }
+
+    auto const oppVertex = oppositeVertex(vertex, edge);
+    if (not hasVertex(oppVertex))
+    {
+        return {};
+    }
+
+    auto links = vertices.at(vertex).links;
+    auto const linkIt = ranges::find_if(links, linkedToEdge(edge));
+
+    if(linkIt != links.end())
+    {
+        EdgeIDs out{edge};
+
+        // this is recursive
+        detail::crawlLinks(*linkIt, out, vertices);
+
+        return out;
+    }
+
+    return {};
 }
 
 auto Topology::streamTo(std::ostream &os) const -> void
