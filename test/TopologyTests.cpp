@@ -1,5 +1,4 @@
 #include "mycad/Topology.h"
-#include "tl/expected.hpp"
 
 #include <catch2/catch.hpp>
 #include "rapidcheck.h"
