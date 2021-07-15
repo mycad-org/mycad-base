@@ -62,6 +62,7 @@ namespace mycad::topo
 
             auto hasVertex(VertexID v) const -> bool;
             auto hasEdge(EdgeID e) const -> bool;
+            auto hasChain(Chain c) const -> bool;
 
             /** @brief A 'free' vertex does is not adajacent to anything
              */

@@ -57,6 +57,13 @@ auto Topology::hasEdge(EdgeID e) const -> bool
     return detail::hasEdge(e, edges).has_value();
 }
 
+auto Topology::hasChain(Chain c) const -> bool
+{
+    return hasVertex(c.vStart) &&
+           hasEdge(c.eStart) &&
+           getChainEdges(c).size() > 0;
+}
+
 auto Topology::addFreeVertex() -> VertexID
 {
     VertexID v(lastVertexID++);

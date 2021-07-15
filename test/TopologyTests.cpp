@@ -126,27 +126,29 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
                 }
             }
 
-/*             WHEN("The second Edge is deleted before making a Chain") */
-/*             { */
-/*                 topo.deleteEdge(edge2); */
-/*                 THEN("We get an error") */
-/*                 { */
-/*                     REQUIRE_FALSE(topo.makeChain(edge, edge2).has_value()); */
-/*                 } */
-/*             } */
+            WHEN("The second Edge is deleted before making a Chain")
+            {
+                topo.deleteEdge(edge2);
+                THEN("We get an error")
+                {
+                    Chain c = topo.makeChain(edge, edge2);
+                    REQUIRE_FALSE(topo.hasChain(c));
+                }
+            }
         }
 
-/*         WHEN("A second Edge is added with zero adjacencies to the first") */
-/*         { */
-/*             VertexID v3 = topo.addFreeVertex(); */
-/*             VertexID v4 = topo.addFreeVertex(); */
-/*             auto eitherEdge2 = topo.makeEdge(v3, v4); */
+        WHEN("A second Edge is added with zero adjacencies to the first")
+        {
+            VertexID v3 = topo.addFreeVertex();
+            VertexID v4 = topo.addFreeVertex();
+            auto edge2 = topo.makeEdge(v3, v4);
 
-/*             THEN("Trying to make a chain between them results in an error") */
-/*             { */
-/*                 REQUIRE_FALSE(topo.makeChain(edge, eitherEdge2.value()).has_value()); */
-/*             } */
-        /* } */
+            THEN("Trying to make a chain between them results in an error")
+            {
+                Chain c = topo.makeChain(edge, edge2);
+                REQUIRE_FALSE(topo.hasChain(c));
+            }
+        }
     }
 }
 
