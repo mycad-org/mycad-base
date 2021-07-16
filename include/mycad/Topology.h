@@ -31,6 +31,10 @@ namespace mycad::topo
         std::size_t whichLink;
     };
 
+    constexpr VertexID InvalidVertexID{-1};
+    constexpr EdgeID   InvalidEdgeID{-1};
+    constexpr Chain    InvalidChain{InvalidVertexID, 0};
+
     using VertexIDPair       = std::pair<VertexID, VertexID>;
     using EdgeIDs            = std::vector<EdgeID>;
 

@@ -82,7 +82,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 {
     if (not (vertices.contains(v1) && vertices.contains(v2)))
     {
-        return {-1};
+        return InvalidEdgeID;
     }
 
     auto hasSameVertices = [&v1, &v2](auto pair)
@@ -95,7 +95,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 
     if(ranges::any_of(edges, hasSameVertices))
     {
-        return {-1};
+        return InvalidEdgeID;
     }
 
     EdgeID edge(lastEdgeID++);
@@ -155,7 +155,7 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
 
     if (not hasVertex(v))
     {
-        return Chain({-1}, {0});
+        return InvalidChain;
     }
 
     auto &links = vertices.at(v).links;
@@ -164,14 +164,14 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
     auto fromLinkIt = ranges::find_if(links, linkedToEdge(fromEdge));
     if (fromLinkIt == links.end())
     {
-        return Chain({-1}, {0});
+        return InvalidChain;
     }
 
     // And one connected to the toEdge
     auto const toLinkIt = ranges::find_if(links, linkedToEdge(toEdge));
     if (toLinkIt == links.end())
     {
-        return Chain({-1}, {0});
+        return InvalidChain;
     }
 
     fromLinkIt->next = {{toLinkIt->parentVertexIndex, toLinkIt->parentEdgeIndex}};
@@ -217,7 +217,7 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
 {
     if (not hasEdge(edge))
     {
-        return {VertexID(-1), VertexID(-1)};
+        return {InvalidVertexID, InvalidVertexID};
     }
 
    auto const [left, right] = edges.at(edge);
@@ -228,7 +228,7 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
 {
     if (not (hasVertex(v) && hasEdge(e)))
     {
-        return VertexID(-1);
+        return InvalidVertexID;
     }
 
     auto const [left, right] = edges.at(e);
@@ -243,7 +243,7 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     }
     else
     {
-        return VertexID(-1);
+        return InvalidVertexID;
     }
 }
 
