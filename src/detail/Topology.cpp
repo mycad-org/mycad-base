@@ -31,9 +31,9 @@ auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
     {
         return {v2};
     }
-    else if (v3 == v4)
+    else if (v2 == v4)
     {
-        return {v3};
+        return {v2};
     }
     else
     {
