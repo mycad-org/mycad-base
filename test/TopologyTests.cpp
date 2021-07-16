@@ -114,9 +114,9 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
                 REQUIRE(std::ranges::count(edges, edge2) == 1);
             }
 
-            WHEN("A Chain is made between both edges")
+            WHEN("The two Edges are joined")
             {
-                auto chain = topo.makeChain(edge, edge2);
+                auto chain = topo.joinEdges(edge, edge2);
 
                 THEN("We can recover both Edges in order using the returned Chain")
                 {
@@ -124,12 +124,12 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
                 }
             }
 
-            WHEN("The second Edge is deleted before making a Chain")
+            WHEN("The second Edge is deleted before trying to join them")
             {
                 topo.deleteEdge(edge2);
                 THEN("We get an error")
                 {
-                    Chain c = topo.makeChain(edge, edge2);
+                    Chain c = topo.joinEdges(edge, edge2);
                     REQUIRE_FALSE(topo.hasChain(c));
                 }
             }
@@ -141,9 +141,9 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
             VertexID v4 = topo.addFreeVertex();
             auto edge2 = topo.makeEdge(v3, v4);
 
-            THEN("Trying to make a chain between them results in an error")
+            THEN("Trying to join them results in an error")
             {
-                Chain c = topo.makeChain(edge, edge2);
+                Chain c = topo.joinEdges(edge, edge2);
                 REQUIRE_FALSE(topo.hasChain(c));
             }
         }
@@ -165,31 +165,56 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("The first two are connected")
         {
-            Chain chain = topo.makeChain(e1, e2);
+            Chain chain = topo.joinEdges(e1, e2);
 
             THEN("The third is not part of the chain")
             {
-                auto edges = topo.getChainEdges({v1, e1});
+                auto edges = topo.getChainEdges(chain);
 
                 REQUIRE(std::ranges::count(edges, e3) == 0);
             }
 
             WHEN("The second two are connected")
             {
-                topo.makeChain(e2, e3);
+                Chain c2 = topo.joinEdges(e2, e3);
 
-                THEN("The third is still not part of the original chain")
+                THEN("The third is now part of the original chain")
                 {
                     auto edges = topo.getChainEdges(chain);
 
-                    REQUIRE(std::ranges::count(edges, e3) == 0);
+                    REQUIRE(std::ranges::count(edges, e3) == 1);
                 }
 
-                THEN("The third can be retrieved using v2 and e2")
+                THEN("The third can be retrieved using the second returned chain")
                 {
-                    auto edges = topo.getChainEdges({v2, e2});
+                    auto edges = topo.getChainEdges(c2);
 
-                    REQUIRE(edges == std::vector<EdgeID>{e2, e3});
+                    REQUIRE(std::ranges::count(edges, e3) == 1);
+                }
+
+                THEN("The second chain returns a sub-set of the first chain")
+                {
+                    auto edges1 = topo.getChainEdges(chain);
+                    auto edges2 = topo.getChainEdges(c2);
+
+                    // both must be sorted for ranges::includes to work
+                    std::ranges::sort(edges1);
+                    std::ranges::sort(edges2);
+
+                    REQUIRE(edges2.size() < edges1.size());
+                    REQUIRE(std::ranges::includes(edges1, edges2));
+                }
+            }
+
+            WHEN("The first chain is extended with the third Edge")
+            {
+                topo.extendChain(chain, e3);
+
+                THEN("All three edges can be retrieved")
+                {
+                    auto edges = topo.getChainEdges(chain);
+
+                    REQUIRE(edges == std::vector<EdgeID>{e1, e2, e3});
                 }
             }
         }

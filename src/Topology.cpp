@@ -59,9 +59,7 @@ auto Topology::hasEdge(EdgeID e) const -> bool
 
 auto Topology::hasChain(Chain c) const -> bool
 {
-    return hasVertex(c.vStart) &&
-           hasEdge(c.eStart) &&
-           getChainEdges(c).size() > 0;
+    return getChainEdges(c).size() > 0;
 }
 
 auto Topology::addFreeVertex() -> VertexID
@@ -151,13 +149,13 @@ auto linkedToEdge(EdgeID const e)
            {return l.parentEdgeIndex == e.index;};
 }
 
-auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain
+auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
 {
     auto const v = detail::getCommonVertexID(fromEdge, toEdge, edges);
 
     if (not hasVertex(v))
     {
-        return Chain({-1}, {-1});
+        return Chain({-1}, {0});
     }
 
     auto &links = vertices.at(v).links;
@@ -166,20 +164,31 @@ auto Topology::makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain
     auto fromLinkIt = ranges::find_if(links, linkedToEdge(fromEdge));
     if (fromLinkIt == links.end())
     {
-        return Chain({-1}, {-1});
+        return Chain({-1}, {0});
     }
 
     // And one connected to the toEdge
     auto const toLinkIt = ranges::find_if(links, linkedToEdge(toEdge));
     if (toLinkIt == links.end())
     {
-        return Chain({-1}, {-1});
+        return Chain({-1}, {0});
     }
 
     fromLinkIt->next = {{toLinkIt->parentVertexIndex, toLinkIt->parentEdgeIndex}};
 
-    VertexID fromVertex = oppositeVertex(v, fromEdge);
-    return {Chain(fromVertex, fromEdge)};
+    return {Chain(v, fromLinkIt - links.begin())};
+}
+
+auto Topology::extendChain(Chain c, EdgeID nextEdge) -> bool
+{
+    if (not (hasChain(c) || hasEdge(nextEdge)))
+    {
+        return false;
+    }
+
+    auto const lastEdge = getChainEdges(c).back();
+
+    return hasChain(joinEdges(lastEdge, nextEdge));
 }
 
 auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
@@ -221,6 +230,7 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     {
         return VertexID(-1);
     }
+
     auto const [left, right] = edges.at(e);
     int vid = v.index;
     if (left == vid)
@@ -239,32 +249,40 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
 
 auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
 {
-    auto [vertex, edge] = chain;
-    if (not (hasVertex(vertex) || hasEdge(edge)))
+    auto [vertex, whichlink] = chain;
+    if (not hasVertex(vertex))
     {
         return {};
     }
 
-    auto const oppVertex = oppositeVertex(vertex, edge);
-    if (not hasVertex(oppVertex))
+    auto links = vertices.at(vertex).links;
+    if (whichlink >= links.size())
     {
         return {};
     }
 
-    auto links = vertices.at(oppVertex).links;
-    auto const linkIt = ranges::find_if(links, linkedToEdge(edge));
+    auto link = links.at(whichlink);
 
-    if(linkIt != links.end())
+    EdgeIDs out{};
+
+    while(link.next)
     {
-        EdgeIDs out{edge};
+        out.push_back({link.parentEdgeIndex});
 
-        // this is recursive
-        detail::crawlLinks(*linkIt, out, vertices);
+        auto [chainVertex, chainEdge] = link.next.value();
 
-        return out;
+        auto oppVertex = oppositeVertex({chainVertex}, {chainEdge});
+        links = vertices.at(oppVertex).links;
+
+        link = *std::ranges::find_if(links, linkedToEdge({chainEdge}));
+    }
+    // get the last one
+    if (out.size() > 0)
+    {
+        out.push_back({link.parentEdgeIndex});
     }
 
-    return {};
+    return out;
 }
 
 auto Topology::streamTo(std::ostream &os) const -> void
@@ -315,7 +333,7 @@ auto mycad::topo::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream 
 
 auto mycad::topo::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
 {
-    os << "Chain: " << c.vStart << ", " << c.eStart;
+    os << "Chain: " << c.whichVertex << ", Link Number " << c.whichLink;
     return os;
 }
 

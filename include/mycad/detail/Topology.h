@@ -44,10 +44,6 @@ namespace mycad::topo::detail
                            std::map<EdgeID, Edge> const &es) -> VertexID;
 
     auto linkedToEdge(EdgeID const e);
-
-    // recursive function to collect all EdgeID
-    auto crawlLinks ( detail::Link const &curLink, std::vector<EdgeID> &chain, std::map<VertexID, detail::Vertex> const &vs)
-    -> std::vector<EdgeID> &;
 } // mycad::topo::detail
 
 #endif

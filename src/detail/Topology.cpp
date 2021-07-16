@@ -2,6 +2,7 @@
 #include "mycad/Topology.h"
 
 #include <algorithm>
+#include <iostream>
 
 using namespace mycad::topo;
 
@@ -45,25 +46,3 @@ auto detail::linkedToEdge(EdgeID const e)
     return [e](detail::Link const l)
            {return l.parentEdgeIndex == e.index;};
 }
-
-
-auto detail::crawlLinks (detail::Link const &curLink, std::vector<EdgeID> &chain,
-                         std::map<VertexID, detail::Vertex> const &vs)
--> std::vector<EdgeID> &
-{
-    if(curLink.next)
-    {
-        auto const [nextVertex, nextEdge] = curLink.next.value();
-        chain.push_back(EdgeID(nextEdge));
-
-        auto const &links = vs.at({nextVertex}).links;
-        auto nextLinkIt = std::ranges::find_if(links, linkedToEdge(EdgeID(nextEdge)));
-        if(nextLinkIt != links.end())
-        {
-            return crawlLinks(*nextLinkIt, chain, vs);
-        }
-    }
-
-    return chain;
-}
-

@@ -27,8 +27,8 @@ namespace mycad::topo
 
     struct Chain
     {
-        VertexID vStart;
-        EdgeID eStart;
+        VertexID whichVertex;
+        std::size_t whichLink;
     };
 
     using VertexIDPair       = std::pair<VertexID, VertexID>;
@@ -60,7 +60,15 @@ namespace mycad::topo
              *      1. either Edge does not exist in the Toploogy
              *      2. the two Edge do not share a common vertex
              */
-            auto makeChain(EdgeID fromEdge, EdgeID toEdge) -> Chain;
+            auto joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain;
+
+            /** returns false if:
+             *      1. the Chain or Edge provided are invalid in the topology
+             *      2. The Edge provided does not have a common Vertex with the
+             *         last Edge in the existing Chain
+             *      3. The provided Chain is alread closed
+             */
+            auto extendChain(Chain c, EdgeID nextEdge) -> bool;
 
             /** @returns empty vector if valid vertex is 'free'
              *  @returns error sring if the vertex does not exist in the
