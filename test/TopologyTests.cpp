@@ -219,4 +219,38 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
             }
         }
     }
+
+    GIVEN("Three Edge with one common Vertex")
+    {
+        Topology topo;
+        auto v0 = topo.addFreeVertex();
+        auto v1 = topo.addFreeVertex();
+        auto v2 = topo.addFreeVertex();
+        auto v3 = topo.addFreeVertex();
+        auto e0 = topo.makeEdge(v1, v0);
+        auto e1 = topo.makeEdge(v2, v0);
+        auto e2 = topo.makeEdge(v3, v0);
+
+        WHEN("Edge e0 is joined to e1")
+        {
+            Chain c = topo.joinEdges(e0, e1);
+
+            REQUIRE(topo.hasChain(c));
+
+            THEN("Edge e0 cannot be used again as a FROM Edge in joinEdges")
+            {
+                Chain c2 = topo.joinEdges(e0, e2);
+
+                REQUIRE_FALSE(topo.hasChain(c2));
+            }
+
+            THEN("Edge e0 CAN be used as a TO Edge in joinEdges")
+            {
+                Chain c2   = topo.joinEdges(e2, e0);
+                auto edges = topo.getChainEdges(c2);
+
+                REQUIRE(edges == std::vector<EdgeID>{e2, e0});
+            }
+        }
+    }
 }
