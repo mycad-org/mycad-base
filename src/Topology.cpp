@@ -153,6 +153,7 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
 {
     auto const v = detail::getCommonVertexID(fromEdge, toEdge, edges);
 
+    // getCommonVertexID already checked if the edges belong to the topology
     if (not hasVertex(v))
     {
         return InvalidChain;
