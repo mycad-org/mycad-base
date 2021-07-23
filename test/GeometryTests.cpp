@@ -2,14 +2,15 @@
 #include "Arbitrary.h"
 
 #include <catch2/catch.hpp>
-#include "rapidcheck.h"
 #include "rapidcheck/catch.h"
 
 using namespace mycad::geom;
 
-SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
+SCENARIO( "001: Line Geometry", "[geometry][line]" )
+{
     rc::prop("A line cannot be constructed with only one point",
-        [](Point const &p1) {
+        [](Point const &p1)
+        {
             MaybeLine eLine = makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
         },
@@ -17,7 +18,8 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     );
 
     rc::prop("A line is parametrized from u=0 to u=1",
-        []() {
+        []()
+        {
             Point p1 = *rc::gen::arbitrary<Point>();
             Point p2 = *rc::gen::distinctFrom(p1);
 
@@ -31,7 +33,8 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     );
 
     rc::prop("Any point on the line intersects the line",
-        [](Line const &line) {
+        [](Line const &line)
+        {
             float u = *rc::gen::inRange(0, 1);
             Point const &p = line.atU(u);
             RC_ASSERT(line.intersects(p));
@@ -40,7 +43,8 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" ) {
     );
 
     rc::prop("Any point off the line does not intersect the line",
-        [](Line const &line) {
+        [](Line const &line)
+        {
             float u = *rc::gen::inRange(0, 1);
             Point p = line.atU(u);
 
