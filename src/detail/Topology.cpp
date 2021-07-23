@@ -46,3 +46,39 @@ auto detail::linkedToEdge(EdgeID const e)
     return [e](detail::Link const l)
            {return l.parentEdgeIndex == e.index;};
 }
+
+auto detail::isFromEdge
+    (EdgeID const fromEdge,
+     std::vector<detail::Link> const &commonVertexLinks) -> bool
+{
+    return
+        std::ranges::any_of(
+            commonVertexLinks,
+            [fromEdge](detail::Link const &link)
+            {
+                if (link.parentEdgeIndex != fromEdge.index)
+                {
+                    return false;
+                }
+
+                return link.next.has_value();
+            });
+}
+
+auto detail::isToEdge
+    (EdgeID const toEdge,
+     std::vector<detail::Link> const &commonVertexLinks) -> bool
+{
+    return
+        std::ranges::any_of(
+            commonVertexLinks,
+            [toEdge](detail::Link const &link)
+            {
+                if (!link.next)
+                {
+                    return false;
+                }
+
+                return link.next->second == toEdge.index;
+            });
+}

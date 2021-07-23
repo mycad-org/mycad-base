@@ -44,6 +44,10 @@ namespace mycad::topo::detail
                            std::map<EdgeID, Edge> const &es) -> VertexID;
 
     auto linkedToEdge(EdgeID const e);
+    auto isFromEdge(EdgeID const fromEdge,
+                    std::vector<Link> const &commonVertexLinks) -> bool;
+    auto isToEdge  (EdgeID const fromEdge,
+                    std::vector<Link> const &commonVertexLinks) -> bool;
 } // mycad::topo::detail
 
 #endif

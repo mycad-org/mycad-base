@@ -161,6 +161,12 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
 
     auto &links = vertices.at(v).links;
 
+    // Any Edge can only be used **once** as a fromEdge or toEdge
+    if (isFromEdge(fromEdge, links) || isToEdge(toEdge, links))
+    {
+        return InvalidChain;
+    }
+
     // The common Vertex should have a Link to the fromEdge
     auto fromLinkIt = ranges::find_if(links, linkedToEdge(fromEdge));
     if (fromLinkIt == links.end())
