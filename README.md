@@ -18,64 +18,55 @@ your own projects.
 Example
 =======
 
-Please see [this example][./test/examplec.cpp] for a fully compilable and
-runnable example. Below you'll get some highlights:
+Please see [the examples directory][./examples] for samples that fully compile
+and run. Here are a few highlights:
 
 ```cpp
 int main()
 {
-    // All functionality is provided in the `mycad` namespace
-
-    mycad::geom::Point p1(10, 20, 30);
-    mycad::geom::Point p2(40, 50, 60);
-
-    // Some function return a `std::optional`
-    auto maybeLine1 = mycad::geom::makeLine(p1, p2);
-    auto maybeLine2 = mycad::geom::makeLine(p1, p1);
-
-    if (maybeLine1)
-    {
-        // this is safe now
-        mycad::geom::Line line = maybeLine1.value();
-
-        // Again, handy streaming operator
-        std::cout << line << '\n';
-        // output: Line: (10, 20, 30) → (40, 50, 60)
-    }
-
-    if(not maybeLine2)
-    {
-        // oh no, something happened!
-        // maybe ask the user to try again? in a loop?
-    }
-
-    //.... these geometric facilities will grow and scale with the needs of mycad
-
-    /*======================================================================*/
-
-    // A topology is used to keep track of relationships
+int main()
+{
+    // The plan is for mycad-entity to merge the functionalities of
+    // mycad-geometry and mycad-topology. Something like this
+    std::map<mycad::topo::VertexID, mycad::geom::Point> vertices;
+    std::map<mycad::topo::EdgeID, mycad::geom::Line> edges;
     mycad::topo::Topology topo;
 
-    // A 'free' vertex is not connected to anything. Notice that Topology only
-    // return an "ID" to the Vertex, not the Vertex itself.
-    mycad::topo::VertexID v1 = topo.addFreeVertex();
-    mycad::topo::VertexID v2 = topo.addFreeVertex();
+    // now the user can draw points, connect them into lines, and then we can
+    // tell them later which are joined together.
+    mycad::geom::Point p1(10, 10, 0); // similarly p2, p3, p4...
 
-    // Two free vertices can be connected by an Edge. Every Edge has exactly two
-    // vertices associated with it
-    mycad::topo::EdgeID edge = topo.makeEdge(v1, v2);
+    // NOTE: we get the value directly from the `std::optional` because we are
+    // very confident that these calls will succeed. Generally, this should be
+    // checked programatically.
+    auto l1 = mycad::geom::makeLine(p1, p2).value(); // l2, l3
 
-    // Now, we can query the relationships
-    auto [left, right] = topo.getEdgeVertices(edge);
+    auto v1 = topo.addFreeVertex(); // v2, v3, v4
 
-    std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
-              << "    Vertex ID = " << left.index << '\n'
-              << "    Vertex ID = " << right.index << '\n';
+    auto e1 = topo.makeEdge(v1, v2); // e2, e3
 
-    // output:
-    // The edge with ID = 0 is adjacent to:
-    //     Vertex ID = 0
-    //     Vertex ID = 1
+    auto chain = topo.joinEdges(e1, e2);
+    topo.joinEdges(e2, e3);
+
+    // Here's a visual of what we've created
+    //
+    //   v4/p4         v1/p1
+    // (0, 10, 0)   (10, 10, 0)
+    //    ○              ○
+    //    │              │
+    //    │              │
+    //    │e3/l3         │ e1/l2
+    //    │              │
+    //    │    e2/l2     │
+    //    ○ ──────────── ○
+    // (0,0,0)       (10, 0, 0)
+    //  v3/p3          v2/p2
+
+    auto edges = topo.getChainEdges(chain); // retrieves e1, e2, and e3
+    auto [left, right] = topo.getEdgeVertices(e1); // retrieves v1 and v2
+    auto left = topo.oppositeVertex(right, e1); // retrieves v1
+}
+
 }
 
 ```
