@@ -11,6 +11,13 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
 include_directories(include)
 add_subdirectory(src)
+
+set(MYCAD_BUILD_EXAMPLES FALSE CACHE BOOL "Whether to build the examples programs")
+
+if(MYCAD_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
 include(CTest)
 
 if(BUILD_TESTING)
