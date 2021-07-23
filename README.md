@@ -24,8 +24,6 @@ and run. Here are a few highlights:
 ```cpp
 int main()
 {
-int main()
-{
     // The plan is for mycad-entity to merge the functionalities of
     // mycad-geometry and mycad-topology. Something like this
     std::map<mycad::topo::VertexID, mycad::geom::Point> vertices;
@@ -66,9 +64,6 @@ int main()
     auto [left, right] = topo.getEdgeVertices(e1); // retrieves v1 and v2
     auto left = topo.oppositeVertex(right, e1); // retrieves v1
 }
-
-}
-
 ```
 
 Building
