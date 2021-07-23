@@ -251,6 +251,13 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
                 REQUIRE(edges == std::vector<EdgeID>{e2, e0});
             }
+
+            THEN("Edge e1 cannot be used as a TO edge in joinEdges")
+            {
+                Chain c2 = topo.joinEdges(e2, e1);
+
+                REQUIRE_FALSE(topo.hasChain(c2));
+            }
         }
     }
 }
