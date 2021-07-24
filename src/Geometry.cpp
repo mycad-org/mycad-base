@@ -3,9 +3,9 @@
 #include <cmath> // std::lerp (since c++20)
 #include <iostream>
 
-using namespace mycad::geom;
+using namespace mycad;
 
-auto mycad::geom::makeLine(Point const &p1, Point const &p2) -> MaybeLine
+auto mycad::makeLine(Point const &p1, Point const &p2) -> MaybeLine
 {
     if (p1 == p2)
     {
@@ -59,13 +59,13 @@ auto Line::intersects(Point const &p) const -> bool
     return p == this->atU(u);
 }
 
-auto mycad::geom::operator<<(std::ostream &stream, Point const &p) -> std::ostream &
+auto mycad::operator<<(std::ostream &stream, Point const &p) -> std::ostream &
 {
     stream << "(" << p.x << ", " << p.y << ", " << p.z << ")";
     return stream;
 }
 
-auto mycad::geom::operator<<(std::ostream &stream, Line const &line) -> std::ostream &
+auto mycad::operator<<(std::ostream &stream, Line const &line) -> std::ostream &
 {
     stream << "Line: " << line.atU(0) << " → " << line.atU(1);
     return stream;

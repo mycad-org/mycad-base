@@ -4,14 +4,12 @@
 #include <catch2/catch.hpp>
 #include "rapidcheck/catch.h"
 
-using namespace mycad::geom;
-
 SCENARIO( "001: Line Geometry", "[geometry][line]" )
 {
     rc::prop("A line cannot be constructed with only one point",
-        [](Point const &p1)
+        [](mycad::Point const &p1)
         {
-            MaybeLine eLine = makeLine(p1, p1);
+            mycad::MaybeLine eLine = mycad::makeLine(p1, p1);
             RC_ASSERT_FALSE(eLine.has_value());
         },
         /* verbose= */ true
@@ -20,33 +18,33 @@ SCENARIO( "001: Line Geometry", "[geometry][line]" )
     rc::prop("A line is parametrized from u=0 to u=1",
         []()
         {
-            Point p1 = *rc::gen::arbitrary<Point>();
-            Point p2 = *rc::gen::distinctFrom(p1);
+            auto p1 = *rc::gen::arbitrary<mycad::Point>();
+            auto p2 = *rc::gen::distinctFrom(p1);
 
-            MaybeLine eLine = makeLine(p1, p2);
+            mycad::MaybeLine eLine = mycad::makeLine(p1, p2);
             RC_ASSERT(eLine.has_value());
 
-            Line const &line = eLine.value();
+            mycad::Line const &line = eLine.value();
             RC_ASSERT(line.atU(0) == p1);
             RC_ASSERT(line.atU(1) == p2);
         }
     );
 
     rc::prop("Any point on the line intersects the line",
-        [](Line const &line)
+        [](mycad::Line const &line)
         {
             float u = *rc::gen::inRange(0, 1);
-            Point const &p = line.atU(u);
+            mycad::Point const &p = line.atU(u);
             RC_ASSERT(line.intersects(p));
         },
         /* verbose= */ true
     );
 
     rc::prop("Any point off the line does not intersect the line",
-        [](Line const &line)
+        [](mycad::Line const &line)
         {
             float u = *rc::gen::inRange(0, 1);
-            Point p = line.atU(u);
+            mycad::Point p = line.atU(u);
 
             // This is probably more complex than it needs to be, but what we're
             // going to do is offset one or more of the (x,y,z) components of

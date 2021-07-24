@@ -9,7 +9,7 @@ using namespace mycad;
 SCENARIO( "004: Vertex Entity", "[entity][vertex]" )
 {
     rc::prop("A Point can be recovered using a Vertex",
-        [](geom::Point const &point)
+        [](Point const &point)
         {
             Entity entity;
             auto vertex = entity.addVertex(point);

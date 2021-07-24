@@ -5,8 +5,10 @@
 #include <optional>
 #include <utility>
 
-namespace mycad::geom {
-    struct Point {
+namespace mycad
+{
+    struct Point
+    {
         float x, y, z;
 
         auto operator<=>(Point const&) const = default;
@@ -55,7 +57,7 @@ namespace mycad::geom {
     auto operator<<(std::ostream &stream, Point const &p) -> std::ostream &;
     auto operator<<(std::ostream &stream, Line const &line)-> std::ostream &;
 
-} // namespace mycad::geom
+} // namespace mycad
 
 
 #endif // MYCAD_GEOMETRY_HEADER

@@ -2,7 +2,7 @@
 
 using namespace mycad;
 
-auto Entity::addVertex(geom::Point const p) -> topo::VertexID
+auto Entity::addVertex(Point const p) -> topo::VertexID
 {
     auto v = topo.addFreeVertex();
     vertices.emplace(v, p);
@@ -10,7 +10,7 @@ auto Entity::addVertex(geom::Point const p) -> topo::VertexID
     return v;
 }
 
-auto Entity::getPoint(topo::VertexID const v) -> geom::Point
+auto Entity::getPoint(topo::VertexID const v) -> Point
 {
     return vertices.at(v);
 }

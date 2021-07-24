@@ -8,23 +8,23 @@ int main()
 {
     // The plan is for mycad-entity to merge the functionalities of
     // mycad-geometry and mycad-topology. Something like this
-    std::map<mycad::topo::VertexID, mycad::geom::Point> vertices;
-    std::map<mycad::topo::EdgeID, mycad::geom::Line> edges;
+    std::map<mycad::topo::VertexID, mycad::Point> vertices;
+    std::map<mycad::topo::EdgeID, mycad::Line> edges;
     mycad::topo::Topology topo;
 
     // now the user can draw points, connect them inte lines, and then we can
     // tell them later which are joined together.
-    mycad::geom::Point p1(10, 10, 0);
-    mycad::geom::Point p2(10,  0, 0);
-    mycad::geom::Point p3( 0,  0, 0);
-    mycad::geom::Point p4( 0, 10, 0);
+    mycad::Point p1(10, 10, 0);
+    mycad::Point p2(10,  0, 0);
+    mycad::Point p3( 0,  0, 0);
+    mycad::Point p4( 0, 10, 0);
 
     // NOTE: we get the value directly from the `std::optional` because we are
     // very confident that these calls will succeed. Generally, this should be
     // checked programatically.
-    auto l1 = mycad::geom::makeLine(p1, p2).value();
-    auto l2 = mycad::geom::makeLine(p2, p3).value();
-    auto l3 = mycad::geom::makeLine(p3, p4).value();
+    auto l1 = mycad::makeLine(p1, p2).value();
+    auto l2 = mycad::makeLine(p2, p3).value();
+    auto l3 = mycad::makeLine(p3, p4).value();
 
     auto v1 = topo.addFreeVertex();
     auto v2 = topo.addFreeVertex();
@@ -73,7 +73,7 @@ int main()
     // complete the request:
     //
     // 1. lookup p1 and p2 in the vertices map
-    // 2, create a `mycad::geom::Line` between the two points
+    // 2, create a `mycad::Line` between the two points
     // 3. update the topology accordingly
 }
 

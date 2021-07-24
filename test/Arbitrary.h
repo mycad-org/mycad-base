@@ -2,26 +2,24 @@
 
 #include "rapidcheck.h"
 
-using namespace mycad::geom;
-
 namespace rc{
     template<>
-    struct Arbitrary<Point> {
-        static Gen<Point> arbitrary() {
-            return gen::build<Point>(
-                gen::set(&Point::x),
-                gen::set(&Point::y),
-                gen::set(&Point::z)
+    struct Arbitrary<mycad::Point> {
+        static Gen<mycad::Point> arbitrary() {
+            return gen::build<mycad::Point>(
+                gen::set(&mycad::Point::x),
+                gen::set(&mycad::Point::y),
+                gen::set(&mycad::Point::z)
             );
         }
     };
 
     template<>
-    struct Arbitrary<Line> {
-        static Gen<Line> arbitrary() {
+    struct Arbitrary<mycad::Line> {
+        static Gen<mycad::Line> arbitrary() {
             return gen::exec([]() {
-                Point p1 = *gen::arbitrary<Point>();
-                Point p2 = *gen::distinctFrom(p1);
+                auto p1 = *gen::arbitrary<mycad::Point>();
+                auto p2 = *gen::distinctFrom(p1);
                 return makeLine(p1, p2).value();
                 }
             );
