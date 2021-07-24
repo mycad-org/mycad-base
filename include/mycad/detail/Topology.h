@@ -12,12 +12,12 @@ namespace mycad::detail
 {
     struct Link
     {
-        int parentVertexIndex = 0;
-        int parentEdgeIndex = 0;
+        VertexID parentVertex = 0;
+        EdgeID   parentEdge   = 0;
         // optional({nextVertexID, nextEdgeID}) - I couldn't find a reasonably
         // 'easy' way to make this optional(Link). I guess I could use a Link*
         // but I'd rather keep it simple like this for now.
-        std::optional<std::pair<int, int>> next = {};
+        std::optional<std::pair<VertexID, EdgeID>> next = {};
 
         auto operator<=>(Link const &other) const = default;
     };
@@ -31,8 +31,8 @@ namespace mycad::detail
 
     struct Edge
     {
-        int leftVertexID;
-        int rightVertexID;
+        VertexID leftV;
+        VertexID rightV;
 
         auto operator<=>(Edge const &other) const = default;
     };

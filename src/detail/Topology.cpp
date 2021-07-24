@@ -13,7 +13,7 @@ auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
     auto pair2 = es.find(edge2);
     if (pair1 == es.end() || pair2 == es.end())
     {
-        return {-1};
+        return InvalidVertexID;
     }
 
     auto [v1, v2] = pair1->second;
@@ -21,30 +21,30 @@ auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
 
     if (v1 == v3)
     {
-        return {v1};
+        return v1;
     }
     else if (v1 == v4)
     {
-        return {v1};
+        return v1;
     }
     else if (v2 == v3)
     {
-        return {v2};
+        return v2;
     }
     else if (v2 == v4)
     {
-        return {v2};
+        return v2;
     }
     else
     {
-        return {-1};
+        return InvalidVertexID;
     }
 }
 
 auto detail::linkedToEdge(EdgeID const e)
 {
     return [e](detail::Link const l)
-           {return l.parentEdgeIndex == e;};
+           {return l.parentEdge == e;};
 }
 
 auto detail::isFromEdge
@@ -56,7 +56,7 @@ auto detail::isFromEdge
             commonVertexLinks,
             [fromEdge](detail::Link const &link)
             {
-                if (link.parentEdgeIndex != fromEdge)
+                if (link.parentEdge != fromEdge)
                 {
                     return false;
                 }

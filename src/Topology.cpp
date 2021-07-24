@@ -127,7 +127,7 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
         auto parentEdgeMatches =
             [edge](detail::Link const &link)
                 {
-                    return link.parentEdgeIndex == edge;
+                    return link.parentEdge == edge;
                 };
 
         ranges::for_each(vertices,
@@ -146,7 +146,7 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
 auto linkedToEdge(EdgeID const e)
 {
     return [e](detail::Link const l)
-           {return l.parentEdgeIndex == e;};
+           {return l.parentEdge == e;};
 }
 
 auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
@@ -181,7 +181,7 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
         return InvalidChain;
     }
 
-    fromLinkIt->next = {{toLinkIt->parentVertexIndex, toLinkIt->parentEdgeIndex}};
+    fromLinkIt->next = {{toLinkIt->parentVertex, toLinkIt->parentEdge}};
 
     return {Chain(v, fromLinkIt - links.begin())};
 }
@@ -209,7 +209,7 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
         [v](auto const &pair)
         {
             auto const &[key, e] = pair;
-            return (e.leftVertexID == v) || (e.rightVertexID == v);
+            return (e.leftV == v) || (e.rightV == v);
         };
 
     auto view =
@@ -228,7 +228,7 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
     }
 
    auto const [left, right] = edges.at(edge);
-   return std::make_pair(VertexID(left), VertexID(right));
+   return std::make_pair(left, right);
 }
 
 auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
@@ -242,11 +242,11 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     int vid = v;
     if (left == vid)
     {
-        return VertexID(right);
+        return right;
     }
     else if (right == vid)
     {
-        return VertexID(left);
+        return left;
     }
     else
     {
@@ -274,7 +274,7 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
 
     while(link.next)
     {
-        out.push_back({link.parentEdgeIndex});
+        out.push_back({link.parentEdge});
 
         auto [chainVertex, chainEdge] = link.next.value();
 
@@ -286,7 +286,7 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
     // get the last one
     if (out.size() > 0)
     {
-        out.push_back({link.parentEdgeIndex});
+        out.push_back({link.parentEdge});
     }
 
     return out;
@@ -306,8 +306,8 @@ auto Topology::streamTo(std::ostream &os) const -> void
         for (auto const &link : v.links)
         {
             os << "        link" << "\n"
-               << "            parentVertex = " << link.parentVertexIndex << '\n'
-               << "            parentEdge   = " << link.parentEdgeIndex << '\n';
+               << "            parentVertex = " << link.parentVertex << '\n'
+               << "            parentEdge   = " << link.parentEdge << '\n';
             if (link.next)
             {
                 auto const [nextVertex, nextEdge] = link.next.value();
@@ -321,8 +321,8 @@ auto Topology::streamTo(std::ostream &os) const -> void
     for (auto const &[key, edge] : edges)
     {
         os << "    eid: " << key << "\n"
-           << "        leftVertexID = " << edge.leftVertexID << "\n"
-           << "        rightVertexID = " << edge.rightVertexID << std::endl;
+           << "        leftVertexID = " << edge.leftV << "\n"
+           << "        rightVertexID = " << edge.rightV<< std::endl;
     }
 }
 

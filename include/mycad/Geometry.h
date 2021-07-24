@@ -5,6 +5,8 @@
 #include <optional>
 #include <utility>
 
+#include "mycad/Types.h"
+
 namespace mycad
 {
     struct Point
@@ -13,9 +15,6 @@ namespace mycad
 
         auto operator<=>(Point const&) const = default;
     };
-
-    class Line;
-    using MaybeLine  = std::optional<Line>;
 
     /** @brief Parametrized _from_ @param p1 _to_ @param p2
      *
