@@ -44,7 +44,7 @@ auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
 auto detail::linkedToEdge(EdgeID const e)
 {
     return [e](detail::Link const l)
-           {return l.parentEdgeIndex == e.index;};
+           {return l.parentEdgeIndex == e;};
 }
 
 auto detail::isFromEdge
@@ -56,7 +56,7 @@ auto detail::isFromEdge
             commonVertexLinks,
             [fromEdge](detail::Link const &link)
             {
-                if (link.parentEdgeIndex != fromEdge.index)
+                if (link.parentEdgeIndex != fromEdge)
                 {
                     return false;
                 }
@@ -79,6 +79,6 @@ auto detail::isToEdge
                     return false;
                 }
 
-                return link.next->second == toEdge.index;
+                return link.next->second == toEdge;
             });
 }

@@ -8,11 +8,6 @@
 
 #include "mycad/Types.h"
 
-namespace mycad
-{
-    struct EdgeID;
-} // namespace mycad
-
 namespace mycad::detail
 {
     struct Link

@@ -106,8 +106,8 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
     detail::Vertex &rightVertex = vertices.at(v2);
 
     // Update vertices with the appropriate links
-    leftVertex.links.emplace_back(v1, edge.index);
-    rightVertex.links.emplace_back(v2, edge.index);
+    leftVertex.links.emplace_back(v1, edge);
+    rightVertex.links.emplace_back(v2, edge);
 
     return edge;
 }
@@ -127,7 +127,7 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
         auto parentEdgeMatches =
             [edge](detail::Link const &link)
                 {
-                    return link.parentEdgeIndex == edge.index;
+                    return link.parentEdgeIndex == edge;
                 };
 
         ranges::for_each(vertices,
@@ -146,7 +146,7 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
 auto linkedToEdge(EdgeID const e)
 {
     return [e](detail::Link const l)
-           {return l.parentEdgeIndex == e.index;};
+           {return l.parentEdgeIndex == e;};
 }
 
 auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
@@ -320,7 +320,7 @@ auto Topology::streamTo(std::ostream &os) const -> void
     os << "edges:" << std::endl;
     for (auto const &[key, edge] : edges)
     {
-        os << "    eid: " << key.index << "\n"
+        os << "    eid: " << key << "\n"
            << "        leftVertexID = " << edge.leftVertexID << "\n"
            << "        rightVertexID = " << edge.rightVertexID << std::endl;
     }
@@ -332,11 +332,11 @@ auto Topology::streamTo(std::ostream &os) const -> void
 /*     return os; */
 /* } */
 
-auto mycad::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
-{
-    os << "E" << std::to_string(e.index);
-    return os;
-}
+/* auto mycad::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream & */
+/* { */
+/*     os << "E" << std::to_string(e); */
+/*     return os; */
+/* } */
 
 auto mycad::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
 {

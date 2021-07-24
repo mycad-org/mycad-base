@@ -19,7 +19,7 @@ int main()
     // Now, we can query the relationships
     auto [left, right] = topo.getEdgeVertices(edge);
 
-    std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
+    std::cout << "The edge with ID = " << edge << " is adjacent to:" << '\n'
               << "    Vertex ID = " << left << '\n'
               << "    Vertex ID = " << right << '\n';
     // output:
