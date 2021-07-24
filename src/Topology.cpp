@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <iostream>
 
-using namespace mycad::topo;
+using namespace mycad;
 namespace ranges = std::ranges;
 
 /**
@@ -326,25 +326,25 @@ auto Topology::streamTo(std::ostream &os) const -> void
     }
 }
 
-auto mycad::topo::operator<<(std::ostream &os, VertexID const &v) -> std::ostream &
+auto mycad::operator<<(std::ostream &os, VertexID const &v) -> std::ostream &
 {
     os << "V" << std::to_string(v.index);
     return os;
 }
 
-auto mycad::topo::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
+auto mycad::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
 {
     os << "E" << std::to_string(e.index);
     return os;
 }
 
-auto mycad::topo::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
+auto mycad::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
 {
     os << "Chain: " << c.whichVertex << ", Link Number " << c.whichLink;
     return os;
 }
 
-auto mycad::topo::operator<<(std::ostream &os, Topology const &topo) -> std::ostream &
+auto mycad::operator<<(std::ostream &os, Topology const &topo) -> std::ostream &
 {
     topo.streamTo(os);
     return os;

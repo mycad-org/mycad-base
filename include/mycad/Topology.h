@@ -9,7 +9,7 @@
 #include <utility> // std::pair
 #include <vector>
 
-namespace mycad::topo
+namespace mycad
 {
     struct VertexID
     {

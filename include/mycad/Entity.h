@@ -11,13 +11,13 @@ namespace mycad
     class Entity
     {
         public:
-            auto addVertex(Point const p) -> topo::VertexID;
+            auto addVertex(Point const p) -> VertexID;
 
-            auto getPoint(topo::VertexID const v) -> Point;
+            auto getPoint(VertexID const v) -> Point;
 
         private:
-            std::map<topo::VertexID, Point> vertices = {};
-            topo::Topology topo = topo::Topology();
+            std::map<VertexID, Point> vertices = {};
+            Topology topo = Topology();
     };
 } // namespace mycad
 

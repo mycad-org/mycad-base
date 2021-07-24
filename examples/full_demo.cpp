@@ -8,9 +8,9 @@ int main()
 {
     // The plan is for mycad-entity to merge the functionalities of
     // mycad-geometry and mycad-topology. Something like this
-    std::map<mycad::topo::VertexID, mycad::Point> vertices;
-    std::map<mycad::topo::EdgeID, mycad::Line> edges;
-    mycad::topo::Topology topo;
+    std::map<mycad::VertexID, mycad::Point> vertices;
+    std::map<mycad::EdgeID, mycad::Line> edges;
+    mycad::Topology topo;
 
     // now the user can draw points, connect them inte lines, and then we can
     // tell them later which are joined together.

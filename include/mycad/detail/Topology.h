@@ -6,12 +6,13 @@
 #include <string>
 #include <vector>
 
-namespace mycad::topo
+namespace mycad
 {
     struct VertexID;
     struct EdgeID;
-} // namespace mycad::topo
-namespace mycad::topo::detail
+} // namespace mycad
+
+namespace mycad::detail
 {
     struct Link
     {
@@ -48,6 +49,6 @@ namespace mycad::topo::detail
                     std::vector<Link> const &commonVertexLinks) -> bool;
     auto isToEdge  (EdgeID const fromEdge,
                     std::vector<Link> const &commonVertexLinks) -> bool;
-} // mycad::topo::detail
+} // mycad::detail
 
 #endif

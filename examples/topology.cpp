@@ -5,16 +5,16 @@
 int main()
 {
     // A topology is used to keep track of relationships
-    mycad::topo::Topology topo;
+    mycad::Topology topo;
 
     // A 'free' vertex is not connected to anything. Notice that Topology only
     // return an "ID" to the Vertex, not the Vertex itself.
-    mycad::topo::VertexID v1 = topo.addFreeVertex();
-    mycad::topo::VertexID v2 = topo.addFreeVertex();
+    mycad::VertexID v1 = topo.addFreeVertex();
+    mycad::VertexID v2 = topo.addFreeVertex();
 
     // Two free vertices can be connected by an Edge. Every Edge has exactly two
     // vertices associated with it
-    mycad::topo::EdgeID edge = topo.makeEdge(v1, v2);
+    mycad::EdgeID edge = topo.makeEdge(v1, v2);
 
     // Now, we can query the relationships
     auto [left, right] = topo.getEdgeVertices(edge);
@@ -41,8 +41,8 @@ int main()
     auto shortChain = topo.joinEdges(e3, e4);
 
     // We can retrieve the Edges that have been chained together
-    std::vector<mycad::topo::EdgeID> edges = topo.getChainEdges(chain);
-    std::vector<mycad::topo::EdgeID> shortEdges = topo.getChainEdges(shortChain);
+    std::vector<mycad::EdgeID> edges = topo.getChainEdges(chain);
+    std::vector<mycad::EdgeID> shortEdges = topo.getChainEdges(shortChain);
 
     // shortEdges will only contain a sub-set of edges - specifically, it will
     // only contain e3 and e4

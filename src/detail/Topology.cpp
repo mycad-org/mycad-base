@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <iostream>
 
-using namespace mycad::topo;
+using namespace mycad;
 
 auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
                                std::map<EdgeID, Edge> const &es) -> VertexID

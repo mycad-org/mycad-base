@@ -8,8 +8,6 @@
 #include <set>
 #include <iostream>
 
-using namespace mycad::topo;
-
 SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 {
     rc::prop("Each Vertex is given a unique ID",
@@ -19,7 +17,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             std::set<int> vals;
 
-            Topology topo;
+            mycad::Topology topo;
             for(unsigned int i=0; i <= n; i++)
             {
                 auto [id] = topo.addFreeVertex();
@@ -34,15 +32,15 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
     GIVEN("Two Vertices")
     {
-        Topology topo;
+        mycad::Topology topo;
 
-        VertexID v1 = topo.addFreeVertex();
-        VertexID v2 = topo.addFreeVertex();
+        mycad::VertexID v1 = topo.addFreeVertex();
+        mycad::VertexID v2 = topo.addFreeVertex();
 
         WHEN("An Edge is created between them")
         {
-            Topology orig = topo;
-            EdgeID edge   = topo.makeEdge(v1, v2);
+            mycad::Topology orig = topo;
+            mycad::EdgeID edge   = topo.makeEdge(v1, v2);
 
             THEN("The returned Edge is valid within the Topology")
             {
@@ -52,13 +50,13 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
                 // Either Edge ID from V₁
-                REQUIRE( topo.edgesAdjacentToVertex(v1) == EdgeIDs{edge});
-                REQUIRE( topo.edgesAdjacentToVertex(v2) == EdgeIDs{edge});
+                REQUIRE( topo.edgesAdjacentToVertex(v1) == mycad::EdgeIDs{edge});
+                REQUIRE( topo.edgesAdjacentToVertex(v2) == mycad::EdgeIDs{edge});
             }
 
             THEN("Both Vertices are adjacent to the Edge")
             {
-                REQUIRE(topo.getEdgeVertices(edge) == VertexIDPair{v1, v2});
+                REQUIRE(topo.getEdgeVertices(edge) == mycad::VertexIDPair{v1, v2});
             }
 
             THEN("Either Vertex can be used to find the other across the Edge")
@@ -84,8 +82,8 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             THEN("We cannot create a second Edge")
             {
-                EdgeID sameOrder = topo.makeEdge(v1, v2);
-                EdgeID revOrder  = topo.makeEdge(v2, v1);
+                mycad::EdgeID sameOrder = topo.makeEdge(v1, v2);
+                mycad::EdgeID revOrder  = topo.makeEdge(v2, v1);
                 CHECK_FALSE(topo.hasEdge(sameOrder));
                 REQUIRE_FALSE(topo.hasEdge(revOrder));
             }
@@ -98,15 +96,15 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 {
     GIVEN("A topology with a single Edge")
     {
-        Topology topo;
-        VertexID v1 = topo.addFreeVertex();
-        VertexID v2 = topo.addFreeVertex();
-        EdgeID edge = topo.makeEdge(v1, v2);
+        mycad::Topology topo;
+        mycad::VertexID v1 = topo.addFreeVertex();
+        mycad::VertexID v2 = topo.addFreeVertex();
+        mycad::EdgeID edge = topo.makeEdge(v1, v2);
 
         WHEN("A second Edge is added adjacent to v1")
         {
-            VertexID v3 = topo.addFreeVertex();
-            EdgeID edge2 = topo.makeEdge(v2, v3);
+            mycad::VertexID v3 = topo.addFreeVertex();
+            mycad::EdgeID edge2 = topo.makeEdge(v2, v3);
             THEN("v2 is adjacent to both edges")
             {
                 auto edges = topo.edgesAdjacentToVertex(v2);
@@ -120,7 +118,7 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 
                 THEN("We can recover both Edges in order using the returned Chain")
                 {
-                    REQUIRE(topo.getChainEdges(chain) == EdgeIDs{edge, edge2});
+                    REQUIRE(topo.getChainEdges(chain) == mycad::EdgeIDs{edge, edge2});
                 }
             }
 
@@ -129,7 +127,7 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
                 topo.deleteEdge(edge2);
                 THEN("We get an error")
                 {
-                    Chain c = topo.joinEdges(edge, edge2);
+                    mycad::Chain c = topo.joinEdges(edge, edge2);
                     REQUIRE_FALSE(topo.hasChain(c));
                 }
             }
@@ -137,13 +135,13 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 
         WHEN("A second Edge is added with zero adjacencies to the first")
         {
-            VertexID v3 = topo.addFreeVertex();
-            VertexID v4 = topo.addFreeVertex();
+            mycad::VertexID v3 = topo.addFreeVertex();
+            mycad::VertexID v4 = topo.addFreeVertex();
             auto edge2 = topo.makeEdge(v3, v4);
 
             THEN("Trying to join them results in an error")
             {
-                Chain c = topo.joinEdges(edge, edge2);
+                mycad::Chain c = topo.joinEdges(edge, edge2);
                 REQUIRE_FALSE(topo.hasChain(c));
             }
         }
@@ -154,7 +152,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 {
     GIVEN("A series of three Edges")
     {
-        Topology topo;
+        mycad::Topology topo;
         auto v1 = topo.addFreeVertex();
         auto v2 = topo.addFreeVertex();
         auto v3 = topo.addFreeVertex();
@@ -165,7 +163,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("The first two are connected")
         {
-            Chain chain = topo.joinEdges(e1, e2);
+            mycad::Chain chain = topo.joinEdges(e1, e2);
 
             THEN("The third is not part of the chain")
             {
@@ -176,7 +174,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
             WHEN("The second two are connected")
             {
-                Chain c2 = topo.joinEdges(e2, e3);
+                mycad::Chain c2 = topo.joinEdges(e2, e3);
 
                 THEN("The third is now part of the original chain")
                 {
@@ -214,7 +212,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                 {
                     auto edges = topo.getChainEdges(chain);
 
-                    REQUIRE(edges == std::vector<EdgeID>{e1, e2, e3});
+                    REQUIRE(edges == std::vector<mycad::EdgeID>{e1, e2, e3});
                 }
             }
         }
@@ -222,7 +220,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
     GIVEN("Three Edge with one common Vertex")
     {
-        Topology topo;
+        mycad::Topology topo;
         auto v0 = topo.addFreeVertex();
         auto v1 = topo.addFreeVertex();
         auto v2 = topo.addFreeVertex();
@@ -233,28 +231,28 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("Edge e0 is joined to e1")
         {
-            Chain c = topo.joinEdges(e0, e1);
+            mycad::Chain c = topo.joinEdges(e0, e1);
 
             REQUIRE(topo.hasChain(c));
 
             THEN("Edge e0 cannot be used again as a FROM Edge in joinEdges")
             {
-                Chain c2 = topo.joinEdges(e0, e2);
+                mycad::Chain c2 = topo.joinEdges(e0, e2);
 
                 REQUIRE_FALSE(topo.hasChain(c2));
             }
 
             THEN("Edge e0 CAN be used as a TO Edge in joinEdges")
             {
-                Chain c2   = topo.joinEdges(e2, e0);
+                mycad::Chain c2   = topo.joinEdges(e2, e0);
                 auto edges = topo.getChainEdges(c2);
 
-                REQUIRE(edges == std::vector<EdgeID>{e2, e0});
+                REQUIRE(edges == std::vector<mycad::EdgeID>{e2, e0});
             }
 
             THEN("Edge e1 cannot be used as a TO edge in joinEdges")
             {
-                Chain c2 = topo.joinEdges(e2, e1);
+                mycad::Chain c2 = topo.joinEdges(e2, e1);
 
                 REQUIRE_FALSE(topo.hasChain(c2));
             }
