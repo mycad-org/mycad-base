@@ -6,9 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "mycad/Types.h"
+
 namespace mycad
 {
-    struct VertexID;
     struct EdgeID;
 } // namespace mycad
 

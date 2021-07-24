@@ -1,6 +1,7 @@
 #ifndef MYCAD_TOPOLOGY_HEADER
 #define MYCAD_TOPOLOGY_HEADER
 
+#include "mycad/Types.h"
 #include "detail/Topology.h"
 
 #include <map>
@@ -11,13 +12,6 @@
 
 namespace mycad
 {
-    struct VertexID
-    {
-        int index;
-
-        auto operator<=>(VertexID const&) const = default;
-    };
-
     struct EdgeID
     {
         int index;
@@ -31,7 +25,7 @@ namespace mycad
         std::size_t whichLink;
     };
 
-    constexpr VertexID InvalidVertexID{-1};
+    constexpr VertexID InvalidVertexID = -1;
     constexpr EdgeID   InvalidEdgeID{-1};
     constexpr Chain    InvalidChain{InvalidVertexID, 0};
 
@@ -115,7 +109,7 @@ namespace mycad
     };
 
 
-    auto operator<<(std::ostream &os, VertexID const &v) -> std::ostream &;
+    /* auto operator<<(std::ostream &os, VertexID const &v) -> std::ostream &; */
     auto operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &;
     auto operator<<(std::ostream &os, Chain const &c) -> std::ostream &;
     auto operator<<(std::ostream &os, Topology const &topo) -> std::ostream &;

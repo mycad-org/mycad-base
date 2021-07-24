@@ -20,8 +20,8 @@ int main()
     auto [left, right] = topo.getEdgeVertices(edge);
 
     std::cout << "The edge with ID = " << edge.index << " is adjacent to:" << '\n'
-              << "    Vertex ID = " << left.index << '\n'
-              << "    Vertex ID = " << right.index << '\n';
+              << "    Vertex ID = " << left << '\n'
+              << "    Vertex ID = " << right << '\n';
     // output:
     // The edge with ID = 0 is adjacent to:
     //     Vertex ID = 0

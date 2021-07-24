@@ -20,7 +20,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
             mycad::Topology topo;
             for(unsigned int i=0; i <= n; i++)
             {
-                auto [id] = topo.addFreeVertex();
+                mycad::VertexID id = topo.addFreeVertex();
                 RC_ASSERT(vals.count(id) == (std::size_t) 0);
                 vals.insert(id);
             }

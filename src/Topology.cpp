@@ -64,7 +64,7 @@ auto Topology::hasChain(Chain c) const -> bool
 
 auto Topology::addFreeVertex() -> VertexID
 {
-    VertexID v(lastVertexID++);
+    VertexID v = lastVertexID++;
     vertices.emplace(v, detail::Vertex{});
     return v;
 }
@@ -89,8 +89,8 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
     {
         auto const [index, edge] = pair;
         auto const [left, right] = edge;
-        return (left == v1.index && right == v2.index) ||
-               (left == v2.index && right == v1.index);
+        return (left == v1 && right == v2) ||
+               (left == v2 && right == v1);
     };
 
     if(ranges::any_of(edges, hasSameVertices))
@@ -99,15 +99,15 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
     }
 
     EdgeID edge(lastEdgeID++);
-    edges.emplace(edge, detail::Edge{v1.index, v2.index});
+    edges.emplace(edge, detail::Edge{v1, v2});
 
     // Gather our data from storage
     detail::Vertex &leftVertex = vertices.at(v1);
     detail::Vertex &rightVertex = vertices.at(v2);
 
     // Update vertices with the appropriate links
-    leftVertex.links.emplace_back(v1.index, edge.index);
-    rightVertex.links.emplace_back(v2.index, edge.index);
+    leftVertex.links.emplace_back(v1, edge.index);
+    rightVertex.links.emplace_back(v2, edge.index);
 
     return edge;
 }
@@ -209,7 +209,7 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
         [v](auto const &pair)
         {
             auto const &[key, e] = pair;
-            return (e.leftVertexID == v.index) || (e.rightVertexID == v.index);
+            return (e.leftVertexID == v) || (e.rightVertexID == v);
         };
 
     auto view =
@@ -239,7 +239,7 @@ auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
     }
 
     auto const [left, right] = edges.at(e);
-    int vid = v.index;
+    int vid = v;
     if (left == vid)
     {
         return VertexID(right);
@@ -301,7 +301,7 @@ auto Topology::streamTo(std::ostream &os) const -> void
 
     for (auto const &[key, v] : vertices)
     {
-        os << "    vid: " << key.index << std::endl;
+        os << "    vid: " << key << std::endl;
 
         for (auto const &link : v.links)
         {
@@ -326,11 +326,11 @@ auto Topology::streamTo(std::ostream &os) const -> void
     }
 }
 
-auto mycad::operator<<(std::ostream &os, VertexID const &v) -> std::ostream &
-{
-    os << "V" << std::to_string(v.index);
-    return os;
-}
+/* auto mycad::operator<<(std::ostream &os, VertexID const &v) -> std::ostream & */
+/* { */
+/*     os << "V" << std::to_string(v); */
+/*     return os; */
+/* } */
 
 auto mycad::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &
 {
