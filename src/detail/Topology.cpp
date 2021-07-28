@@ -6,18 +6,18 @@
 
 using namespace mycad;
 
-auto detail::getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
+auto detail::getCommonVertexID(EdgeID const eid1, EdgeID const eid2,
                                std::map<EdgeID, Edge> const &es) -> VertexID
 {
-    auto pair1 = es.find(edge1);
-    auto pair2 = es.find(edge2);
-    if (pair1 == es.end() || pair2 == es.end())
+    auto const edge1 = es.find(eid1);
+    auto const edge2 = es.find(eid2);
+    if (edge1 == es.end() || edge2 == es.end())
     {
         return InvalidVertexID;
     }
 
-    auto [v1, v2] = pair1->second;
-    auto [v3, v4] = pair2->second;
+    auto const [v1, v2] = edge1->second;
+    auto const [v3, v4] = edge2->second;
 
     if (v1 == v3)
     {

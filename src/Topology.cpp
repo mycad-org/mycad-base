@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <iostream>
+#include <optional>
 
 using namespace mycad;
 namespace ranges = std::ranges;
+namespace views = std::views;
 
 /**
  *
@@ -49,7 +51,14 @@ auto Topology::similar(Topology const &other) const -> bool
 
 auto Topology::hasVertex(VertexID v) const -> bool
 {
-    return vertices.contains(v);
+    if (v >= vertices.size() || v == InvalidVertexID)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 auto Topology::hasEdge(EdgeID e) const -> bool
@@ -64,9 +73,7 @@ auto Topology::hasChain(Chain c) const -> bool
 
 auto Topology::addFreeVertex() -> VertexID
 {
-    VertexID v = lastVertexID++;
-    vertices.emplace(v, detail::Vertex{});
-    return v;
+    return vertices.emplace_back(vertices.size()).index.value();
 }
 
 /**
@@ -80,15 +87,14 @@ auto Topology::addFreeVertex() -> VertexID
  */
 auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 {
-    if (not (vertices.contains(v1) && vertices.contains(v2)))
+    if (not (hasVertex(v1) && hasVertex(v2)))
     {
         return InvalidEdgeID;
     }
 
     auto hasSameVertices = [&v1, &v2](auto pair)
     {
-        auto const [index, edge] = pair;
-        auto const [left, right] = edge;
+        auto const [left, right] = pair.second;
         return (left == v1 && right == v2) ||
                (left == v2 && right == v1);
     };
@@ -131,9 +137,8 @@ auto Topology::deleteEdge(EdgeID edge) -> bool
                 };
 
         ranges::for_each(vertices,
-            [&parentEdgeMatches](auto &pair)
+            [&parentEdgeMatches](auto &vertex)
             {
-                detail::Vertex &vertex = pair.second;
                 auto const rem = ranges::remove_if(vertex.links, parentEdgeMatches); 
                 vertex.links.erase(rem.begin(), rem.end());
             }
@@ -200,7 +205,7 @@ auto Topology::extendChain(Chain c, EdgeID nextEdge) -> bool
 
 auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
 {
-    if (not vertices.contains(v))
+    if (not hasVertex(v))
     {
         return {};
     }
@@ -214,8 +219,8 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
 
     auto view =
         this->edges
-        | std::views::filter(vertexMatch)
-        | std::views::keys;
+        | views::filter(vertexMatch)
+        | views::keys;
 
     return EdgeIDs(view.begin(), view.end());
 }
@@ -231,15 +236,15 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
    return std::make_pair(left, right);
 }
 
-auto Topology::oppositeVertex(VertexID v, EdgeID e) const -> VertexID
+auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> VertexID
 {
-    if (not (hasVertex(v) && hasEdge(e)))
+    if (not (hasVertex(vid) && hasEdge(e)))
     {
         return InvalidVertexID;
     }
 
     auto const [left, right] = edges.at(e);
-    int vid = v;
+
     if (left == vid)
     {
         return right;
@@ -278,10 +283,10 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
 
         auto [chainVertex, chainEdge] = link.next.value();
 
-        auto oppVertex = oppositeVertex({chainVertex}, {chainEdge});
+        auto oppVertex = oppositeVertex(chainVertex, chainEdge);
         links = vertices.at(oppVertex).links;
 
-        link = *std::ranges::find_if(links, linkedToEdge({chainEdge}));
+        link = *std::ranges::find_if(links, linkedToEdge(chainEdge));
     }
     // get the last one
     if (out.size() > 0)
@@ -299,11 +304,12 @@ auto Topology::streamTo(std::ostream &os) const -> void
 
     os << "vertexIDs:" << std::endl;;
 
-    for (auto const &[key, v] : vertices)
+    for (VertexID i = 0; i < vertices.size(); i++)
     {
-        os << "    vid: " << key << std::endl;
+        detail::Vertex const & vertex = vertices.at(i);
+        os << "    vid: " << i << std::endl;
 
-        for (auto const &link : v.links)
+        for (auto const &link : vertex.links)
         {
             os << "        link" << "\n"
                << "            parentVertex = " << link.parentVertex << '\n'

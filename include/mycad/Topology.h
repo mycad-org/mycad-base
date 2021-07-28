@@ -84,7 +84,7 @@ namespace mycad
             int lastVertexID = 0;
             int lastEdgeID = 0;
 
-            std::map<VertexID, detail::Vertex> vertices{};
+            detail::Vertices vertices{};
             std::map<EdgeID, detail::Edge> edges{};
     };
 

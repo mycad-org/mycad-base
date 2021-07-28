@@ -1,6 +1,7 @@
 #ifndef MYCAD_TOPOLOGY_DETAIL_HEADER
 #define MYCAD_TOPOLOGY_DETAIL_HEADER
 
+#include <functional>
 #include <optional>
 #include <map>
 #include <string>
@@ -24,6 +25,8 @@ namespace mycad::detail
 
     struct Vertex
     {
+        // no value means invalid Vertex
+        std::optional<VertexID> index = std::nullopt;
         std::vector<Link> links{};
 
         auto operator<=>(Vertex const &other) const = default;
@@ -36,6 +39,8 @@ namespace mycad::detail
 
         auto operator<=>(Edge const &other) const = default;
     };
+
+    using Vertices = std::vector<Vertex>;
 
     auto getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
                            std::map<EdgeID, Edge> const &es) -> VertexID;
