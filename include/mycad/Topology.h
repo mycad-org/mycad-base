@@ -67,7 +67,7 @@ namespace mycad
              *      2. The provided Edge does not exist in the topology
              *      3. The Vertex and Edge are not adjacent
              */
-            auto oppositeVertex(VertexID v, EdgeID e) const -> VertexID;
+            auto oppositeVertex(VertexID v, EdgeID e) const -> MaybeVertexID;
 
             /** @brief returns all Edges in the Chain
              */

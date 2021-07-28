@@ -7,10 +7,12 @@
 namespace mycad
 {
     class Line;
-    using MaybeLine  = std::optional<Line>;
 
     using VertexID = std::size_t;
     using EdgeID   = int;
+
+    using MaybeLine     = std::optional<Line>;
+    using MaybeVertexID = std::optional<VertexID>;
 
     struct Chain
     {

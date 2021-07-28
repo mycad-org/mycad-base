@@ -236,11 +236,11 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
    return std::make_pair(left, right);
 }
 
-auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> VertexID
+auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> MaybeVertexID
 {
     if (not (hasVertex(vid) && hasEdge(e)))
     {
-        return InvalidVertexID;
+        return std::nullopt;
     }
 
     auto const [left, right] = edges.at(e).ends;
@@ -255,7 +255,7 @@ auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> VertexID
     }
     else
     {
-        return InvalidVertexID;
+        return std::nullopt;
     }
 }
 
@@ -284,9 +284,16 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
         auto [chainVertex, chainEdge] = link.next.value();
 
         auto oppVertex = oppositeVertex(chainVertex, chainEdge);
-        links = vertices.at(oppVertex).links;
+        if(oppVertex)
+        {
+            links = vertices.at(*oppVertex).links;
 
-        link = *std::ranges::find_if(links, linkedToEdge(chainEdge));
+            link = *std::ranges::find_if(links, linkedToEdge(chainEdge));
+        }
+        else
+        {
+            break;
+        }
     }
     // get the last one
     if (out.size() > 0)
