@@ -16,8 +16,8 @@ auto detail::getCommonVertexID(EdgeID const eid1, EdgeID const eid2,
         return InvalidVertexID;
     }
 
-    auto const [v1, v2] = edge1->second;
-    auto const [v3, v4] = edge2->second;
+    auto const [v1, v2] = edge1->second.ends;
+    auto const [v3, v4] = edge2->second.ends;
 
     if (v1 == v3)
     {

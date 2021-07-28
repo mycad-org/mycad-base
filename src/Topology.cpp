@@ -94,7 +94,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 
     auto hasSameVertices = [&v1, &v2](auto pair)
     {
-        auto const [left, right] = pair.second;
+        auto const [left, right] = pair.second.ends;
         return (left == v1 && right == v2) ||
                (left == v2 && right == v1);
     };
@@ -105,7 +105,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
     }
 
     EdgeID edge(lastEdgeID++);
-    edges.emplace(edge, detail::Edge{v1, v2});
+    edges.emplace(edge, detail::Edge{{v1, v2}});
 
     // Gather our data from storage
     detail::Vertex &leftVertex = vertices.at(v1);
@@ -214,7 +214,7 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
         [v](auto const &pair)
         {
             auto const &[key, e] = pair;
-            return (e.leftV == v) || (e.rightV == v);
+            return (e.ends.first == v) || (e.ends.second == v);
         };
 
     auto view =
@@ -232,7 +232,7 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
         return {InvalidVertexID, InvalidVertexID};
     }
 
-   auto const [left, right] = edges.at(edge);
+   auto const [left, right] = edges.at(edge).ends;
    return std::make_pair(left, right);
 }
 
@@ -243,7 +243,7 @@ auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> VertexID
         return InvalidVertexID;
     }
 
-    auto const [left, right] = edges.at(e);
+    auto const [left, right] = edges.at(e).ends;
 
     if (left == vid)
     {
@@ -327,8 +327,8 @@ auto Topology::streamTo(std::ostream &os) const -> void
     for (auto const &[key, edge] : edges)
     {
         os << "    eid: " << key << "\n"
-           << "        leftVertexID = " << edge.leftV << "\n"
-           << "        rightVertexID = " << edge.rightV<< std::endl;
+           << "        leftVertexID = " << edge.ends.first << "\n"
+           << "        rightVertexID = " << edge.ends.second << std::endl;
     }
 }
 

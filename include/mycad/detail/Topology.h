@@ -34,8 +34,7 @@ namespace mycad::detail
 
     struct Edge
     {
-        VertexID leftV;
-        VertexID rightV;
+        VertexIDPair ends;
 
         auto operator<=>(Edge const &other) const = default;
     };
