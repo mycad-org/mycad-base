@@ -117,7 +117,7 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 
                 THEN("We can recover both Edges in order using the returned Chain")
                 {
-                    REQUIRE(topo.getChainEdges(chain) == mycad::EdgeIDs{edge, edge2});
+                    REQUIRE(topo.getChainEdges(*chain) == mycad::EdgeIDs{edge, edge2});
                 }
             }
 
@@ -126,8 +126,8 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
                 topo.deleteEdge(edge2);
                 THEN("We get an error")
                 {
-                    mycad::Chain c = topo.joinEdges(edge, edge2);
-                    REQUIRE_FALSE(topo.hasChain(c));
+                    mycad::MaybeChain c = topo.joinEdges(edge, edge2);
+                    REQUIRE_FALSE(topo.hasChain(*c));
                 }
             }
         }
@@ -140,8 +140,8 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
 
             THEN("Trying to join them results in an error")
             {
-                mycad::Chain c = topo.joinEdges(edge, edge2);
-                REQUIRE_FALSE(topo.hasChain(c));
+                mycad::MaybeChain c = topo.joinEdges(edge, edge2);
+                REQUIRE_FALSE(topo.hasChain(*c));
             }
         }
     }
@@ -162,7 +162,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("The first two are connected")
         {
-            mycad::Chain chain = topo.joinEdges(e1, e2);
+            mycad::Chain chain = topo.joinEdges(e1, e2).value();
 
             THEN("The third is not part of the chain")
             {
@@ -173,7 +173,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
             WHEN("The second two are connected")
             {
-                mycad::Chain c2 = topo.joinEdges(e2, e3);
+                mycad::Chain c2 = topo.joinEdges(e2, e3).value();
 
                 THEN("The third is now part of the original chain")
                 {
@@ -230,30 +230,30 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
 
         WHEN("Edge e0 is joined to e1")
         {
-            mycad::Chain c = topo.joinEdges(e0, e1);
+            mycad::Chain c = topo.joinEdges(e0, e1).value();
 
             REQUIRE(topo.hasChain(c));
 
             THEN("Edge e0 cannot be used again as a FROM Edge in joinEdges")
             {
-                mycad::Chain c2 = topo.joinEdges(e0, e2);
+                mycad::MaybeChain c2 = topo.joinEdges(e0, e2);
 
-                REQUIRE_FALSE(topo.hasChain(c2));
+                REQUIRE_FALSE(topo.hasChain(*c2));
             }
 
             THEN("Edge e0 CAN be used as a TO Edge in joinEdges")
             {
-                mycad::Chain c2   = topo.joinEdges(e2, e0);
-                auto edges = topo.getChainEdges(c2);
+                mycad::MaybeChain c2   = topo.joinEdges(e2, e0);
+                auto edges = topo.getChainEdges(*c2);
 
                 REQUIRE(*edges == std::vector<mycad::EdgeID>{e2, e0});
             }
 
             THEN("Edge e1 cannot be used as a TO edge in joinEdges")
             {
-                mycad::Chain c2 = topo.joinEdges(e2, e1);
+                mycad::MaybeChain c2 = topo.joinEdges(e2, e1);
 
-                REQUIRE_FALSE(topo.hasChain(c2));
+                REQUIRE_FALSE(topo.hasChain(*c2));
             }
         }
     }

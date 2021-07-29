@@ -38,11 +38,11 @@ namespace mycad
              *      1. either Edge does not exist in the Toploogy
              *      2. the two Edge do not share a common vertex
              */
-            auto joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain;
+            auto joinEdges(EdgeID fromEdge, EdgeID toEdge) -> MaybeChain;
 
             /** @brief a convenience to directly use return-value from makeEdge
              */
-            auto joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> Chain;
+            auto joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> MaybeChain;
 
             /** returns false if:
              *      1. the Chain or Edge provided are invalid in the topology

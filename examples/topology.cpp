@@ -41,8 +41,8 @@ int main()
     auto shortChain = topo.joinEdges(e3, e4);
 
     // We can retrieve the Edges that have been chained together
-    auto edges = topo.getChainEdges(chain);
-    auto shortEdges = topo.getChainEdges(shortChain);
+    auto edges = topo.getChainEdges(*chain);
+    auto shortEdges = topo.getChainEdges(*shortChain);
 
     // shortEdges will only contain a sub-set of edges - specifically, it will
     // only contain e3 and e4

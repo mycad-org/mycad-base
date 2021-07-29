@@ -13,17 +13,18 @@ namespace mycad
     using EdgeID       = int;
     using EdgeIDs      = std::vector<EdgeID>;
 
-    using MaybeLine         = std::optional<Line>;
-    using MaybeVertexID     = std::optional<VertexID>;
-    using MaybeVertexIDPair = std::optional<VertexIDPair>;
-    using MaybeEdgeID       = std::optional<EdgeID>;
-    using MaybeEdgeIDs      = std::optional<EdgeIDs>;
-
     struct Chain
     {
         VertexID whichVertex;
         std::size_t whichLink;
     };
+
+    using MaybeLine         = std::optional<Line>;
+    using MaybeVertexID     = std::optional<VertexID>;
+    using MaybeVertexIDPair = std::optional<VertexIDPair>;
+    using MaybeEdgeID       = std::optional<EdgeID>;
+    using MaybeEdgeIDs      = std::optional<EdgeIDs>;
+    using MaybeChain        = std::optional<Chain>;
 
     constexpr VertexID InvalidVertexID = -1;
     constexpr EdgeID   InvalidEdgeID   = -1;

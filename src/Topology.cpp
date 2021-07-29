@@ -155,14 +155,14 @@ auto linkedToEdge(EdgeID const e)
            {return l.parentEdge == e;};
 }
 
-auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
+auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> MaybeChain
 {
     auto const v = detail::getCommonVertexID(fromEdge, toEdge, edges);
 
     // getCommonVertexID already checked if the edges belong to the topology
     if (not hasVertex(v))
     {
-        return InvalidChain;
+        return std::nullopt;
     }
 
     auto &links = vertices.at(v).links;
@@ -170,21 +170,21 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
     // Any Edge can only be used **once** as a fromEdge or toEdge
     if (isFromEdge(fromEdge, links) || isToEdge(toEdge, links))
     {
-        return InvalidChain;
+        return std::nullopt;
     }
 
     // The common Vertex should have a Link to the fromEdge
     auto fromLinkIt = ranges::find_if(links, linkedToEdge(fromEdge));
     if (fromLinkIt == links.end())
     {
-        return InvalidChain;
+        return std::nullopt;
     }
 
     // And one connected to the toEdge
     auto const toLinkIt = ranges::find_if(links, linkedToEdge(toEdge));
     if (toLinkIt == links.end())
     {
-        return InvalidChain;
+        return std::nullopt;
     }
 
     fromLinkIt->next = {{toLinkIt->parentVertex, toLinkIt->parentEdge}};
@@ -192,11 +192,11 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
     return {Chain(v, fromLinkIt - links.begin())};
 }
 
-auto Topology::joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> Chain
+auto Topology::joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> MaybeChain
 {
     if (not (fromEdge.has_value() && toEdge.has_value()))
     {
-        return InvalidChain;
+        return std::nullopt;
     }
     return joinEdges(*fromEdge, *toEdge);
 }
@@ -217,7 +217,7 @@ auto Topology::extendChain(Chain c, EdgeID nextEdge) -> bool
 
     auto const lastEdge = maybeEdges.value().back();
 
-    return hasChain(joinEdges(lastEdge, nextEdge));
+    return joinEdges(lastEdge, nextEdge).has_value();
 }
 
 auto Topology::edgesAdjacentToVertex(VertexID v) const -> MaybeEdgeIDs
