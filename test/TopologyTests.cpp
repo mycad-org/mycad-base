@@ -257,4 +257,33 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
             }
         }
     }
+
+    GIVEN("Three Edge that form a closed loop")
+    {
+        mycad::Topology topo;
+        auto v0 = topo.addFreeVertex();
+        auto v1 = topo.addFreeVertex();
+        auto v2 = topo.addFreeVertex();
+        auto v3 = topo.addFreeVertex();
+        auto e0 = topo.makeEdge(v1, v0).value();
+        auto e1 = topo.makeEdge(v2, v0).value();
+        auto e2 = topo.makeEdge(v3, v0).value();
+
+        WHEN("They are joined into a Chain")
+        {
+            mycad::Chain c = topo.joinEdges(e0, e1).value();
+            topo.joinEdges(e1, e2);
+            topo.joinEdges(e2, e0);
+
+            REQUIRE(topo.hasChain(c));
+
+            THEN("We can retrieve a list of Edges in the loop")
+            {
+                mycad::MaybeEdgeIDs mIDs = topo.getChainEdges(c);
+
+                REQUIRE(mIDs.has_value());
+                REQUIRE(*mIDs == mycad::EdgeIDs{e0, e1, e2});
+            }
+        }
+    }
 }
