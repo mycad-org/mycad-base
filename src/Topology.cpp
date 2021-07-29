@@ -85,11 +85,11 @@ auto Topology::addFreeVertex() -> VertexID
  * 1. either or both vertices don't exist in the topology
  * 2. an Edge already exists between v1 and v2
  */
-auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
+auto Topology::makeEdge(VertexID v1, VertexID v2) -> MaybeEdgeID
 {
     if (not (hasVertex(v1) && hasVertex(v2)))
     {
-        return InvalidEdgeID;
+        return std::nullopt;
     }
 
     auto hasSameVertices = [&v1, &v2](auto pair)
@@ -101,7 +101,7 @@ auto Topology::makeEdge(VertexID v1, VertexID v2) -> EdgeID
 
     if(ranges::any_of(edges, hasSameVertices))
     {
-        return InvalidEdgeID;
+        return std::nullopt;
     }
 
     EdgeID edge(lastEdgeID++);
@@ -191,6 +191,15 @@ auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain
     return {Chain(v, fromLinkIt - links.begin())};
 }
 
+auto Topology::joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> Chain
+{
+    if (not (fromEdge.has_value() && toEdge.has_value()))
+    {
+        return InvalidChain;
+    }
+    return joinEdges(*fromEdge, *toEdge);
+}
+
 auto Topology::extendChain(Chain c, EdgeID nextEdge) -> bool
 {
     if (not (hasChain(c) || hasEdge(nextEdge)))
@@ -234,6 +243,11 @@ auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
 
    auto const [left, right] = edges.at(edge).ends;
    return std::make_pair(left, right);
+}
+
+auto Topology::getEdgeVertices(MaybeEdgeID edge) const -> VertexIDPair
+{
+    return edge.has_value() ? getEdgeVertices(*edge) : VertexIDPair{InvalidVertexID, InvalidVertexID};
 }
 
 auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> MaybeVertexID
@@ -342,12 +356,6 @@ auto Topology::streamTo(std::ostream &os) const -> void
 /* auto mycad::operator<<(std::ostream &os, VertexID const &v) -> std::ostream & */
 /* { */
 /*     os << "V" << std::to_string(v); */
-/*     return os; */
-/* } */
-
-/* auto mycad::operator<<(std::ostream &os, EdgeID const &e) -> std::ostream & */
-/* { */
-/*     os << "E" << std::to_string(e); */
 /*     return os; */
 /* } */
 

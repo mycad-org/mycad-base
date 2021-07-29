@@ -13,6 +13,7 @@ namespace mycad
 
     using MaybeLine     = std::optional<Line>;
     using MaybeVertexID = std::optional<VertexID>;
+    using MaybeEdgeID   = std::optional<EdgeID>;
 
     struct Chain
     {

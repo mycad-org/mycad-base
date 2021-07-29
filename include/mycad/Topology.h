@@ -31,7 +31,7 @@ namespace mycad
 
             /** @brief an Edge is always adjacent to exactly two Vertices
              */
-            auto makeEdge(VertexID v1, VertexID v2) -> EdgeID;
+            auto makeEdge(VertexID v1, VertexID v2) -> MaybeEdgeID;
 
             /** @brief creates a directional connection between two edges
              *  @returns an invalid Chain if:
@@ -39,6 +39,10 @@ namespace mycad
              *      2. the two Edge do not share a common vertex
              */
             auto joinEdges(EdgeID fromEdge, EdgeID toEdge) -> Chain;
+
+            /** @brief a convenience to directly use return-value from makeEdge
+             */
+            auto joinEdges(MaybeEdgeID fromEdge, MaybeEdgeID toEdge) -> Chain;
 
             /** returns false if:
              *      1. the Chain or Edge provided are invalid in the topology
@@ -60,6 +64,10 @@ namespace mycad
              *           the topology
              */
             auto getEdgeVertices(EdgeID edge) const -> VertexIDPair;
+
+            /** @brief a convenience to directly use the output of makeEdge
+             */
+            auto getEdgeVertices(MaybeEdgeID edge) const -> VertexIDPair;
 
             /** @brief find the Vertex on the other side of the Edge
              *  @returns invalid Vertex if:
@@ -90,10 +98,22 @@ namespace mycad
 
 
     /* auto operator<<(std::ostream &os, VertexID const &v) -> std::ostream &; */
-    /* auto operator<<(std::ostream &os, EdgeID const &e) -> std::ostream &; */
     auto operator<<(std::ostream &os, Chain const &c) -> std::ostream &;
     auto operator<<(std::ostream &os, Topology const &topo) -> std::ostream &;
 } // namespace mycad::topo
 
+template<class T>
+auto operator<<(std::ostream &os, std::optional<T> const &val) -> std::ostream &
+{
+    if(val.has_value())
+    {
+        os << std::to_string(*val);
+    }
+    else
+    {
+        os << std::string("OptionalIsEmpty");
+    }
+    return os;
+}
 
 #endif // MYCAD_TOPOLOGY_HEADER

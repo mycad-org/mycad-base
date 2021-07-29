@@ -14,7 +14,7 @@ int main()
 
     // Two free vertices can be connected by an Edge. Every Edge has exactly two
     // vertices associated with it
-    mycad::EdgeID edge = topo.makeEdge(v1, v2);
+    mycad::MaybeEdgeID edge = topo.makeEdge(v1, v2);
 
     // Now, we can query the relationships
     auto [left, right] = topo.getEdgeVertices(edge);

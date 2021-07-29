@@ -40,18 +40,18 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
         WHEN("An Edge is created between them")
         {
             mycad::Topology orig = topo;
-            mycad::EdgeID edge   = topo.makeEdge(v1, v2);
+            mycad::MaybeEdgeID edge   = topo.makeEdge(v1, v2);
 
             THEN("The returned Edge is valid within the Topology")
             {
-                REQUIRE(topo.hasEdge(edge));
+                REQUIRE(edge.has_value());
             }
 
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
                 // Either Edge ID from V₁
-                REQUIRE( topo.edgesAdjacentToVertex(v1) == mycad::EdgeIDs{edge});
-                REQUIRE( topo.edgesAdjacentToVertex(v2) == mycad::EdgeIDs{edge});
+                REQUIRE( topo.edgesAdjacentToVertex(v1) == mycad::EdgeIDs{*edge});
+                REQUIRE( topo.edgesAdjacentToVertex(v2) == mycad::EdgeIDs{*edge});
             }
 
             THEN("Both Vertices are adjacent to the Edge")
@@ -61,13 +61,13 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             THEN("Either Vertex can be used to find the other across the Edge")
             {
-                REQUIRE(topo.oppositeVertex(v1, edge) == v2);
-                REQUIRE(topo.oppositeVertex(v2, edge) == v1);
+                REQUIRE(topo.oppositeVertex(v1, *edge) == v2);
+                REQUIRE(topo.oppositeVertex(v2, *edge) == v1);
             }
 
             WHEN("The Edge is deleted")
             {
-                CHECK(topo.deleteEdge(edge));
+                CHECK(topo.deleteEdge(*edge));
 
                 THEN("The Topology reverts to the previous state")
                 {
@@ -82,10 +82,10 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             THEN("We cannot create a second Edge")
             {
-                mycad::EdgeID sameOrder = topo.makeEdge(v1, v2);
-                mycad::EdgeID revOrder  = topo.makeEdge(v2, v1);
-                CHECK_FALSE(topo.hasEdge(sameOrder));
-                REQUIRE_FALSE(topo.hasEdge(revOrder));
+                mycad::MaybeEdgeID sameOrder = topo.makeEdge(v1, v2);
+                mycad::MaybeEdgeID revOrder  = topo.makeEdge(v2, v1);
+                CHECK_FALSE(sameOrder.has_value());
+                REQUIRE_FALSE(revOrder.has_value());
             }
         }
     }
@@ -99,12 +99,12 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
         mycad::Topology topo;
         mycad::VertexID v1 = topo.addFreeVertex();
         mycad::VertexID v2 = topo.addFreeVertex();
-        mycad::EdgeID edge = topo.makeEdge(v1, v2);
+        mycad::EdgeID edge = topo.makeEdge(v1, v2).value();
 
         WHEN("A second Edge is added adjacent to v1")
         {
             mycad::VertexID v3 = topo.addFreeVertex();
-            mycad::EdgeID edge2 = topo.makeEdge(v2, v3);
+            mycad::EdgeID edge2 = topo.makeEdge(v2, v3).value();
             THEN("v2 is adjacent to both edges")
             {
                 auto edges = topo.edgesAdjacentToVertex(v2);
@@ -157,9 +157,9 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
         auto v2 = topo.addFreeVertex();
         auto v3 = topo.addFreeVertex();
         auto v4 = topo.addFreeVertex();
-        auto e1 = topo.makeEdge(v1, v2);
-        auto e2 = topo.makeEdge(v2, v3);
-        auto e3 = topo.makeEdge(v3, v4);
+        auto e1 = topo.makeEdge(v1, v2).value();
+        auto e2 = topo.makeEdge(v2, v3).value();
+        auto e3 = topo.makeEdge(v3, v4).value();
 
         WHEN("The first two are connected")
         {
@@ -225,9 +225,9 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
         auto v1 = topo.addFreeVertex();
         auto v2 = topo.addFreeVertex();
         auto v3 = topo.addFreeVertex();
-        auto e0 = topo.makeEdge(v1, v0);
-        auto e1 = topo.makeEdge(v2, v0);
-        auto e2 = topo.makeEdge(v3, v0);
+        auto e0 = topo.makeEdge(v1, v0).value();
+        auto e1 = topo.makeEdge(v2, v0).value();
+        auto e2 = topo.makeEdge(v3, v0).value();
 
         WHEN("Edge e0 is joined to e1")
         {

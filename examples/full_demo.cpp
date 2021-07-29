@@ -43,9 +43,9 @@ int main()
     vertices[v3] = p3;
     vertices[v4] = p4;
 
-    edges.emplace(e1, l1);
-    edges.emplace(e2, l2);
-    edges.emplace(e3, l3);
+    edges.emplace(*e1, l1);
+    edges.emplace(*e2, l2);
+    edges.emplace(*e3, l3);
 
 
     // Here's a visual of what we've created
