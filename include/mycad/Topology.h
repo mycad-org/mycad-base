@@ -63,11 +63,11 @@ namespace mycad
              *  @returns invalid Vertices if the provided Edge does not exist in
              *           the topology
              */
-            auto getEdgeVertices(EdgeID edge) const -> VertexIDPair;
+            auto getEdgeVertices(EdgeID edge) const -> MaybeVertexIDPair;
 
             /** @brief a convenience to directly use the output of makeEdge
              */
-            auto getEdgeVertices(MaybeEdgeID edge) const -> VertexIDPair;
+            auto getEdgeVertices(MaybeEdgeID edge) const -> MaybeVertexIDPair;
 
             /** @brief find the Vertex on the other side of the Edge
              *  @returns invalid Vertex if:

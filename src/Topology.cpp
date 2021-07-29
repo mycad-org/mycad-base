@@ -242,20 +242,20 @@ auto Topology::edgesAdjacentToVertex(VertexID v) const -> MaybeEdgeIDs
     return EdgeIDs(view.begin(), view.end());
 }
 
-auto Topology::getEdgeVertices(EdgeID edge) const -> VertexIDPair
+auto Topology::getEdgeVertices(EdgeID edge) const -> MaybeVertexIDPair
 {
     if (not hasEdge(edge))
     {
-        return {InvalidVertexID, InvalidVertexID};
+        return std::nullopt;
     }
 
    auto const [left, right] = edges.at(edge).ends;
    return std::make_pair(left, right);
 }
 
-auto Topology::getEdgeVertices(MaybeEdgeID edge) const -> VertexIDPair
+auto Topology::getEdgeVertices(MaybeEdgeID edge) const -> MaybeVertexIDPair
 {
-    return edge.has_value() ? getEdgeVertices(*edge) : VertexIDPair{InvalidVertexID, InvalidVertexID};
+    return edge.has_value() ? getEdgeVertices(*edge) : std::nullopt;
 }
 
 auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> MaybeVertexID

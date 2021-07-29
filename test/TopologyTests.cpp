@@ -55,7 +55,7 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             THEN("Both Vertices are adjacent to the Edge")
             {
-                REQUIRE(topo.getEdgeVertices(edge) == mycad::VertexIDPair{v1, v2});
+                REQUIRE(topo.getEdgeVertices(edge).value() == mycad::VertexIDPair{v1, v2});
             }
 
             THEN("Either Vertex can be used to find the other across the Edge")

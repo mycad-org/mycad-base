@@ -8,14 +8,16 @@ namespace mycad
 {
     class Line;
 
-    using VertexID = std::size_t;
-    using EdgeID   = int;
-    using EdgeIDs  = std::vector<EdgeID>;
+    using VertexID     = std::size_t;
+    using VertexIDPair = std::pair<VertexID, VertexID>;
+    using EdgeID       = int;
+    using EdgeIDs      = std::vector<EdgeID>;
 
-    using MaybeLine     = std::optional<Line>;
-    using MaybeVertexID = std::optional<VertexID>;
-    using MaybeEdgeID   = std::optional<EdgeID>;
-    using MaybeEdgeIDs  = std::optional<EdgeIDs>;
+    using MaybeLine         = std::optional<Line>;
+    using MaybeVertexID     = std::optional<VertexID>;
+    using MaybeVertexIDPair = std::optional<VertexIDPair>;
+    using MaybeEdgeID       = std::optional<EdgeID>;
+    using MaybeEdgeIDs      = std::optional<EdgeIDs>;
 
     struct Chain
     {
@@ -26,8 +28,6 @@ namespace mycad
     constexpr VertexID InvalidVertexID = -1;
     constexpr EdgeID   InvalidEdgeID   = -1;
     constexpr Chain    InvalidChain{InvalidVertexID, 0};
-
-    using VertexIDPair       = std::pair<VertexID, VertexID>;
 
 } // namespace mycad
 
