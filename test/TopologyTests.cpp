@@ -264,10 +264,9 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
         auto v0 = topo.addFreeVertex();
         auto v1 = topo.addFreeVertex();
         auto v2 = topo.addFreeVertex();
-        auto v3 = topo.addFreeVertex();
-        auto e0 = topo.makeEdge(v1, v0).value();
-        auto e1 = topo.makeEdge(v2, v0).value();
-        auto e2 = topo.makeEdge(v3, v0).value();
+        auto e0 = topo.makeEdge(v0, v1).value();
+        auto e1 = topo.makeEdge(v1, v2).value();
+        auto e2 = topo.makeEdge(v2, v0).value();
 
         WHEN("They are joined into a Chain")
         {
@@ -280,7 +279,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
             THEN("We can retrieve a list of Edges in the loop")
             {
                 mycad::MaybeEdgeIDs mIDs = topo.getChainEdges(c);
-
+                std::cout << topo << '\n';
                 REQUIRE(mIDs.has_value());
                 REQUIRE(*mIDs == mycad::EdgeIDs{e0, e1, e2});
             }
