@@ -51,7 +51,7 @@ auto Topology::similar(Topology const &other) const -> bool
 
 auto Topology::hasVertex(VertexID v) const -> bool
 {
-    if (v >= vertices.size() || v == InvalidVertexID)
+    if (v >= vertices.size())
     {
         return false;
     }
@@ -157,14 +157,15 @@ auto linkedToEdge(EdgeID const e)
 
 auto Topology::joinEdges(EdgeID fromEdge, EdgeID toEdge) -> MaybeChain
 {
-    auto const v = detail::getCommonVertexID(fromEdge, toEdge, edges);
+    auto const maybeVertex = detail::getCommonVertexID(fromEdge, toEdge, edges);
 
     // getCommonVertexID already checked if the edges belong to the topology
-    if (not hasVertex(v))
+    if (not (maybeVertex.has_value() && hasVertex(*maybeVertex)))
     {
         return std::nullopt;
     }
 
+    VertexID const v = *maybeVertex;
     auto &links = vertices.at(v).links;
 
     // Any Edge can only be used **once** as a fromEdge or toEdge

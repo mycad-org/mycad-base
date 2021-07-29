@@ -42,7 +42,7 @@ namespace mycad::detail
     using Vertices = std::vector<Vertex>;
 
     auto getCommonVertexID(EdgeID const edge1, EdgeID const edge2,
-                           std::map<EdgeID, Edge> const &es) -> VertexID;
+                           std::map<EdgeID, Edge> const &es) -> MaybeVertexID;
 
     auto linkedToEdge(EdgeID const e);
     auto isFromEdge(EdgeID const fromEdge,

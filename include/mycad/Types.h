@@ -26,10 +26,6 @@ namespace mycad
     using MaybeEdgeIDs      = std::optional<EdgeIDs>;
     using MaybeChain        = std::optional<Chain>;
 
-    constexpr VertexID InvalidVertexID = -1;
-    constexpr EdgeID   InvalidEdgeID   = -1;
-    constexpr Chain    InvalidChain{InvalidVertexID, 0};
-
 } // namespace mycad
 
 #endif // MYCAD_TYPES_HEADER

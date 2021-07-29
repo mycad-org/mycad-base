@@ -7,13 +7,13 @@
 using namespace mycad;
 
 auto detail::getCommonVertexID(EdgeID const eid1, EdgeID const eid2,
-                               std::map<EdgeID, Edge> const &es) -> VertexID
+                               std::map<EdgeID, Edge> const &es) -> MaybeVertexID
 {
     auto const edge1 = es.find(eid1);
     auto const edge2 = es.find(eid2);
     if (edge1 == es.end() || edge2 == es.end())
     {
-        return InvalidVertexID;
+        return std::nullopt;
     }
 
     auto const [v1, v2] = edge1->second.ends;
@@ -37,7 +37,7 @@ auto detail::getCommonVertexID(EdgeID const eid1, EdgeID const eid2,
     }
     else
     {
-        return InvalidVertexID;
+        return std::nullopt;
     }
 }
 
