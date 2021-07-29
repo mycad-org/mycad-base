@@ -279,7 +279,6 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
             THEN("We can retrieve a list of Edges in the loop")
             {
                 mycad::MaybeEdgeIDs mIDs = topo.getChainEdges(c);
-                std::cout << topo << '\n';
                 REQUIRE(mIDs.has_value());
                 REQUIRE(*mIDs == mycad::EdgeIDs{e0, e1, e2});
             }

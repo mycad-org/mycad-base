@@ -302,6 +302,10 @@ auto Topology::getChainEdges(Chain chain) const -> MaybeEdgeIDs
 
     while(link.next)
     {
+        if(std::ranges::find(out, link.parentEdge) != out.end())
+        {
+            break;
+        }
         out.push_back({link.parentEdge});
 
         auto [chainVertex, chainEdge] = link.next.value();
@@ -320,7 +324,7 @@ auto Topology::getChainEdges(Chain chain) const -> MaybeEdgeIDs
     }
 
     // get the last one
-    if (out.size() > 0)
+    if (out.size() > 0 && not link.next.has_value())
     {
         out.push_back({link.parentEdge});
     }
