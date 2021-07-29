@@ -41,10 +41,11 @@ int main()
     auto shortChain = topo.joinEdges(e3, e4);
 
     // We can retrieve the Edges that have been chained together
-    std::vector<mycad::EdgeID> edges = topo.getChainEdges(chain);
-    std::vector<mycad::EdgeID> shortEdges = topo.getChainEdges(shortChain);
+    auto edges = topo.getChainEdges(chain);
+    auto shortEdges = topo.getChainEdges(shortChain);
 
     // shortEdges will only contain a sub-set of edges - specifically, it will
     // only contain e3 and e4
-    std::cout << "edges == shortEdges → " << std::boolalpha << (edges == shortEdges) << '\n';
+    std::cout << "edges.has_value() = " << std::boolalpha << edges.has_value() << '\n';
+    std::cout << "edges == shortEdges → " << std::boolalpha << (*edges == *shortEdges) << '\n';
 }

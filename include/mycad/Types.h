@@ -10,10 +10,12 @@ namespace mycad
 
     using VertexID = std::size_t;
     using EdgeID   = int;
+    using EdgeIDs  = std::vector<EdgeID>;
 
     using MaybeLine     = std::optional<Line>;
     using MaybeVertexID = std::optional<VertexID>;
     using MaybeEdgeID   = std::optional<EdgeID>;
+    using MaybeEdgeIDs  = std::optional<EdgeIDs>;
 
     struct Chain
     {
@@ -26,7 +28,6 @@ namespace mycad
     constexpr Chain    InvalidChain{InvalidVertexID, 0};
 
     using VertexIDPair       = std::pair<VertexID, VertexID>;
-    using EdgeIDs            = std::vector<EdgeID>;
 
 } // namespace mycad
 

@@ -68,7 +68,8 @@ auto Topology::hasEdge(EdgeID e) const -> bool
 
 auto Topology::hasChain(Chain c) const -> bool
 {
-    return getChainEdges(c).size() > 0;
+    auto maybeEdges = getChainEdges(c);
+    return maybeEdges.has_value() ? maybeEdges.value().size() : false;
 }
 
 auto Topology::addFreeVertex() -> VertexID
@@ -207,16 +208,23 @@ auto Topology::extendChain(Chain c, EdgeID nextEdge) -> bool
         return false;
     }
 
-    auto const lastEdge = getChainEdges(c).back();
+    auto maybeEdges = getChainEdges(c);
+
+    if(not maybeEdges.has_value())
+    {
+        return false;
+    }
+
+    auto const lastEdge = maybeEdges.value().back();
 
     return hasChain(joinEdges(lastEdge, nextEdge));
 }
 
-auto Topology::edgesAdjacentToVertex(VertexID v) const -> EdgeIDs
+auto Topology::edgesAdjacentToVertex(VertexID v) const -> MaybeEdgeIDs
 {
     if (not hasVertex(v))
     {
-        return {};
+        return std::nullopt;
     }
 
     auto vertexMatch =
@@ -273,18 +281,18 @@ auto Topology::oppositeVertex(VertexID vid, EdgeID e) const -> MaybeVertexID
     }
 }
 
-auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
+auto Topology::getChainEdges(Chain chain) const -> MaybeEdgeIDs
 {
     auto [vertex, whichlink] = chain;
     if (not hasVertex(vertex))
     {
-        return {};
+        return std::nullopt;
     }
 
     auto links = vertices.at(vertex).links;
     if (whichlink >= links.size())
     {
-        return {};
+        return std::nullopt;
     }
 
     auto link = links.at(whichlink);
@@ -309,6 +317,7 @@ auto Topology::getChainEdges(Chain chain) const -> EdgeIDs
             break;
         }
     }
+
     // get the last one
     if (out.size() > 0)
     {
@@ -358,6 +367,19 @@ auto Topology::streamTo(std::ostream &os) const -> void
 /*     os << "V" << std::to_string(v); */
 /*     return os; */
 /* } */
+
+auto operator<<(std::ostream &os, std::optional<std::size_t> const &val) -> std::ostream &
+{
+    if(val.has_value())
+    {
+        os << std::to_string(*val);
+    }
+    else
+    {
+        os << std::string("OptionalIsEmpty");
+    }
+    return os;
+}
 
 auto mycad::operator<<(std::ostream &os, Chain const &c) -> std::ostream &
 {

@@ -49,9 +49,8 @@ SCENARIO( "002: Vertex Topology", "[topology][vertex]" )
 
             THEN("An adjacency exists between each Vertex and the new Edge")
             {
-                // Either Edge ID from V₁
-                REQUIRE( topo.edgesAdjacentToVertex(v1) == mycad::EdgeIDs{*edge});
-                REQUIRE( topo.edgesAdjacentToVertex(v2) == mycad::EdgeIDs{*edge});
+                REQUIRE( *topo.edgesAdjacentToVertex(v1) == mycad::EdgeIDs{*edge});
+                REQUIRE( *topo.edgesAdjacentToVertex(v2) == mycad::EdgeIDs{*edge});
             }
 
             THEN("Both Vertices are adjacent to the Edge")
@@ -108,8 +107,8 @@ SCENARIO("003: Edge Topology", "[topology][edge]")
             THEN("v2 is adjacent to both edges")
             {
                 auto edges = topo.edgesAdjacentToVertex(v2);
-                REQUIRE(std::ranges::count(edges, edge) == 1);
-                REQUIRE(std::ranges::count(edges, edge2) == 1);
+                REQUIRE(std::ranges::count(*edges, edge) == 1);
+                REQUIRE(std::ranges::count(*edges, edge2) == 1);
             }
 
             WHEN("The two Edges are joined")
@@ -169,7 +168,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
             {
                 auto edges = topo.getChainEdges(chain);
 
-                REQUIRE(std::ranges::count(edges, e3) == 0);
+                REQUIRE(std::ranges::count(*edges, e3) == 0);
             }
 
             WHEN("The second two are connected")
@@ -180,14 +179,14 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                 {
                     auto edges = topo.getChainEdges(chain);
 
-                    REQUIRE(std::ranges::count(edges, e3) == 1);
+                    REQUIRE(std::ranges::count(*edges, e3) == 1);
                 }
 
                 THEN("The third can be retrieved using the second returned chain")
                 {
                     auto edges = topo.getChainEdges(c2);
 
-                    REQUIRE(std::ranges::count(edges, e3) == 1);
+                    REQUIRE(std::ranges::count(*edges, e3) == 1);
                 }
 
                 THEN("The second chain returns a sub-set of the first chain")
@@ -196,11 +195,11 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                     auto edges2 = topo.getChainEdges(c2);
 
                     // both must be sorted for ranges::includes to work
-                    std::ranges::sort(edges1);
-                    std::ranges::sort(edges2);
+                    std::ranges::sort(*edges1);
+                    std::ranges::sort(*edges2);
 
-                    REQUIRE(edges2.size() < edges1.size());
-                    REQUIRE(std::ranges::includes(edges1, edges2));
+                    REQUIRE(edges2.value().size() < edges1.value().size());
+                    REQUIRE(std::ranges::includes(*edges1, *edges2));
                 }
             }
 
@@ -212,7 +211,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                 {
                     auto edges = topo.getChainEdges(chain);
 
-                    REQUIRE(edges == std::vector<mycad::EdgeID>{e1, e2, e3});
+                    REQUIRE(*edges == std::vector<mycad::EdgeID>{e1, e2, e3});
                 }
             }
         }
@@ -247,7 +246,7 @@ SCENARIO("004: Chain Topology", "[topology][chain]")
                 mycad::Chain c2   = topo.joinEdges(e2, e0);
                 auto edges = topo.getChainEdges(c2);
 
-                REQUIRE(edges == std::vector<mycad::EdgeID>{e2, e0});
+                REQUIRE(*edges == std::vector<mycad::EdgeID>{e2, e0});
             }
 
             THEN("Edge e1 cannot be used as a TO edge in joinEdges")

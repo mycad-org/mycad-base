@@ -56,7 +56,7 @@ namespace mycad
              *  @returns error sring if the vertex does not exist in the
              *           topology
              */
-            auto edgesAdjacentToVertex(VertexID v) const -> EdgeIDs;
+            auto edgesAdjacentToVertex(VertexID v) const -> MaybeEdgeIDs;
 
             /** @returns A pair `(left, right)` of vertex IDs corresponding to
              *           this Edge
@@ -79,7 +79,7 @@ namespace mycad
 
             /** @brief returns all Edges in the Chain
              */
-            auto getChainEdges(Chain chain) const -> EdgeIDs;
+            auto getChainEdges(Chain chain) const -> MaybeEdgeIDs;
 
             /** @returns false if the Edge doesn't exist
              */
@@ -102,18 +102,5 @@ namespace mycad
     auto operator<<(std::ostream &os, Topology const &topo) -> std::ostream &;
 } // namespace mycad::topo
 
-template<class T>
-auto operator<<(std::ostream &os, std::optional<T> const &val) -> std::ostream &
-{
-    if(val.has_value())
-    {
-        os << std::to_string(*val);
-    }
-    else
-    {
-        os << std::string("OptionalIsEmpty");
-    }
-    return os;
-}
-
+auto operator<<(std::ostream &os, std::optional<std::size_t> const &val) -> std::ostream &;
 #endif // MYCAD_TOPOLOGY_HEADER
