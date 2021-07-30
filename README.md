@@ -96,14 +96,13 @@ Roadmap
 
 | Version | Target Date | Main Feature                                                                          |
 | ------- | ----------- | ------------------------------------------------------------------------------------- |
-|  v0.1   |  Aug. 2021  | entity can represent a chain of straight line segments in 3D space of arbitrary length|
-|  v0.2   |  Oct. 2021  | `mycad-vis`, a minimal opengl viewer for mycad objects                                |
-|  v0.3   |  Dec. 2021  | entity can represent a cube                                                           |
-|  v0.4   |  Feb. 2022  | `arc` added to geometry - maybe `circle`                                              |
-|  v0.5   |  Apr. 2022  | `splitEdge` added to topology                                                         |
-|  v0.6   |  Jul. 2022  | `boolean union` function added to entity                                              |
-|  v0.7   |  Sep. 2022  | `boolean subtract` function added to entity                                           |
-|  v0.8   |  Nov. 2022  | `fillet` function added to entity                                                     |
-|  v0.9   |  Dec. 2022  | [Topological naming problem][2] from FreeCAD is shown as solved                       |
+|  v0.2   |  Aug. 2021  | `mycad-vis`, a minimal opengl viewer for mycad objects                                |
+|  v0.3   |  Nov. 2021  | entity can represent a cube                                                           |
+|  v0.4   |  Jan. 2022  | `arc` added to geometry - maybe `circle`                                              |
+|  v0.5   |  Mar. 2022  | `splitEdge` added to topology                                                         |
+|  v0.6   |  Jun. 2022  | `boolean union` function added to entity                                              |
+|  v0.7   |  Aug. 2022  | `boolean subtract` function added to entity                                           |
+|  v0.8   |  Oct. 2022  | `fillet` function added to entity                                                     |
+|  v0.9   |  Nov. 2022  | [Topological naming problem][2] from FreeCAD is shown as solved                       |
 
 [2]: https://wiki.freecadweb.org/Topological_naming_problem
