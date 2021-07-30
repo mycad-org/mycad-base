@@ -47,6 +47,7 @@ namespace mycad
 
             auto intersects(Point const &p) const -> bool;
 
+            bool operator<=>(Line const&) const = default;
         private:
             Line(Point const &p1, Point const &p2);
 
