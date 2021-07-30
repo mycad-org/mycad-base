@@ -12,10 +12,10 @@ namespace mycad
     {
         public:
             auto addVertex(Point const p) -> VertexID;
-            auto addEdge(VertexID, VertexID) -> MaybeEdgeID{return std::nullopt;};
+            auto addEdge(VertexID const v1, VertexID const v2) -> MaybeEdgeID;
 
-            auto getPoint(VertexID const v) -> Point;
-            auto getLine(EdgeID) -> MaybeLine{return std::nullopt;};
+            auto getPoint(VertexID const v) const -> Point;
+            auto getLine(EdgeID const e) const -> MaybeLine;
 
         private:
             std::map<VertexID, Point> vertices = {};
