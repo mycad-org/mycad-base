@@ -3,16 +3,12 @@
 
 #include "mycad/Viewer.h"
 
+#include <iostream>
+
 int main()
 {
     // Simple RAII, glfwTerminate will _always_ be called
     if(auto app = mycad::GLFW_Application())
     {
-        glfwMakeContextCurrent(app.win);
-
-        while(!glfwWindowShouldClose(app.win))
-        {
-
-        }
     }
 }

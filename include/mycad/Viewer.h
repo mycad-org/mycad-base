@@ -1,6 +1,7 @@
 #ifndef MYCAD_VIEWER_HEADER
 #define MYCAD_VIEWER_HEADER
 
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 namespace mycad

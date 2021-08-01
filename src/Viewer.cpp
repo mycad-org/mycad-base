@@ -21,6 +21,8 @@ GLFW_Application::operator bool() const
 
 void GLFW_Application::init()
 {
+    std::cout << "GLFW info: " << glfwGetVersionString() << '\n';
+
     if(!glfwInit())
     {
         std::cerr << "There was an error initializing glfw" << '\n';
@@ -31,6 +33,21 @@ void GLFW_Application::init()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
     makeWindow();
+
+    glewInit();
+
+    glfwMakeContextCurrent(win);
+
+    const unsigned char* renderer = glGetString(GL_RENDERER); // get renderer string
+    const unsigned char* version = glGetString(GL_VERSION); // version as a string
+
+    std::cout << "Renderer: " << renderer << '\n';
+    std::cout << "OpenGL version: " << version << std::endl;
+
+    // depth-test tells gl to NOT draw things that are obscured by something
+    // closer
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 }
 
 void GLFW_Application::makeWindow()
