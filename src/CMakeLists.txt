@@ -6,5 +6,5 @@ add_library( mycad-topology SHARED detail/Topology.cpp Topology.cpp)
 add_library(mycad-entity SHARED Entity.cpp)
 target_link_libraries(mycad-entity mycad-geometry mycad-topology)
 
-add_executable(mycad-vis main.cpp GLFW_Application.cpp)
+add_executable(mycad-vis main.cpp GLFW_Application.cpp GL_Renderer.cpp)
 target_link_libraries(mycad-vis glfw GLEW GL)
