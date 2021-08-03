@@ -33,7 +33,7 @@ void GLFW_Application::init()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    win = glfwCreateWindow(640, 480, "Hello, glfw!", NULL, NULL);
+    win = glfwCreateWindow(640, 480, "LearnOpenGL", NULL, NULL);
     if(win == nullptr)
     {
         std::cerr << "There was an error initializing the window" << '\n';
@@ -58,6 +58,6 @@ void GLFW_Application::init()
 
     // depth-test tells gl to NOT draw things that are obscured by something
     // closer
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    /* glEnable(GL_DEPTH_TEST); */
+    /* glDepthFunc(GL_LESS); */
 }
