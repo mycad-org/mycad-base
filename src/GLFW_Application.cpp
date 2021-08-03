@@ -1,4 +1,4 @@
-#include "mycad/Viewer.h"
+#include "mycad/GLFW_Application.h"
 
 #include <iostream>
 

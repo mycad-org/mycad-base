@@ -1,7 +1,7 @@
 // This is only a minimal viewer for mycad data structures. It is not (yet)
 // intended to be a full CAD package
 
-#include "mycad/Viewer.h"
+#include "mycad/GLFW_Application.h"
 
 #include <iostream>
 
