@@ -22,7 +22,8 @@ namespace mycad
 
         private:
             void init();
-            void makeWindow();
+
+            bool valid = false;
     };
 } // namespace mycad
 #endif

@@ -16,7 +16,7 @@ GLFW_Application::~GLFW_Application()
 
 GLFW_Application::operator bool() const
 {
-    return glfwInit() && win != nullptr;
+    return valid;
 }
 
 void GLFW_Application::init()
@@ -31,12 +31,24 @@ void GLFW_Application::init()
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    makeWindow();
-
-    glewInit();
+    win = glfwCreateWindow(640, 480, "Hello, glfw!", NULL, NULL);
+    if(win == nullptr)
+    {
+        std::cerr << "There was an error initializing the window" << '\n';
+        return;
+    }
 
     glfwMakeContextCurrent(win);
+
+    if (glewInit() != GLEW_OK)
+    {
+        std::cerr << "There was an error initializing glew" << '\n';
+        return;
+    }
+
+    valid = true;
 
     const unsigned char* renderer = glGetString(GL_RENDERER); // get renderer string
     const unsigned char* version = glGetString(GL_VERSION); // version as a string
@@ -48,13 +60,4 @@ void GLFW_Application::init()
     // closer
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-}
-
-void GLFW_Application::makeWindow()
-{
-    win = glfwCreateWindow(640, 480, "Hello, glfw!", NULL, NULL);
-    if(win == nullptr)
-    {
-        std::cerr << "There was an error initializing the window" << '\n';
-    }
 }
