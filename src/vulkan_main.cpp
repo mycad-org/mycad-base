@@ -32,7 +32,7 @@ int main()
         // initialize the vk::ApplicationInfo structure
         vk::ApplicationInfo applicationInfo{
                 .pApplicationName    = "Hello Triangle",
-                .applicationVersion = 1,
+                .applicationVersion  = 1,
                 .pEngineName         = "No Engine",
                 .engineVersion       = 1,
                 .apiVersion          = VK_API_VERSION_1_1
@@ -44,22 +44,6 @@ int main()
         const char** glfwExtensions;
 
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        // initialize the vk::InstanceCreateInfo
-        vk::InstanceCreateInfo instanceCreateInfo{
-            .pApplicationInfo        = &applicationInfo,
-            .enabledExtensionCount   = glfwExtensionCount,
-            .ppEnabledExtensionNames = glfwExtensions
-        };
-
-        // create an Instance
-        vk::raii::Instance instance( context, instanceCreateInfo );
-
-        std::cout << "Available vulkan extensions: " << '\n';
-        for (const auto& extension : vk::enumerateInstanceExtensionProperties())
-        {
-            std::cout << "    " << extension.extensionName << '\n';
-        }
 
         // Check to make sure required validation layers are present
         std::vector<vk::LayerProperties> properties = vk::enumerateInstanceLayerProperties();
@@ -78,6 +62,25 @@ int main()
                 return 1;
             }
         }
+
+        // initialize the vk::InstanceCreateInfo
+        vk::InstanceCreateInfo instanceCreateInfo{
+            .pApplicationInfo        = &applicationInfo,
+            .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
+            .ppEnabledLayerNames     = validationLayers.data(),
+            .enabledExtensionCount   = glfwExtensionCount,
+            .ppEnabledExtensionNames = glfwExtensions
+        };
+
+        // create an Instance
+        vk::raii::Instance instance( context, instanceCreateInfo );
+
+        std::cout << "Available vulkan extensions: " << '\n';
+        for (const auto& extension : vk::enumerateInstanceExtensionProperties())
+        {
+            std::cout << "    " << extension.extensionName << '\n';
+        }
+
     }
     catch ( vk::SystemError & err )
     {
