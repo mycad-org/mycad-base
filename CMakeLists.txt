@@ -22,8 +22,6 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
-    enable_testing()
-
     add_subdirectory(ext/rapidcheck)
 
     add_subdirectory(test)
