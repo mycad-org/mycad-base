@@ -41,8 +41,6 @@ int main()
         // initialize the vk::InstanceCreateInfo
         vk::InstanceCreateInfo instanceCreateInfo{
             .pApplicationInfo        = &applicationInfo,
-            .enabledLayerCount       = 0,
-            .ppEnabledLayerNames     = nullptr,
             .enabledExtensionCount   = glfwExtensionCount,
             .ppEnabledExtensionNames = glfwExtensions
         };
