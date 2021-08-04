@@ -15,6 +15,18 @@ std::vector<const char *> validationLayers =
     "VK_LAYER_KHRONOS_validation"
 };
 
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT /*messageSeverity*/,
+    VkDebugUtilsMessageTypeFlagsEXT /*messageType*/,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* /*pUserData*/)
+{
+
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+
 int main()
 {
     glfwInit();
@@ -67,8 +79,20 @@ int main()
             }
         }
 
+        // Set up the debugging messenger CreateInfo
+        vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+            .messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+                             | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+                             | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+            .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+                         | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+                         | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+            .pfnUserCallback = debugCallback
+        };
+
         // initialize the vk::InstanceCreateInfo
         vk::InstanceCreateInfo instanceCreateInfo{
+            .pNext                   = &debugCreateInfo,
             .pApplicationInfo        = &applicationInfo,
             .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
             .ppEnabledLayerNames     = validationLayers.data(),
@@ -78,6 +102,9 @@ int main()
 
         // create an Instance
         vk::raii::Instance instance( context, instanceCreateInfo );
+
+        // set up the debug messenger. throws exception on failure I guess...
+        vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo);
 
         std::cout << "Available vulkan extensions: " << '\n';
         for (const auto& extension : vk::enumerateInstanceExtensionProperties())
