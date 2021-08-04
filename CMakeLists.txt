@@ -9,10 +9,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
+set(MYCAD_BUILD_EXAMPLES FALSE CACHE BOOL "Whether to build the examples programs")
+set(MYCAD_VULKAN_VIEWER FALSE CACHE BOOL "Whether to build the mycad-vk viewer")
+
 include_directories(include)
 add_subdirectory(src)
-
-set(MYCAD_BUILD_EXAMPLES FALSE CACHE BOOL "Whether to build the examples programs")
 
 if(MYCAD_BUILD_EXAMPLES)
     add_subdirectory(examples)
