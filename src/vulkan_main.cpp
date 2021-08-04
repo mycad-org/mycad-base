@@ -45,7 +45,11 @@ int main()
 
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-        // Check to make sure required validation layers are present
+        // check to make sure required validation layers are present
+        std::vector<const char *> exts(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+        // Check to make sure requested validation layers are present
         std::vector<vk::LayerProperties> properties = vk::enumerateInstanceLayerProperties();
 
         for (auto const& layer : validationLayers)
@@ -68,8 +72,8 @@ int main()
             .pApplicationInfo        = &applicationInfo,
             .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
             .ppEnabledLayerNames     = validationLayers.data(),
-            .enabledExtensionCount   = glfwExtensionCount,
-            .ppEnabledExtensionNames = glfwExtensions
+            .enabledExtensionCount   = static_cast<uint32_t>(exts.size()),
+            .ppEnabledExtensionNames = exts.data()
         };
 
         // create an Instance
