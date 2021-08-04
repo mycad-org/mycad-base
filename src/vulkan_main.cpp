@@ -3,10 +3,17 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <iostream>
+#include <vector>
 
 const int WIDTH=800;
 const int HEIGHT=600;
+
+std::vector<const char *> validationLayers =
+{
+    "VK_LAYER_KHRONOS_validation"
+};
 
 int main()
 {
@@ -52,6 +59,24 @@ int main()
         for (const auto& extension : vk::enumerateInstanceExtensionProperties())
         {
             std::cout << "    " << extension.extensionName << '\n';
+        }
+
+        // Check to make sure required validation layers are present
+        std::vector<vk::LayerProperties> properties = vk::enumerateInstanceLayerProperties();
+
+        for (auto const& layer : validationLayers)
+        {
+            auto hasName = [&layer](vk::LayerProperties const & prop)
+            {
+                return strcmp(layer, prop.layerName) == 0;
+            };
+
+            if (std::ranges::find_if(properties, hasName) == properties.end())
+            {
+                std::cout << "The layer \"" << layer
+                          <<"\" was not found" << '\n';
+                return 1;
+            }
         }
     }
     catch ( vk::SystemError & err )
