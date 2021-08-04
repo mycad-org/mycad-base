@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: "install build tools"
-      run: apt update && apt install -y build-essential git cmake
+      run: apt update && apt install -y build-essential git cmake libglew-dev libglfw3-dev
 
     - uses: actions/checkout@v2
       with:
