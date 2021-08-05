@@ -130,29 +130,51 @@ int main()
         auto devices = vk::raii::PhysicalDevices(instance);
         std::size_t whichDevice = 0;
         uint32_t whichQueueFamily = 0;
-        bool found = false;
+        bool foundGraphicsQueue = false;
+        bool foundSurfaceQueue  = false;
         for (; whichDevice < devices.size(); whichDevice++)
         {
+            // Reset in case both were not found last time
+            foundGraphicsQueue = false;
+            foundSurfaceQueue  = false;
+
             auto &device = devices.at(whichDevice);
             auto queues = device.getQueueFamilyProperties();
             for(; whichQueueFamily < queues.size(); whichQueueFamily++)
             {
                 auto const &queue = queues.at(whichQueueFamily);
-                if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
+                if (not foundGraphicsQueue &&
+                    queue.queueFlags & vk::QueueFlagBits::eGraphics)
                 {
-                    found = true;
+                    foundGraphicsQueue = true;
+                }
+                if (not foundSurfaceQueue &&
+                    device.getSurfaceSupportKHR(whichQueueFamily, *surface))
+                {
+                    foundSurfaceQueue = true;
+                }
+
+                if (foundGraphicsQueue && foundSurfaceQueue)
+                {
                     break;
                 }
             }
-            if (found)
+
+            if (foundGraphicsQueue && foundSurfaceQueue)
             {
                 break;
             }
         }
 
-        if(not found)
+        if(not foundGraphicsQueue)
         {
-            std::cerr << "Unable to find a suitable Device" << std::endl;
+            std::cerr << "Unable to find a Device with graphics support" << std::endl;
+            return 1;
+        }
+
+        if(not foundSurfaceQueue)
+        {
+            std::cerr << "Unable to find a Device with support for the appropriate surface queue" << std::endl;
             return 1;
         }
 
