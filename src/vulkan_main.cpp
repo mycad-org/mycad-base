@@ -156,6 +156,16 @@ int main()
                 continue;
             }
 
+            // Ensure appropriate swap chain support
+            /* auto surfaceCapabilities      = device.getSurfaceCapabilitiesKHR(*surface); */
+            auto surfaceFormats      = device.getSurfaceFormatsKHR(*surface);
+            auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
+            if (surfaceFormats.empty() || surfacePresentModes.empty())
+            {
+                continue;
+            }
+
+
             // Reset in case both were not found last time
             foundGraphicsQueue  = false;
             foundSurfaceQueue   = false;
@@ -199,6 +209,7 @@ int main()
         if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
         {
             std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
+            std::cerr << "    Also, it could be that the appropriate swap-chain support was not found." << std::endl;
             return 1;
         }
 
@@ -245,7 +256,6 @@ int main()
         vk::raii::Device device(devices.at(whichDevice), deviceInfo);
         [[maybe_unused]] vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
         [[maybe_unused]] vk::raii::Queue surfaceQueue(device, whichSurfaceFamily, 0);
-
 
         while(!glfwWindowShouldClose(window))
         {
