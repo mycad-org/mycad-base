@@ -341,6 +341,32 @@ int main()
 
         vk::raii::SwapchainKHR swapchain(device, swapchainInfo);
 
+        // Create an image "view" for each swapchain image
+        auto swapchainImages = swapchain.getImages();
+        std::vector<vk::raii::ImageView> swapchainImageViews;
+        for(const auto& swapchainImage : swapchainImages)
+        {
+            vk::ImageViewCreateInfo imageViewCreateInfo{
+                .image = swapchainImage,
+                .viewType = vk::ImageViewType::e2D,
+                .format = surfaceFormat.format,
+                .components = {
+                    .r = vk::ComponentSwizzle::eIdentity,
+                    .g = vk::ComponentSwizzle::eIdentity,
+                    .b = vk::ComponentSwizzle::eIdentity,
+                    .a = vk::ComponentSwizzle::eIdentity
+                },
+                .subresourceRange = {
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                }
+            };
+            swapchainImageViews.emplace_back(device, imageViewCreateInfo);
+        }
+
         while(!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
