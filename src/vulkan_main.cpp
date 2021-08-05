@@ -157,7 +157,6 @@ int main()
             }
 
             // Ensure appropriate swap chain support
-            /* auto surfaceCapabilities      = device.getSurfaceCapabilitiesKHR(*surface); */
             auto surfaceFormats      = device.getSurfaceFormatsKHR(*surface);
             auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
             if (surfaceFormats.empty() || surfacePresentModes.empty())
@@ -256,6 +255,91 @@ int main()
         vk::raii::Device device(devices.at(whichDevice), deviceInfo);
         [[maybe_unused]] vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
         [[maybe_unused]] vk::raii::Queue surfaceQueue(device, whichSurfaceFamily, 0);
+
+        // create the swap chain
+        auto surfaceFormats      = devices.at(whichDevice).getSurfaceFormatsKHR(*surface);
+        auto surfacePresentModes = devices.at(whichDevice).getSurfacePresentModesKHR(*surface);
+        auto surfaceCapabilities = devices.at(whichDevice).getSurfaceCapabilitiesKHR(*surface);
+
+        vk::SurfaceFormatKHR surfaceFormat{
+            .format     = vk::Format::eB8G8R8A8Srgb,
+            .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear
+        };
+
+        auto presentMode = vk::PresentModeKHR::eMailbox;
+
+        vk::Extent2D extent;
+
+        if (std::ranges::find(surfaceFormats, surfaceFormat) == surfaceFormats.end())
+        {
+            surfaceFormat = surfaceFormats.front();
+        }
+
+        if (std::ranges::find(surfacePresentModes, presentMode) == surfacePresentModes.end())
+        {
+            presentMode = vk::PresentModeKHR::eFifo;
+        }
+
+        if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
+        {
+            extent = surfaceCapabilities.currentExtent;
+        }
+        else
+        {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+
+            extent.width  = std::clamp(
+                    static_cast<uint32_t>(width),
+                    surfaceCapabilities.minImageExtent.width,
+                    surfaceCapabilities.maxImageExtent.width
+                    );
+            extent.height  = std::clamp(
+                    static_cast<uint32_t>(width),
+                    surfaceCapabilities.minImageExtent.height,
+                    surfaceCapabilities.maxImageExtent.height
+                    );
+        }
+
+        // It's recommended to request one more than the minimum since otherwise
+        // we "may have to wait on the driver to complete internal operations
+        // before we can acquire another image to render to"
+        uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+        uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
+        if (maxImageCount > 0 && imageCount > maxImageCount)
+        {
+            imageCount = maxImageCount;
+        }
+
+        vk::SwapchainCreateInfoKHR swapchainInfo{
+            .surface = *surface,
+            .minImageCount = imageCount,
+            .imageFormat = surfaceFormat.format,
+            .imageColorSpace = surfaceFormat.colorSpace,
+            .imageExtent = extent,
+            .imageArrayLayers = 1,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+            .preTransform = surfaceCapabilities.currentTransform,
+            .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+            .presentMode = presentMode,
+            .clipped = VK_TRUE,
+            .oldSwapchain = VK_NULL_HANDLE
+        };
+
+        if (whichGraphicsFamily != whichSurfaceFamily)
+        {
+            swapchainInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+            swapchainInfo.queueFamilyIndexCount = 2;
+
+            uint32_t familyIndices[] = {whichGraphicsFamily, whichSurfaceFamily};
+            swapchainInfo.pQueueFamilyIndices = familyIndices;
+        }
+        else
+        {
+            swapchainInfo.imageSharingMode = vk::SharingMode::eExclusive;
+        }
+
+        vk::raii::SwapchainKHR swapchain(device, swapchainInfo);
 
         while(!glfwWindowShouldClose(window))
         {
