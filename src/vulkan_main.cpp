@@ -230,13 +230,15 @@ int main()
         }
 
         vk::DeviceCreateInfo deviceInfo{
-            .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-            .pQueueCreateInfos    = queueCreateInfos.data(),
+            .queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
+            .pQueueCreateInfos       = queueCreateInfos.data(),
             // not needed by newer vulkan implementations, but I guess leave for now
             .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
             .ppEnabledLayerNames     = validationLayers.data(),
             // --- end "not needed" ----
-            .pEnabledFeatures     = &deviceFeatures
+            .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+            .ppEnabledExtensionNames = deviceExtensions.data(),
+            .pEnabledFeatures        = &deviceFeatures
         };
 
         // I guess these throws if it fails
