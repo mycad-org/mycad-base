@@ -2,6 +2,8 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 
 #include <algorithm>
 #include <iostream>
@@ -102,6 +104,17 @@ int main()
 
         // create an Instance
         vk::raii::Instance instance( context, instanceCreateInfo );
+
+        // Create a "screen surface" to render to.
+        VkSurfaceKHR rawSurface;
+        if (glfwCreateWindowSurface(*instance, window, nullptr, &rawSurface) != VK_SUCCESS)
+        {
+            std::cerr << "Error creating a vulkan surface" << std::endl;
+            return 1;
+        }
+        // TODO: do we need to worry about this being destructed before
+        // vk::raii::Instance?
+        vk::raii::SurfaceKHR surface(instance, rawSurface);
 
         // set up the debug messenger. throws exception on failure I guess...
         vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo);
