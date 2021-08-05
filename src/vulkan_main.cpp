@@ -13,9 +13,14 @@
 const int WIDTH=800;
 const int HEIGHT=600;
 
-std::vector<const char *> validationLayers =
+std::vector<const char *> const validationLayers =
 {
     "VK_LAYER_KHRONOS_validation"
+};
+
+std::vector<const char *> const deviceExtensions =
+{
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -137,13 +142,25 @@ int main()
         uint32_t whichSurfaceFamily  = 0;
         for (; whichDevice < devices.size(); whichDevice++)
         {
+            // Check for required device extensions
+            auto &device = devices.at(whichDevice);
+
+            std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+            for(const auto& deviceExtension : device.enumerateDeviceExtensionProperties())
+            {
+                requiredExtensions.erase(deviceExtension.extensionName);
+            }
+
+            if(not requiredExtensions.empty())
+            {
+                continue;
+            }
+
             // Reset in case both were not found last time
             foundGraphicsQueue  = false;
             foundSurfaceQueue   = false;
             whichGraphicsFamily = 0;
             whichSurfaceFamily  = 0;
-
-            auto &device = devices.at(whichDevice);
             auto queues = device.getQueueFamilyProperties();
             for(auto const& queue : device.getQueueFamilyProperties())
             {
@@ -177,6 +194,12 @@ int main()
             {
                 break;
             }
+        }
+
+        if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
+        {
+            std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
+            return 1;
         }
 
         if(not foundGraphicsQueue)
