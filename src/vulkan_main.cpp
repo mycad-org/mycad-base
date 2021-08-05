@@ -116,12 +116,15 @@ int main()
         // Set up appropriate device
         auto devices = vk::raii::PhysicalDevices(instance);
         std::size_t whichDevice = 0;
+        uint32_t whichQueueFamily = 0;
         bool found = false;
         for (; whichDevice < devices.size(); whichDevice++)
         {
             auto &device = devices.at(whichDevice);
-            for(auto const& queue : device.getQueueFamilyProperties())
+            auto queues = device.getQueueFamilyProperties();
+            for(; whichQueueFamily < queues.size(); whichQueueFamily++)
             {
+                auto const &queue = queues.at(whichQueueFamily);
                 if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
                 {
                     found = true;
@@ -139,6 +142,30 @@ int main()
             std::cerr << "Unable to find a suitable Device" << std::endl;
             return 1;
         }
+
+        // Set up the logical device
+        float queuePriority = 1.0f;
+        vk::DeviceQueueCreateInfo deviceQueueInfo{
+            .queueFamilyIndex = whichQueueFamily,
+            .queueCount       = 1,
+            .pQueuePriorities = &queuePriority
+        };
+
+        vk::PhysicalDeviceFeatures deviceFeatures{};
+
+        vk::DeviceCreateInfo deviceInfo{
+            .queueCreateInfoCount = 1,
+            .pQueueCreateInfos    = &deviceQueueInfo,
+            // not needed by newer vulkan implementations, but I guess leave for now
+            .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
+            .ppEnabledLayerNames     = validationLayers.data(),
+            // --- end "not needed" ----
+            .pEnabledFeatures     = &deviceFeatures
+        };
+
+        // I guess these throws if it fails
+        vk::raii::Device device(devices.at(whichDevice), deviceInfo);
+        vk::raii::Queue queue(device, whichQueueFamily, 0);
 
     }
     catch ( vk::SystemError & err )
