@@ -106,10 +106,38 @@ int main()
         // set up the debug messenger. throws exception on failure I guess...
         vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo);
 
+        // List available extensions
         std::cout << "Available vulkan extensions: " << '\n';
         for (const auto& extension : vk::enumerateInstanceExtensionProperties())
         {
             std::cout << "    " << extension.extensionName << '\n';
+        }
+
+        // Set up appropriate device
+        auto devices = vk::raii::PhysicalDevices(instance);
+        std::size_t whichDevice = 0;
+        bool found = false;
+        for (; whichDevice < devices.size(); whichDevice++)
+        {
+            auto &device = devices.at(whichDevice);
+            for(auto const& queue : device.getQueueFamilyProperties())
+            {
+                if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+            {
+                break;
+            }
+        }
+
+        if(not found)
+        {
+            std::cerr << "Unable to find a suitable Device" << std::endl;
+            return 1;
         }
 
     }
