@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <set>
 #include <vector>
 
 const int WIDTH=800;
@@ -129,33 +130,45 @@ int main()
         // Set up appropriate device
         auto devices = vk::raii::PhysicalDevices(instance);
         std::size_t whichDevice = 0;
-        uint32_t whichQueueFamily = 0;
+        std::set<uint32_t> whichQueues{};
         bool foundGraphicsQueue = false;
         bool foundSurfaceQueue  = false;
+        uint32_t whichGraphicsFamily = 0;
+        uint32_t whichSurfaceFamily  = 0;
         for (; whichDevice < devices.size(); whichDevice++)
         {
             // Reset in case both were not found last time
-            foundGraphicsQueue = false;
-            foundSurfaceQueue  = false;
+            foundGraphicsQueue  = false;
+            foundSurfaceQueue   = false;
+            whichGraphicsFamily = 0;
+            whichSurfaceFamily  = 0;
 
             auto &device = devices.at(whichDevice);
             auto queues = device.getQueueFamilyProperties();
-            for(; whichQueueFamily < queues.size(); whichQueueFamily++)
+            for(auto const& queue : device.getQueueFamilyProperties())
             {
-                auto const &queue = queues.at(whichQueueFamily);
-                if (not foundGraphicsQueue &&
-                    queue.queueFlags & vk::QueueFlagBits::eGraphics)
+                if (not foundGraphicsQueue)
                 {
-                    foundGraphicsQueue = true;
+                    if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
+                    {
+                        foundGraphicsQueue = true;
+                    }
+
+                    whichGraphicsFamily++;
                 }
-                if (not foundSurfaceQueue &&
-                    device.getSurfaceSupportKHR(whichQueueFamily, *surface))
+                if (not foundSurfaceQueue) 
                 {
-                    foundSurfaceQueue = true;
+                    if (device.getSurfaceSupportKHR(whichSurfaceFamily, *surface))
+                    {
+                        foundSurfaceQueue = true;
+                    }
+
+                    whichSurfaceFamily++;
                 }
 
                 if (foundGraphicsQueue && foundSurfaceQueue)
                 {
+                    whichQueues = {whichGraphicsFamily, whichSurfaceFamily};
                     break;
                 }
             }
@@ -179,18 +192,23 @@ int main()
         }
 
         // Set up the logical device
-        float queuePriority = 1.0f;
-        vk::DeviceQueueCreateInfo deviceQueueInfo{
-            .queueFamilyIndex = whichQueueFamily,
-            .queueCount       = 1,
-            .pQueuePriorities = &queuePriority
-        };
-
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
+        float queuePriority = 1.0f;
+        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+        for(uint32_t queueIndex : whichQueues)
+        {
+            vk::DeviceQueueCreateInfo ci{
+                .queueFamilyIndex = queueIndex,
+                .queueCount       = 1,
+                .pQueuePriorities = &queuePriority
+            };
+            queueCreateInfos.push_back(ci);
+        }
+
         vk::DeviceCreateInfo deviceInfo{
-            .queueCreateInfoCount = 1,
-            .pQueueCreateInfos    = &deviceQueueInfo,
+            .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+            .pQueueCreateInfos    = queueCreateInfos.data(),
             // not needed by newer vulkan implementations, but I guess leave for now
             .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
             .ppEnabledLayerNames     = validationLayers.data(),
@@ -200,7 +218,14 @@ int main()
 
         // I guess these throws if it fails
         vk::raii::Device device(devices.at(whichDevice), deviceInfo);
-        vk::raii::Queue queue(device, whichQueueFamily, 0);
+        [[maybe_unused]] vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
+        [[maybe_unused]] vk::raii::Queue surfaceQueue(device, whichSurfaceFamily, 0);
+
+
+        while(!glfwWindowShouldClose(window))
+        {
+            glfwPollEvents();
+        }
 
     }
     catch ( vk::SystemError & err )
@@ -217,11 +242,6 @@ int main()
     {
         std::cout << "unknown error\n";
         exit( -1 );
-    }
-
-    while(!glfwWindowShouldClose(window))
-    {
-        glfwPollEvents();
     }
 
     glfwDestroyWindow(window);
