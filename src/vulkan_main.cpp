@@ -5,6 +5,9 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 
+#include "shaders/triangle_colors_vshader.h"
+#include "shaders/gradient_fshader.h"
+
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -366,6 +369,33 @@ int main()
             };
             swapchainImageViews.emplace_back(device, imageViewCreateInfo);
         }
+
+        // Attach shaders
+        vk::ShaderModuleCreateInfo vShaderInfo{
+            .codeSize = triangle_colors_vshader_len,
+            .pCode = reinterpret_cast<const uint32_t*>(triangle_colors_vshader)
+        };
+        vk::ShaderModuleCreateInfo fShaderInfo{
+            .codeSize = gradient_fshader_len,
+            .pCode = reinterpret_cast<const uint32_t*>(gradient_fshader)
+        };
+
+        vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
+        vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
+
+        [[maybe_unused]] vk::PipelineShaderStageCreateInfo shaderStages[] = {
+            {
+                .stage = vk::ShaderStageFlagBits::eVertex,
+                .module = *vShaderModule,
+                .pName = "main"
+            },
+            {
+                .stage = vk::ShaderStageFlagBits::eFragment,
+                .module = *fShaderModule,
+                .pName = "main"
+            }
+        };
+
 
         while(!glfwWindowShouldClose(window))
         {
