@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <vector>
 
@@ -145,6 +146,7 @@ int main()
         uint32_t whichSurfaceFamily  = 0;
         for (; whichDevice < devices.size(); whichDevice++)
         {
+            std::cout << "Looking at device number: " << whichDevice << '\n';
             // Check for required device extensions
             auto &device = devices.at(whichDevice);
 
@@ -156,6 +158,7 @@ int main()
 
             if(not requiredExtensions.empty())
             {
+                std::cout << "    bailing, all extensions not found" << '\n';
                 continue;
             }
 
@@ -164,6 +167,7 @@ int main()
             auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
             if (surfaceFormats.empty() || surfacePresentModes.empty())
             {
+                std::cout << "    bailing, swapchain support not found " << '\n';
                 continue;
             }
 
@@ -176,23 +180,30 @@ int main()
             auto queues = device.getQueueFamilyProperties();
             for(auto const& queue : device.getQueueFamilyProperties())
             {
+                std::cout << "    Looking at queue number: " << whichSurfaceFamily << '\n';
                 if (not foundGraphicsQueue)
                 {
                     if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
                     {
+                        std::cout << "        found graphics bit, index = " << whichGraphicsFamily << '\n';
                         foundGraphicsQueue = true;
                     }
-
-                    whichGraphicsFamily++;
+                    else
+                    {
+                        whichGraphicsFamily++;
+                    }
                 }
                 if (not foundSurfaceQueue) 
                 {
                     if (device.getSurfaceSupportKHR(whichSurfaceFamily, *surface))
                     {
+                        std::cout << "        found surface support, index = " << whichSurfaceFamily << '\n';
                         foundSurfaceQueue = true;
                     }
-
-                    whichSurfaceFamily++;
+                    else
+                    {
+                        whichSurfaceFamily++;
+                    }
                 }
 
                 if (foundGraphicsQueue && foundSurfaceQueue)
@@ -207,6 +218,9 @@ int main()
                 break;
             }
         }
+
+        std::cout << "whichGraphicsFamily = " << whichGraphicsFamily << '\n';
+        std::cout << "whichSurfaceFamily = " << whichSurfaceFamily << '\n';
 
         if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
         {
@@ -256,8 +270,8 @@ int main()
 
         // I guess these throws if it fails
         vk::raii::Device device(devices.at(whichDevice), deviceInfo);
-        [[maybe_unused]] vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
-        [[maybe_unused]] vk::raii::Queue surfaceQueue(device, whichSurfaceFamily, 0);
+        vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
+        vk::raii::Queue presentQueue(device, whichSurfaceFamily, 0);
 
         // create the swap chain
         auto surfaceFormats      = devices.at(whichDevice).getSurfaceFormatsKHR(*surface);
@@ -490,10 +504,10 @@ int main()
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0,
             .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-            .srcAccessMask = 0,
             .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            .srcAccessMask = {},
             .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
-
+        };
 
         vk::RenderPassCreateInfo renderPassInfo{
             .attachmentCount = 1,
@@ -557,7 +571,9 @@ int main()
         // Record the commands
         for(std::size_t i = 0; i < commandBuffers.size(); i++)
         {
-            vk::CommandBufferBeginInfo beginInfo{};
+            vk::CommandBufferBeginInfo beginInfo{
+                .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse
+            };
 
             const auto& commandBuffer = commandBuffers.at(i);
 
@@ -588,8 +604,41 @@ int main()
             //==== end command
         }
 
+        // Semaphores to sync gpu stuff
+        vk::raii::Semaphore semImageAvail(device, vk::SemaphoreCreateInfo());
+        vk::raii::Semaphore semRenderFinished(device, vk::SemaphoreCreateInfo());
+
         while(!glfwWindowShouldClose(window))
         {
+            // Acquire an image from the swap chain
+            auto [res, imgIndex] = swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *semImageAvail, nullptr);
+
+            vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+            // submit the command to the graphics queue
+            vk::SubmitInfo submitInfo{
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = &(*semImageAvail),
+                .pWaitDstStageMask = waitStages,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = &(*semRenderFinished)
+            };
+
+            graphicsQueue.submit({submitInfo}, nullptr);
+
+            // submit something or other to the "present" queue (this draws!)
+            vk::PresentInfoKHR presentInfo{
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = &(*semRenderFinished),
+                .swapchainCount = 1,
+                .pSwapchains = &(*swapchain),
+                .pImageIndices = &imgIndex
+            };
+
+            [[maybe_unused]] auto presres = presentQueue.presentKHR(presentInfo);
+
             glfwPollEvents();
         }
 
