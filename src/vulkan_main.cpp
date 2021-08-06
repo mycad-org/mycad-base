@@ -421,14 +421,14 @@ int main()
             .extent = extent
         };
 
-        [[maybe_unused]] vk::PipelineViewportStateCreateInfo viewportStateInfo {
+        vk::PipelineViewportStateCreateInfo viewportStateInfo {
             .viewportCount = 1,
             .pViewports = &viewport,
             .scissorCount = 1,
             .pScissors = &scissor
         };
 
-        [[maybe_unused]] vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
+        vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = vk::PolygonMode::eFill,
@@ -438,7 +438,7 @@ int main()
             .lineWidth = 1.0f
         };
 
-        [[maybe_unused]] vk::PipelineMultisampleStateCreateInfo multisamplingInfo{
+        vk::PipelineMultisampleStateCreateInfo multisamplingInfo{
             .rasterizationSamples = vk::SampleCountFlagBits::e1,
             .sampleShadingEnable = VK_FALSE
         };
@@ -451,7 +451,7 @@ int main()
                             | vk::ColorComponentFlagBits::eA
         };
 
-        [[maybe_unused]] vk::PipelineColorBlendStateCreateInfo colorBlendingInfo{
+        vk::PipelineColorBlendStateCreateInfo colorBlendingInfo{
             .logicOpEnable = VK_FALSE,
             .attachmentCount = 1,
             .pAttachments = &colorAttachmentState
@@ -507,6 +507,22 @@ int main()
         };
 
         [[maybe_unused]] vk::raii::Pipeline graphicsPipeline(device, nullptr, pipelineInfo);
+
+        // create framebuffers
+        std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
+        for(const auto& swapchainImageView : swapchainImageViews)
+        {
+            vk::FramebufferCreateInfo createInfo{
+                .renderPass = *renderPass,
+                .attachmentCount = 1,
+                .pAttachments = &(*swapchainImageView),
+                .width = extent.width,
+                .height = extent.height,
+                .layers = 1
+            };
+
+            swapchainFramebuffers.emplace_back(device, createInfo);
+        }
 
         while(!glfwWindowShouldClose(window))
         {
