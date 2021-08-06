@@ -11,6 +11,8 @@ Open
 - [ ] set up a `mycad::ErrorCode` enum so we can be a bit more expressive using our
       `tl::expected`
 - [ ] add moar documentation
+- [ ] integrate shader compiling and generating headers (with byte code stuff)
+      into cmake
 
 Closed
 ======
