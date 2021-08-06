@@ -460,6 +460,35 @@ int main()
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
         vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
+        vk::AttachmentDescription colorAttachment{
+            .format = surfaceFormat.format,
+            .samples = vk::SampleCountFlagBits::e1,
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore,
+            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = vk::ImageLayout::ePresentSrcKHR
+        };
+
+        vk::AttachmentReference colorAttachmentRef{
+            .attachment = 0,
+            .layout = vk::ImageLayout::eColorAttachmentOptimal
+        };
+
+        vk::SubpassDescription subpass{
+            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentRef
+        }:
+
+        vk::RenderPassCreateInfo renderPassInfo{
+            .attachmentCount = 1,
+            .pAttachments = &colorAttachment,
+            .subpassCount = 1,
+            .pSubpasses = &subpass
+        };
+
         while(!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
