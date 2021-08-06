@@ -27,6 +27,8 @@ std::vector<const char *> const deviceExtensions =
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT /*messageSeverity*/,
     VkDebugUtilsMessageTypeFlagsEXT /*messageType*/,
@@ -571,9 +573,7 @@ int main()
         // Record the commands
         for(std::size_t i = 0; i < commandBuffers.size(); i++)
         {
-            vk::CommandBufferBeginInfo beginInfo{
-                .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse
-            };
+            vk::CommandBufferBeginInfo beginInfo{};
 
             const auto& commandBuffer = commandBuffers.at(i);
 
@@ -605,39 +605,74 @@ int main()
         }
 
         // Semaphores to sync gpu stuff
-        vk::raii::Semaphore semImageAvail(device, vk::SemaphoreCreateInfo());
-        vk::raii::Semaphore semRenderFinished(device, vk::SemaphoreCreateInfo());
+        std::vector<vk::raii::Semaphore> imageAvailableSems;
+        std::vector<vk::raii::Semaphore> renderFinishedSems;
+        std::vector<vk::raii::Fence> inFlightFences;
 
+        // Each image either has not been used yet, or has a inFlightFence that
+        // it is associated with
+        std::vector<std::optional<std::size_t>> imagesInFlight(swapchainImages.size(), std::nullopt);
+
+        for([[maybe_unused]] int const i : std::ranges::iota_view(0, MAX_FRAMES_IN_FLIGHT))
+        {
+            imageAvailableSems.emplace_back(device, vk::SemaphoreCreateInfo());
+            renderFinishedSems.emplace_back(device, vk::SemaphoreCreateInfo());
+
+            vk::FenceCreateInfo fenceInfo{
+                .flags = vk::FenceCreateFlagBits::eSignaled
+            };
+            inFlightFences.emplace_back(device, fenceInfo);
+        }
+
+        int currentFrame = 0;
         while(!glfwWindowShouldClose(window))
         {
+            auto& frameFence      = *inFlightFences.at(currentFrame);
+            // Wait for any previous frames that haven't finished yet
+            [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+
             // Acquire an image from the swap chain
-            auto [res, imgIndex] = swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *semImageAvail, nullptr);
+            auto [res, imgIndex] = swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+            auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
+
+            // Check if this image is still "in flight", and wait if so
+            if(maybeFenceIndex.has_value())
+            {
+                std::size_t i = maybeFenceIndex.value();
+                [[maybe_unused]] auto imageWaitRes = device.waitForFences(*inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
+            }
+
+            imagesInFlight[imgIndex] = currentFrame;
 
             vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
             // submit the command to the graphics queue
             vk::SubmitInfo submitInfo{
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*semImageAvail),
+                .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
                 .pWaitDstStageMask = waitStages,
                 .commandBufferCount = 1,
                 .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
                 .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &(*semRenderFinished)
+                .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
             };
 
-            graphicsQueue.submit({submitInfo}, nullptr);
+            device.resetFences({frameFence});
+
+            graphicsQueue.submit({submitInfo}, frameFence);
 
             // submit something or other to the "present" queue (this draws!)
             vk::PresentInfoKHR presentInfo{
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*semRenderFinished),
+                .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
                 .swapchainCount = 1,
                 .pSwapchains = &(*swapchain),
                 .pImageIndices = &imgIndex
             };
 
             [[maybe_unused]] auto presres = presentQueue.presentKHR(presentInfo);
+
+            currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
             glfwPollEvents();
         }
