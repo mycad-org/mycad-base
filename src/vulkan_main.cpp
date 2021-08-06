@@ -383,7 +383,7 @@ int main()
         vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
         vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
 
-        [[maybe_unused]] vk::PipelineShaderStageCreateInfo shaderStages[] = {
+        vk::PipelineShaderStageCreateInfo shaderStages[] = {
             {
                 .stage = vk::ShaderStageFlagBits::eVertex,
                 .module = *vShaderModule,
@@ -480,7 +480,7 @@ int main()
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
             .colorAttachmentCount = 1,
             .pColorAttachments = &colorAttachmentRef
-        }:
+        };
 
         vk::RenderPassCreateInfo renderPassInfo{
             .attachmentCount = 1,
@@ -488,6 +488,25 @@ int main()
             .subpassCount = 1,
             .pSubpasses = &subpass
         };
+
+        vk::raii::RenderPass renderPass(device, renderPassInfo);
+
+        // Create the actual graphics pipeline!!!
+        vk::GraphicsPipelineCreateInfo pipelineInfo{
+            .stageCount = 2,
+            .pStages = shaderStages,
+            .pVertexInputState = &vertexInputInfo,
+            .pInputAssemblyState = &inputAssyInfo,
+            .pViewportState = &viewportStateInfo,
+            .pRasterizationState = &rasterizerInfo,
+            .pMultisampleState = &multisamplingInfo,
+            .pColorBlendState = &colorBlendingInfo,
+            .layout = *pipelineLayout,
+            .renderPass = *renderPass,
+            .subpass = 0
+        };
+
+        [[maybe_unused]] vk::raii::Pipeline graphicsPipeline(device, nullptr, pipelineInfo);
 
         while(!glfwWindowShouldClose(window))
         {
