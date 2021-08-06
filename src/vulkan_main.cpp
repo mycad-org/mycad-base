@@ -482,11 +482,26 @@ int main()
             .pColorAttachments = &colorAttachmentRef
         };
 
+        // Wait until render is complete: note, this could be accomplished
+        // in semImageAvail but setting waitStages equal to
+        // vk::PipeLineStageFlagsBit::eTopOfPipe . We're doing this approach
+        // to learn how sub-pass dependencies can be managed
+        vk::SubpassDependency dependency{
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            .srcAccessMask = 0,
+            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+
+
         vk::RenderPassCreateInfo renderPassInfo{
             .attachmentCount = 1,
             .pAttachments = &colorAttachment,
             .subpassCount = 1,
-            .pSubpasses = &subpass
+            .pSubpasses = &subpass,
+            .dependencyCount = 1,
+            .pDependencies = &dependency
         };
 
         vk::raii::RenderPass renderPass(device, renderPassInfo);
