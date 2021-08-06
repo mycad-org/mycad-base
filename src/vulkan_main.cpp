@@ -33,7 +33,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     void* /*pUserData*/)
 {
 
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cerr << pCallbackData->pMessage << std::endl;
 
     return VK_FALSE;
 }
@@ -92,8 +92,8 @@ int main()
 
         // Set up the debugging messenger CreateInfo
         vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-            .messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-                             | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+            .messageSeverity = //vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+                               vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
                              | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
             .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
                          | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
@@ -396,6 +396,69 @@ int main()
             }
         };
 
+        // Define "fixed" pipeline stages
+        [[maybe_unused]] vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+            .vertexBindingDescriptionCount = 0,
+            .vertexAttributeDescriptionCount = 0,
+        };
+
+        [[maybe_unused]] vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
+            .topology = vk::PrimitiveTopology::eTriangleList,
+            .primitiveRestartEnable = VK_FALSE
+        };
+
+        vk::Viewport viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = (float) extent.width,
+            .height = (float) extent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
+
+        vk::Rect2D scissor{
+            .offset = {0, 0},
+            .extent = extent
+        };
+
+        [[maybe_unused]] vk::PipelineViewportStateCreateInfo viewportStateInfo {
+            .viewportCount = 1,
+            .pViewports = &viewport,
+            .scissorCount = 1,
+            .pScissors = &scissor
+        };
+
+        [[maybe_unused]] vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
+            .depthClampEnable = VK_FALSE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = vk::PolygonMode::eFill,
+            .cullMode = vk::CullModeFlagBits::eBack,
+            .frontFace = vk::FrontFace::eClockwise,
+            .depthBiasEnable = VK_FALSE,
+            .lineWidth = 1.0f
+        };
+
+        [[maybe_unused]] vk::PipelineMultisampleStateCreateInfo multisamplingInfo{
+            .rasterizationSamples = vk::SampleCountFlagBits::e1,
+            .sampleShadingEnable = VK_FALSE
+        };
+
+        vk::PipelineColorBlendAttachmentState colorAttachmentState{
+            .blendEnable = VK_FALSE,
+            .colorWriteMask = vk::ColorComponentFlagBits::eR
+                            | vk::ColorComponentFlagBits::eG
+                            | vk::ColorComponentFlagBits::eB
+                            | vk::ColorComponentFlagBits::eA
+        };
+
+        [[maybe_unused]] vk::PipelineColorBlendStateCreateInfo colorBlendingInfo{
+            .logicOpEnable = VK_FALSE,
+            .attachmentCount = 1,
+            .pAttachments = &colorAttachmentState
+        };
+
+        vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
+        vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
         while(!glfwWindowShouldClose(window))
         {
