@@ -130,6 +130,7 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
 struct ChosenPhysicalDevice
 {
     vk::raii::PhysicalDevice physicalDevice;
+    vk::raii::SurfaceKHR surface;
 };
 
 /* ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance) */
@@ -275,7 +276,10 @@ int main()
             return 1;
         }
 
-        ChosenPhysicalDevice cpd{vk::raii::PhysicalDevice(instance, *devices.at(whichDevice))};
+        ChosenPhysicalDevice cpd{
+            .physicalDevice{instance, *devices.at(whichDevice)},
+            .surface{instance, rawSurface}
+        };
 
         // Set up the logical device
         vk::PhysicalDeviceFeatures deviceFeatures{};
@@ -310,9 +314,9 @@ int main()
         vk::raii::Queue presentQueue(device, whichSurfaceFamily, 0);
 
         // create the swap chain
-        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*surface);
-        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*surface);
-        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*surface);
+        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*cpd.surface);
+        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*cpd.surface);
+        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*cpd.surface);
 
         vk::SurfaceFormatKHR surfaceFormat{
             .format     = vk::Format::eB8G8R8A8Srgb,
@@ -365,7 +369,7 @@ int main()
         }
 
         vk::SwapchainCreateInfoKHR swapchainInfo{
-            .surface = *surface,
+            .surface = *cpd.surface,
             .minImageCount = imageCount,
             .imageFormat = surfaceFormat.format,
             .imageColorSpace = surfaceFormat.colorSpace,
