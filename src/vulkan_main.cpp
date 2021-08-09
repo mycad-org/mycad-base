@@ -130,16 +130,16 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
 int main()
 {
     ApplicationData app;
-    vk::raii::Instance instance = makeInstance(app);
-
-    // set up the debug messenger. throws exception on failure I guess...
-    /* vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo); */
 
     if (app.window == nullptr)
     {
         std::cerr << "Could not create a glfw Window" << std::endl;
         std::exit(1);
     }
+
+    vk::raii::Instance instance = makeInstance(app);
+    // set up the debug messenger. throws exception on failure I guess...
+    /* vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo); */
 
     try
     {
