@@ -50,6 +50,14 @@ struct ApplicationData
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
+        // List available extensions
+        std::cout << "Available vulkan extensions: " << '\n';
+        for (const auto& extension : vk::enumerateInstanceExtensionProperties())
+        {
+            std::cout << "    " << extension.extensionName << '\n';
+        }
+
     }
 
     ~ApplicationData()
@@ -286,14 +294,6 @@ int main()
 
     try
     {
-        // List available extensions
-        std::cout << "Available vulkan extensions: " << '\n';
-        for (const auto& extension : vk::enumerateInstanceExtensionProperties())
-        {
-            std::cout << "    " << extension.extensionName << '\n';
-        }
-
-
         auto cpd = choosePhysicalDevice(instance, app);
 
         // Set up the logical device
