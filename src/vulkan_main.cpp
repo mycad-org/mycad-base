@@ -273,6 +273,38 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
     return cpd;
 }
 
+vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd)
+{
+    // Set up the logical device
+    vk::PhysicalDeviceFeatures deviceFeatures{};
+
+    float queuePriority = 1.0f;
+    auto queueCreateInfos = new std::vector<vk::DeviceQueueCreateInfo>();
+    for(uint32_t queueIndex : cpd.queueIndices)
+    {
+        vk::DeviceQueueCreateInfo ci{
+            .queueFamilyIndex = queueIndex,
+            .queueCount       = 1,
+            .pQueuePriorities = &queuePriority
+        };
+        queueCreateInfos->push_back(ci);
+    }
+
+    vk::DeviceCreateInfo deviceInfo{
+        .queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos->size()),
+        .pQueueCreateInfos       = queueCreateInfos->data(),
+        // not needed by newer vulkan implementations, but I guess leave for now
+        .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
+        .ppEnabledLayerNames     = validationLayers.data(),
+        // --- end "not needed" ----
+        .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+        .ppEnabledExtensionNames = deviceExtensions.data(),
+        .pEnabledFeatures        = &deviceFeatures
+    };
+
+    return {cpd.physicalDevice, deviceInfo};
+}
+
 void cleanup(vk::raii::Instance const & instance, ChosenPhysicalDevice &cpd)
 {
     (*instance).destroySurfaceKHR(cpd.surface);
@@ -296,35 +328,36 @@ int main()
     {
         auto cpd = choosePhysicalDevice(instance, app);
 
-        // Set up the logical device
-        vk::PhysicalDeviceFeatures deviceFeatures{};
+    // Set up the logical device
+    vk::PhysicalDeviceFeatures deviceFeatures{};
 
-        float queuePriority = 1.0f;
-        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-        for(uint32_t queueIndex : cpd.queueIndices)
-        {
-            vk::DeviceQueueCreateInfo ci{
-                .queueFamilyIndex = queueIndex,
-                .queueCount       = 1,
-                .pQueuePriorities = &queuePriority
-            };
-            queueCreateInfos.push_back(ci);
-        }
-
-        vk::DeviceCreateInfo deviceInfo{
-            .queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
-            .pQueueCreateInfos       = queueCreateInfos.data(),
-            // not needed by newer vulkan implementations, but I guess leave for now
-            .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
-            .ppEnabledLayerNames     = validationLayers.data(),
-            // --- end "not needed" ----
-            .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
-            .ppEnabledExtensionNames = deviceExtensions.data(),
-            .pEnabledFeatures        = &deviceFeatures
+    float queuePriority = 1.0f;
+    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+    for(uint32_t queueIndex : cpd.queueIndices)
+    {
+        vk::DeviceQueueCreateInfo ci{
+            .queueFamilyIndex = queueIndex,
+            .queueCount       = 1,
+            .pQueuePriorities = &queuePriority
         };
+        queueCreateInfos.push_back(ci);
+    }
 
-        // I guess these throws if it fails
-        vk::raii::Device device(cpd.physicalDevice, deviceInfo);
+    vk::DeviceCreateInfo deviceInfo{
+        .queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
+        .pQueueCreateInfos       = queueCreateInfos.data(),
+        // not needed by newer vulkan implementations, but I guess leave for now
+        .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
+        .ppEnabledLayerNames     = validationLayers.data(),
+        // --- end "not needed" ----
+        .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+        .ppEnabledExtensionNames = deviceExtensions.data(),
+        .pEnabledFeatures        = &deviceFeatures
+    };
+
+    vk::raii::Device device{cpd.physicalDevice, deviceInfo};
+
+        /* auto device = makeLogicalDevice(cpd); */
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
