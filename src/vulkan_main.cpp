@@ -130,12 +130,145 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
 struct ChosenPhysicalDevice
 {
     vk::raii::PhysicalDevice physicalDevice;
-    vk::raii::SurfaceKHR surface;
+    vk::SurfaceKHR surface;
+    std::set<uint32_t> queueIndices;
+    uint32_t graphicsFamilyQueueIndex;
+    uint32_t presentFamilyQueueIndex;
 };
 
-/* ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance) */
-/* { */
-/* } */
+ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app)
+{
+    // Create a "screen surface" to render to.
+    VkSurfaceKHR rawSurface;
+    if (glfwCreateWindowSurface(*instance, app.window, nullptr, &rawSurface) != VK_SUCCESS)
+    {
+        std::cerr << "Error creating a vulkan surface" << std::endl;
+        std::exit(1);
+    }
+    // TODO: do we need to worry about this being destructed before
+    // vk::raii::Instance?
+    vk::SurfaceKHR surface(rawSurface);
+
+    // Set up appropriate device
+    auto devices = vk::raii::PhysicalDevices(instance);
+    std::size_t whichDevice = 0;
+    std::set<uint32_t> whichQueues{};
+    bool foundGraphicsQueue = false;
+    bool foundSurfaceQueue  = false;
+    uint32_t whichGraphicsFamily = 0;
+    uint32_t whichSurfaceFamily  = 0;
+    for (; whichDevice < devices.size(); whichDevice++)
+    {
+        std::cout << "Looking at device number: " << whichDevice << '\n';
+        // Check for required device extensions
+        auto &device = devices.at(whichDevice);
+
+        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        for(const auto& deviceExtension : device.enumerateDeviceExtensionProperties())
+        {
+            requiredExtensions.erase(deviceExtension.extensionName);
+        }
+
+        if(not requiredExtensions.empty())
+        {
+            std::cout << "    bailing, all extensions not found" << '\n';
+            continue;
+        }
+
+        // Ensure appropriate swap chain support
+        auto surfaceFormats      = device.getSurfaceFormatsKHR(surface);
+        auto surfacePresentModes = device.getSurfacePresentModesKHR(surface);
+        if (surfaceFormats.empty() || surfacePresentModes.empty())
+        {
+            std::cout << "    bailing, swapchain support not found " << '\n';
+            continue;
+        }
+
+
+        // Reset in case both were not found last time
+        foundGraphicsQueue  = false;
+        foundSurfaceQueue   = false;
+        whichGraphicsFamily = 0;
+        whichSurfaceFamily  = 0;
+        auto queues = device.getQueueFamilyProperties();
+        for(auto const& queue : device.getQueueFamilyProperties())
+        {
+            std::cout << "    Looking at queue number: " << whichSurfaceFamily << '\n';
+            if (not foundGraphicsQueue)
+            {
+                if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
+                {
+                    std::cout << "        found graphics bit, index = " << whichGraphicsFamily << '\n';
+                    foundGraphicsQueue = true;
+                }
+                else
+                {
+                    whichGraphicsFamily++;
+                }
+            }
+            if (not foundSurfaceQueue) 
+            {
+                if (device.getSurfaceSupportKHR(whichSurfaceFamily, surface))
+                {
+                    std::cout << "        found surface support, index = " << whichSurfaceFamily << '\n';
+                    foundSurfaceQueue = true;
+                }
+                else
+                {
+                    whichSurfaceFamily++;
+                }
+            }
+
+            if (foundGraphicsQueue && foundSurfaceQueue)
+            {
+                whichQueues = {whichGraphicsFamily, whichSurfaceFamily};
+                break;
+            }
+        }
+
+        if (foundGraphicsQueue && foundSurfaceQueue)
+        {
+            break;
+        }
+    }
+
+    std::cout << "whichGraphicsFamily = " << whichGraphicsFamily << '\n';
+    std::cout << "whichSurfaceFamily = " << whichSurfaceFamily << '\n';
+
+    if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
+    {
+        std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
+        std::cerr << "    Also, it could be that the appropriate swap-chain support was not found." << std::endl;
+        std::exit(1);
+    }
+
+    if(not foundGraphicsQueue)
+    {
+        std::cerr << "Unable to find a Device with graphics support" << std::endl;
+        std::exit(1);
+    }
+
+    if(not foundSurfaceQueue)
+    {
+        std::cerr << "Unable to find a Device with support for the appropriate surface queue" << std::endl;
+        std::exit(1);
+    }
+
+    ChosenPhysicalDevice cpd {
+        .physicalDevice{instance, *devices.at(whichDevice)},
+        .surface{rawSurface},
+        .queueIndices = whichQueues,
+        .graphicsFamilyQueueIndex = whichGraphicsFamily,
+        .presentFamilyQueueIndex = whichSurfaceFamily
+    };
+
+    return cpd;
+}
+
+void cleanup(vk::raii::Instance const & instance, ChosenPhysicalDevice &cpd)
+{
+    (*instance).destroySurfaceKHR(cpd.surface);
+}
 
 int main()
 {
@@ -153,17 +286,6 @@ int main()
 
     try
     {
-        // Create a "screen surface" to render to.
-        VkSurfaceKHR rawSurface;
-        if (glfwCreateWindowSurface(*instance, app.window, nullptr, &rawSurface) != VK_SUCCESS)
-        {
-            std::cerr << "Error creating a vulkan surface" << std::endl;
-            return 1;
-        }
-        // TODO: do we need to worry about this being destructed before
-        // vk::raii::Instance?
-        vk::raii::SurfaceKHR surface(instance, rawSurface);
-
         // List available extensions
         std::cout << "Available vulkan extensions: " << '\n';
         for (const auto& extension : vk::enumerateInstanceExtensionProperties())
@@ -171,122 +293,15 @@ int main()
             std::cout << "    " << extension.extensionName << '\n';
         }
 
-        // Set up appropriate device
-        auto devices = vk::raii::PhysicalDevices(instance);
-        std::size_t whichDevice = 0;
-        std::set<uint32_t> whichQueues{};
-        bool foundGraphicsQueue = false;
-        bool foundSurfaceQueue  = false;
-        uint32_t whichGraphicsFamily = 0;
-        uint32_t whichSurfaceFamily  = 0;
-        for (; whichDevice < devices.size(); whichDevice++)
-        {
-            std::cout << "Looking at device number: " << whichDevice << '\n';
-            // Check for required device extensions
-            auto &device = devices.at(whichDevice);
 
-            std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-            for(const auto& deviceExtension : device.enumerateDeviceExtensionProperties())
-            {
-                requiredExtensions.erase(deviceExtension.extensionName);
-            }
-
-            if(not requiredExtensions.empty())
-            {
-                std::cout << "    bailing, all extensions not found" << '\n';
-                continue;
-            }
-
-            // Ensure appropriate swap chain support
-            auto surfaceFormats      = device.getSurfaceFormatsKHR(*surface);
-            auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
-            if (surfaceFormats.empty() || surfacePresentModes.empty())
-            {
-                std::cout << "    bailing, swapchain support not found " << '\n';
-                continue;
-            }
-
-
-            // Reset in case both were not found last time
-            foundGraphicsQueue  = false;
-            foundSurfaceQueue   = false;
-            whichGraphicsFamily = 0;
-            whichSurfaceFamily  = 0;
-            auto queues = device.getQueueFamilyProperties();
-            for(auto const& queue : device.getQueueFamilyProperties())
-            {
-                std::cout << "    Looking at queue number: " << whichSurfaceFamily << '\n';
-                if (not foundGraphicsQueue)
-                {
-                    if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
-                    {
-                        std::cout << "        found graphics bit, index = " << whichGraphicsFamily << '\n';
-                        foundGraphicsQueue = true;
-                    }
-                    else
-                    {
-                        whichGraphicsFamily++;
-                    }
-                }
-                if (not foundSurfaceQueue) 
-                {
-                    if (device.getSurfaceSupportKHR(whichSurfaceFamily, *surface))
-                    {
-                        std::cout << "        found surface support, index = " << whichSurfaceFamily << '\n';
-                        foundSurfaceQueue = true;
-                    }
-                    else
-                    {
-                        whichSurfaceFamily++;
-                    }
-                }
-
-                if (foundGraphicsQueue && foundSurfaceQueue)
-                {
-                    whichQueues = {whichGraphicsFamily, whichSurfaceFamily};
-                    break;
-                }
-            }
-
-            if (foundGraphicsQueue && foundSurfaceQueue)
-            {
-                break;
-            }
-        }
-
-        std::cout << "whichGraphicsFamily = " << whichGraphicsFamily << '\n';
-        std::cout << "whichSurfaceFamily = " << whichSurfaceFamily << '\n';
-
-        if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
-        {
-            std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
-            std::cerr << "    Also, it could be that the appropriate swap-chain support was not found." << std::endl;
-            return 1;
-        }
-
-        if(not foundGraphicsQueue)
-        {
-            std::cerr << "Unable to find a Device with graphics support" << std::endl;
-            return 1;
-        }
-
-        if(not foundSurfaceQueue)
-        {
-            std::cerr << "Unable to find a Device with support for the appropriate surface queue" << std::endl;
-            return 1;
-        }
-
-        ChosenPhysicalDevice cpd{
-            .physicalDevice{instance, *devices.at(whichDevice)},
-            .surface{instance, rawSurface}
-        };
+        auto cpd = choosePhysicalDevice(instance, app);
 
         // Set up the logical device
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
         float queuePriority = 1.0f;
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-        for(uint32_t queueIndex : whichQueues)
+        for(uint32_t queueIndex : cpd.queueIndices)
         {
             vk::DeviceQueueCreateInfo ci{
                 .queueFamilyIndex = queueIndex,
@@ -310,13 +325,13 @@ int main()
 
         // I guess these throws if it fails
         vk::raii::Device device(cpd.physicalDevice, deviceInfo);
-        vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
-        vk::raii::Queue presentQueue(device, whichSurfaceFamily, 0);
+        vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
+        vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
         // create the swap chain
-        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*cpd.surface);
-        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*cpd.surface);
-        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*cpd.surface);
+        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(cpd.surface);
+        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(cpd.surface);
+        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(cpd.surface);
 
         vk::SurfaceFormatKHR surfaceFormat{
             .format     = vk::Format::eB8G8R8A8Srgb,
@@ -369,7 +384,7 @@ int main()
         }
 
         vk::SwapchainCreateInfoKHR swapchainInfo{
-            .surface = *cpd.surface,
+            .surface = cpd.surface,
             .minImageCount = imageCount,
             .imageFormat = surfaceFormat.format,
             .imageColorSpace = surfaceFormat.colorSpace,
@@ -383,12 +398,12 @@ int main()
             .oldSwapchain = VK_NULL_HANDLE
         };
 
-        if (whichGraphicsFamily != whichSurfaceFamily)
+        if (cpd.graphicsFamilyQueueIndex != cpd.presentFamilyQueueIndex)
         {
             swapchainInfo.imageSharingMode = vk::SharingMode::eConcurrent;
             swapchainInfo.queueFamilyIndexCount = 2;
 
-            uint32_t familyIndices[] = {whichGraphicsFamily, whichSurfaceFamily};
+            uint32_t familyIndices[] = {cpd.graphicsFamilyQueueIndex, cpd.presentFamilyQueueIndex};
             swapchainInfo.pQueueFamilyIndices = familyIndices;
         }
         else
@@ -595,7 +610,7 @@ int main()
 
         // Create the command pool
         vk::CommandPoolCreateInfo poolInfo{
-            .queueFamilyIndex = whichGraphicsFamily
+            .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
         };
 
         vk::raii::CommandPool commandPool(device, poolInfo);
@@ -715,6 +730,7 @@ int main()
             glfwPollEvents();
         }
 
+        cleanup(instance, cpd);
     }
     catch ( vk::SystemError & err )
     {
@@ -731,4 +747,5 @@ int main()
         std::cout << "unknown error\n";
         exit( -1 );
     }
+
 }
