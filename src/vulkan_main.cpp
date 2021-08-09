@@ -62,9 +62,78 @@ struct ApplicationData
     vk::raii::Context context{};
 };
 
+vk::raii::Instance makeInstance(ApplicationData const & app)
+{
+    // initialize the vk::ApplicationInfo structure
+    vk::ApplicationInfo applicationInfo{
+            .pApplicationName    = "Hello Triangle",
+            .applicationVersion  = 1,
+            .pEngineName         = "No Engine",
+            .engineVersion       = 1,
+            .apiVersion          = VK_API_VERSION_1_1
+    };
+
+
+    // Get required extensions to pass to vk::InstanceCreateInfo
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    // check to make sure required validation layers are present
+    std::vector<const char *> exts(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+    // Check to make sure requested validation layers are present
+    std::vector<vk::LayerProperties> properties = vk::enumerateInstanceLayerProperties();
+
+    for (auto const& layer : validationLayers)
+    {
+        auto hasName = [&layer](vk::LayerProperties const & prop)
+        {
+            return strcmp(layer, prop.layerName) == 0;
+        };
+
+        if (std::ranges::find_if(properties, hasName) == properties.end())
+        {
+            std::cout << "The layer \"" << layer
+                      <<"\" was not found" << '\n';
+            std::exit(1);
+        }
+    }
+
+    // Set up the debugging messenger CreateInfo
+    vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+        .messageSeverity = //vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+                           vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+                         | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+        .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+                     | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+                     | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+        .pfnUserCallback = debugCallback
+    };
+
+    // initialize the vk::InstanceCreateInfo
+    vk::InstanceCreateInfo instanceCreateInfo{
+        .pNext                   = &debugCreateInfo,
+        .pApplicationInfo        = &applicationInfo,
+        .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
+        .ppEnabledLayerNames     = validationLayers.data(),
+        .enabledExtensionCount   = static_cast<uint32_t>(exts.size()),
+        .ppEnabledExtensionNames = exts.data()
+    };
+
+    // return an Instance
+    return {app.context, instanceCreateInfo};
+}
+
 int main()
 {
     ApplicationData app;
+    vk::raii::Instance instance = makeInstance(app);
+
+    // set up the debug messenger. throws exception on failure I guess...
+    /* vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo); */
 
     if (app.window == nullptr)
     {
@@ -74,68 +143,6 @@ int main()
 
     try
     {
-        // initialize the vk::ApplicationInfo structure
-        vk::ApplicationInfo applicationInfo{
-                .pApplicationName    = "Hello Triangle",
-                .applicationVersion  = 1,
-                .pEngineName         = "No Engine",
-                .engineVersion       = 1,
-                .apiVersion          = VK_API_VERSION_1_1
-        };
-
-
-        // Get required extensions to pass to vk::InstanceCreateInfo
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        // check to make sure required validation layers are present
-        std::vector<const char *> exts(glfwExtensions, glfwExtensions + glfwExtensionCount);
-        exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-        // Check to make sure requested validation layers are present
-        std::vector<vk::LayerProperties> properties = vk::enumerateInstanceLayerProperties();
-
-        for (auto const& layer : validationLayers)
-        {
-            auto hasName = [&layer](vk::LayerProperties const & prop)
-            {
-                return strcmp(layer, prop.layerName) == 0;
-            };
-
-            if (std::ranges::find_if(properties, hasName) == properties.end())
-            {
-                std::cout << "The layer \"" << layer
-                          <<"\" was not found" << '\n';
-                return 1;
-            }
-        }
-
-        // Set up the debugging messenger CreateInfo
-        vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-            .messageSeverity = //vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-                               vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-                             | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-            .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
-                         | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-                         | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-            .pfnUserCallback = debugCallback
-        };
-
-        // initialize the vk::InstanceCreateInfo
-        vk::InstanceCreateInfo instanceCreateInfo{
-            .pNext                   = &debugCreateInfo,
-            .pApplicationInfo        = &applicationInfo,
-            .enabledLayerCount       = static_cast<uint32_t>(validationLayers.size()),
-            .ppEnabledLayerNames     = validationLayers.data(),
-            .enabledExtensionCount   = static_cast<uint32_t>(exts.size()),
-            .ppEnabledExtensionNames = exts.data()
-        };
-
-        // create an Instance
-        vk::raii::Instance instance( app.context, instanceCreateInfo );
-
         // Create a "screen surface" to render to.
         VkSurfaceKHR rawSurface;
         if (glfwCreateWindowSurface(*instance, app.window, nullptr, &rawSurface) != VK_SUCCESS)
@@ -146,9 +153,6 @@ int main()
         // TODO: do we need to worry about this being destructed before
         // vk::raii::Instance?
         vk::raii::SurfaceKHR surface(instance, rawSurface);
-
-        // set up the debug messenger. throws exception on failure I guess...
-        vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo);
 
         // List available extensions
         std::cout << "Available vulkan extensions: " << '\n';
