@@ -41,17 +41,36 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
+struct ApplicationData
+{
+    ApplicationData(){
+        glfwInit();
+
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    }
+
+    ~ApplicationData()
+    {
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+
+    GLFWwindow* window = nullptr;
+    vk::raii::Context context{};
+};
+
 int main()
 {
-    glfwInit();
+    ApplicationData app;
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-
-    // the very beginning: instantiate a context
-    vk::raii::Context context;
+    if (app.window == nullptr)
+    {
+        std::cerr << "Could not create a glfw Window" << std::endl;
+        std::exit(1);
+    }
 
     try
     {
@@ -115,11 +134,11 @@ int main()
         };
 
         // create an Instance
-        vk::raii::Instance instance( context, instanceCreateInfo );
+        vk::raii::Instance instance( app.context, instanceCreateInfo );
 
         // Create a "screen surface" to render to.
         VkSurfaceKHR rawSurface;
-        if (glfwCreateWindowSurface(*instance, window, nullptr, &rawSurface) != VK_SUCCESS)
+        if (glfwCreateWindowSurface(*instance, app.window, nullptr, &rawSurface) != VK_SUCCESS)
         {
             std::cerr << "Error creating a vulkan surface" << std::endl;
             return 1;
@@ -306,7 +325,7 @@ int main()
         else
         {
             int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
+            glfwGetFramebufferSize(app.window, &width, &height);
 
             extent.width  = std::clamp(
                     static_cast<uint32_t>(width),
@@ -625,7 +644,7 @@ int main()
         }
 
         int currentFrame = 0;
-        while(!glfwWindowShouldClose(window))
+        while(!glfwWindowShouldClose(app.window))
         {
             auto& frameFence      = *inFlightFences.at(currentFrame);
             // Wait for any previous frames that haven't finished yet
@@ -693,7 +712,4 @@ int main()
         std::cout << "unknown error\n";
         exit( -1 );
     }
-
-    glfwDestroyWindow(window);
-    glfwTerminate();
 }
