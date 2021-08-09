@@ -127,6 +127,15 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
     return {app.context, instanceCreateInfo};
 }
 
+struct ChosenPhysicalDevice
+{
+    vk::raii::PhysicalDevice physicalDevice;
+};
+
+/* ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance) */
+/* { */
+/* } */
+
 int main()
 {
     ApplicationData app;
@@ -266,6 +275,8 @@ int main()
             return 1;
         }
 
+        ChosenPhysicalDevice cpd{vk::raii::PhysicalDevice(instance, *devices.at(whichDevice))};
+
         // Set up the logical device
         vk::PhysicalDeviceFeatures deviceFeatures{};
 
@@ -294,14 +305,14 @@ int main()
         };
 
         // I guess these throws if it fails
-        vk::raii::Device device(devices.at(whichDevice), deviceInfo);
+        vk::raii::Device device(cpd.physicalDevice, deviceInfo);
         vk::raii::Queue graphicsQueue(device, whichGraphicsFamily, 0);
         vk::raii::Queue presentQueue(device, whichSurfaceFamily, 0);
 
         // create the swap chain
-        auto surfaceFormats      = devices.at(whichDevice).getSurfaceFormatsKHR(*surface);
-        auto surfacePresentModes = devices.at(whichDevice).getSurfacePresentModesKHR(*surface);
-        auto surfaceCapabilities = devices.at(whichDevice).getSurfaceCapabilitiesKHR(*surface);
+        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*surface);
+        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*surface);
+        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*surface);
 
         vk::SurfaceFormatKHR surfaceFormat{
             .format     = vk::Format::eB8G8R8A8Srgb,
