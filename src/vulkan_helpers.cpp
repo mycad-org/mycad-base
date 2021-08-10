@@ -5,6 +5,12 @@
 
 #include <iostream>
 
+SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
+std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
+vk::raii::CommandPool makeCommandPool(vk::raii::Device const & device, uint32_t graphicsFamilyQueueIndex);
+vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk::raii::CommandPool const & commandPool, std::size_t nBuffers);
+
 namespace {
     const int WIDTH=800;
     const int HEIGHT=600;
