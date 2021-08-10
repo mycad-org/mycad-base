@@ -661,7 +661,7 @@ struct Renderer
     /*     renderTarget.device.waitIdle(); */
     /* } */
 
-    void draw(int currentFrame)
+    void draw(vk::raii::Device const & device, int currentFrame)
     {
         auto& frameFence      = *inFlightFences.at(currentFrame);
         // Wait for any previous frames that haven't finished yet
@@ -710,7 +710,6 @@ struct Renderer
     }
 
     /* RenderTarget renderTarget; */
-    vk::raii::Device device;
     vk::raii::Queue graphicsQueue;
     vk::raii::Queue presentQueue;
     SwapchainData scd;
@@ -725,10 +724,9 @@ struct Renderer
     std::vector<std::optional<std::size_t>> imagesInFlight;
 };
 
-Renderer makeRenderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     /* RenderTarget renderTarget = makeRenderTarget(cpd); */
-    vk::raii::Device device = makeLogicalDevice(cpd);
     vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
     vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
     auto scd = makeSwapchain(app, cpd, device);
@@ -759,7 +757,6 @@ Renderer makeRenderer(ApplicationData const & app, ChosenPhysicalDevice const & 
 
     return {
         /* .renderTarget = std::move(renderTarget), */
-        .device = std::move(device),
         .graphicsQueue = std::move(graphicsQueue),
         .presentQueue = std::move(presentQueue),
         .scd = std::move(scd),
@@ -827,13 +824,14 @@ int main()
         vk::raii::Instance instance = makeInstance(app);
         ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
 
-        Renderer rdr = makeRenderer(app, cpd);
+        vk::raii::Device device = makeLogicalDevice(cpd);
+        Renderer rdr = makeRenderer(device, app, cpd);
         recordDrawCommands(rdr);
 
         int currentFrame = 0;
         while(!glfwWindowShouldClose(app.window))
         {
-            rdr.draw(currentFrame);
+            rdr.draw(device, currentFrame);
             currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
             glfwPollEvents();
