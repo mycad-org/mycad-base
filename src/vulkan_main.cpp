@@ -138,7 +138,7 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
 struct ChosenPhysicalDevice
 {
     vk::raii::PhysicalDevice physicalDevice;
-    vk::SurfaceKHR surface;
+    vk::raii::SurfaceKHR surface;
     std::set<uint32_t> queueIndices;
     uint32_t graphicsFamilyQueueIndex;
     uint32_t presentFamilyQueueIndex;
@@ -155,7 +155,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
     }
     // TODO: do we need to worry about this being destructed before
     // vk::raii::Instance?
-    vk::SurfaceKHR surface(rawSurface);
+    vk::raii::SurfaceKHR surface(instance, rawSurface);
 
     // Set up appropriate device
     auto devices = vk::raii::PhysicalDevices(instance);
@@ -184,8 +184,8 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
         }
 
         // Ensure appropriate swap chain support
-        auto surfaceFormats      = device.getSurfaceFormatsKHR(surface);
-        auto surfacePresentModes = device.getSurfacePresentModesKHR(surface);
+        auto surfaceFormats      = device.getSurfaceFormatsKHR(*surface);
+        auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
         if (surfaceFormats.empty() || surfacePresentModes.empty())
         {
             std::cout << "    bailing, swapchain support not found " << '\n';
@@ -216,7 +216,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
             }
             if (not foundSurfaceQueue) 
             {
-                if (device.getSurfaceSupportKHR(whichSurfaceFamily, surface))
+                if (device.getSurfaceSupportKHR(whichSurfaceFamily, *surface))
                 {
                     std::cout << "        found surface support, index = " << whichSurfaceFamily << '\n';
                     foundSurfaceQueue = true;
@@ -264,7 +264,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
 
     ChosenPhysicalDevice cpd {
         .physicalDevice{instance, *devices.at(whichDevice)},
-        .surface{rawSurface},
+        .surface = std::move(surface),
         .queueIndices = whichQueues,
         .graphicsFamilyQueueIndex = whichGraphicsFamily,
         .presentFamilyQueueIndex = whichSurfaceFamily
@@ -305,11 +305,6 @@ vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd)
     return {cpd.physicalDevice, deviceInfo};
 }
 
-void cleanup(vk::raii::Instance const & instance, ChosenPhysicalDevice &cpd)
-{
-    (*instance).destroySurfaceKHR(cpd.surface);
-}
-
 struct SwapchainData
 {
     vk::raii::SwapchainKHR swapchain;
@@ -322,9 +317,9 @@ struct SwapchainData
 SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
     // create the swap chain
-    auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(cpd.surface);
-    auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(cpd.surface);
-    auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(cpd.surface);
+    auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*cpd.surface);
+    auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*cpd.surface);
+    auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*cpd.surface);
 
     vk::SurfaceFormatKHR surfaceFormat{
         .format     = vk::Format::eB8G8R8A8Srgb,
@@ -377,7 +372,7 @@ SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice co
     }
 
     vk::SwapchainCreateInfoKHR swapchainInfo{
-        .surface = cpd.surface,
+        .surface = *cpd.surface,
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,
@@ -761,7 +756,7 @@ int main()
             glfwPollEvents();
         }
 
-        cleanup(instance, cpd);
+        device.waitIdle();
     }
     catch ( vk::SystemError & err )
     {
