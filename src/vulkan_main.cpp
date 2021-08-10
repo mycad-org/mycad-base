@@ -441,6 +441,162 @@ SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice co
     };
 }
 
+std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd)
+{
+    // Attach shaders
+    vk::ShaderModuleCreateInfo vShaderInfo{
+        .codeSize = triangle_colors_vshader_len,
+        .pCode = reinterpret_cast<const uint32_t*>(triangle_colors_vshader)
+    };
+    vk::ShaderModuleCreateInfo fShaderInfo{
+        .codeSize = gradient_fshader_len,
+        .pCode = reinterpret_cast<const uint32_t*>(gradient_fshader)
+    };
+
+    vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
+    vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
+
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {
+        {
+            .stage = vk::ShaderStageFlagBits::eVertex,
+            .module = *vShaderModule,
+            .pName = "main"
+        },
+        {
+            .stage = vk::ShaderStageFlagBits::eFragment,
+            .module = *fShaderModule,
+            .pName = "main"
+        }
+    };
+
+    // Define "fixed" pipeline stages
+    [[maybe_unused]] vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount = 0,
+        .vertexAttributeDescriptionCount = 0,
+    };
+
+    [[maybe_unused]] vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
+        .topology = vk::PrimitiveTopology::eTriangleList,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    vk::Viewport viewport{
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = (float) scd.extent.width,
+        .height = (float) scd.extent.height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+
+    vk::Rect2D scissor{
+        .offset = {0, 0},
+        .extent = scd.extent
+    };
+
+    vk::PipelineViewportStateCreateInfo viewportStateInfo {
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor
+    };
+
+    vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eBack,
+        .frontFace = vk::FrontFace::eClockwise,
+        .depthBiasEnable = VK_FALSE,
+        .lineWidth = 1.0f
+    };
+
+    vk::PipelineMultisampleStateCreateInfo multisamplingInfo{
+        .rasterizationSamples = vk::SampleCountFlagBits::e1,
+        .sampleShadingEnable = VK_FALSE
+    };
+
+    vk::PipelineColorBlendAttachmentState colorAttachmentState{
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = vk::ColorComponentFlagBits::eR
+                        | vk::ColorComponentFlagBits::eG
+                        | vk::ColorComponentFlagBits::eB
+                        | vk::ColorComponentFlagBits::eA
+    };
+
+    vk::PipelineColorBlendStateCreateInfo colorBlendingInfo{
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments = &colorAttachmentState
+    };
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
+    vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
+
+    vk::AttachmentDescription colorAttachment{
+        .format = scd.format.format,
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::ePresentSrcKHR
+    };
+
+    vk::AttachmentReference colorAttachmentRef{
+        .attachment = 0,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal
+    };
+
+    vk::SubpassDescription subpass{
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachmentRef
+    };
+
+    // Wait until render is complete: note, this could be accomplished
+    // in semImageAvail but setting waitStages equal to
+    // vk::PipeLineStageFlagsBit::eTopOfPipe . We're doing this approach
+    // to learn how sub-pass dependencies can be managed
+    vk::SubpassDependency dependency{
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .srcAccessMask = {},
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+    };
+
+    vk::RenderPassCreateInfo renderPassInfo{
+        .attachmentCount = 1,
+        .pAttachments = &colorAttachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+        .dependencyCount = 1,
+        .pDependencies = &dependency
+    };
+
+    vk::raii::RenderPass renderPass(device, renderPassInfo);
+
+    // Create the actual graphics pipeline!!!
+    vk::GraphicsPipelineCreateInfo pipelineInfo{
+        .stageCount = 2,
+        .pStages = shaderStages,
+        .pVertexInputState = &vertexInputInfo,
+        .pInputAssemblyState = &inputAssyInfo,
+        .pViewportState = &viewportStateInfo,
+        .pRasterizationState = &rasterizerInfo,
+        .pMultisampleState = &multisamplingInfo,
+        .pColorBlendState = &colorBlendingInfo,
+        .layout = *pipelineLayout,
+        .renderPass = *renderPass,
+        .subpass = 0
+    };
+
+    return {vk::raii::Pipeline{device, nullptr, pipelineInfo}, std::move(renderPass)};
+}
+
 int main()
 {
     ApplicationData app;
@@ -465,158 +621,7 @@ int main()
 
         SwapchainData scd = makeSwapchain(app, cpd, device);
 
-        // Attach shaders
-        vk::ShaderModuleCreateInfo vShaderInfo{
-            .codeSize = triangle_colors_vshader_len,
-            .pCode = reinterpret_cast<const uint32_t*>(triangle_colors_vshader)
-        };
-        vk::ShaderModuleCreateInfo fShaderInfo{
-            .codeSize = gradient_fshader_len,
-            .pCode = reinterpret_cast<const uint32_t*>(gradient_fshader)
-        };
-
-        vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
-        vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
-
-        vk::PipelineShaderStageCreateInfo shaderStages[] = {
-            {
-                .stage = vk::ShaderStageFlagBits::eVertex,
-                .module = *vShaderModule,
-                .pName = "main"
-            },
-            {
-                .stage = vk::ShaderStageFlagBits::eFragment,
-                .module = *fShaderModule,
-                .pName = "main"
-            }
-        };
-
-        // Define "fixed" pipeline stages
-        [[maybe_unused]] vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = 0,
-            .vertexAttributeDescriptionCount = 0,
-        };
-
-        [[maybe_unused]] vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
-            .topology = vk::PrimitiveTopology::eTriangleList,
-            .primitiveRestartEnable = VK_FALSE
-        };
-
-        vk::Viewport viewport{
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = (float) scd.extent.width,
-            .height = (float) scd.extent.height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-        };
-
-        vk::Rect2D scissor{
-            .offset = {0, 0},
-            .extent = scd.extent
-        };
-
-        vk::PipelineViewportStateCreateInfo viewportStateInfo {
-            .viewportCount = 1,
-            .pViewports = &viewport,
-            .scissorCount = 1,
-            .pScissors = &scissor
-        };
-
-        vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
-            .depthClampEnable = VK_FALSE,
-            .rasterizerDiscardEnable = VK_FALSE,
-            .polygonMode = vk::PolygonMode::eFill,
-            .cullMode = vk::CullModeFlagBits::eBack,
-            .frontFace = vk::FrontFace::eClockwise,
-            .depthBiasEnable = VK_FALSE,
-            .lineWidth = 1.0f
-        };
-
-        vk::PipelineMultisampleStateCreateInfo multisamplingInfo{
-            .rasterizationSamples = vk::SampleCountFlagBits::e1,
-            .sampleShadingEnable = VK_FALSE
-        };
-
-        vk::PipelineColorBlendAttachmentState colorAttachmentState{
-            .blendEnable = VK_FALSE,
-            .colorWriteMask = vk::ColorComponentFlagBits::eR
-                            | vk::ColorComponentFlagBits::eG
-                            | vk::ColorComponentFlagBits::eB
-                            | vk::ColorComponentFlagBits::eA
-        };
-
-        vk::PipelineColorBlendStateCreateInfo colorBlendingInfo{
-            .logicOpEnable = VK_FALSE,
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachmentState
-        };
-
-        vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
-        vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
-
-        vk::AttachmentDescription colorAttachment{
-            .format = scd.format.format,
-            .samples = vk::SampleCountFlagBits::e1,
-            .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = vk::AttachmentStoreOp::eStore,
-            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-            .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::ePresentSrcKHR
-        };
-
-        vk::AttachmentReference colorAttachmentRef{
-            .attachment = 0,
-            .layout = vk::ImageLayout::eColorAttachmentOptimal
-        };
-
-        vk::SubpassDescription subpass{
-            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorAttachmentRef
-        };
-
-        // Wait until render is complete: note, this could be accomplished
-        // in semImageAvail but setting waitStages equal to
-        // vk::PipeLineStageFlagsBit::eTopOfPipe . We're doing this approach
-        // to learn how sub-pass dependencies can be managed
-        vk::SubpassDependency dependency{
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-            .srcAccessMask = {},
-            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
-        };
-
-        vk::RenderPassCreateInfo renderPassInfo{
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachment,
-            .subpassCount = 1,
-            .pSubpasses = &subpass,
-            .dependencyCount = 1,
-            .pDependencies = &dependency
-        };
-
-        vk::raii::RenderPass renderPass(device, renderPassInfo);
-
-        // Create the actual graphics pipeline!!!
-        vk::GraphicsPipelineCreateInfo pipelineInfo{
-            .stageCount = 2,
-            .pStages = shaderStages,
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssyInfo,
-            .pViewportState = &viewportStateInfo,
-            .pRasterizationState = &rasterizerInfo,
-            .pMultisampleState = &multisamplingInfo,
-            .pColorBlendState = &colorBlendingInfo,
-            .layout = *pipelineLayout,
-            .renderPass = *renderPass,
-            .subpass = 0
-        };
-
-        [[maybe_unused]] vk::raii::Pipeline graphicsPipeline(device, nullptr, pipelineInfo);
+        auto [pipeline, renderPass] = makePipeline(device, scd);
 
         // create framebuffers
         std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
@@ -674,7 +679,7 @@ int main()
 
             //======== begin render pass
             commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
+            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
             commandBuffer.draw(3, 1, 0, 0);
             commandBuffer.endRenderPass();
             //======== end render pass
