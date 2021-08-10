@@ -608,7 +608,7 @@ int main()
 
     try
     {
-        auto cpd = choosePhysicalDevice(instance, app);
+        ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
 
         auto device = makeLogicalDevice(cpd);
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
