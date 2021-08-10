@@ -661,7 +661,7 @@ struct Renderer
     /*     renderTarget.device.waitIdle(); */
     /* } */
 
-    void draw(vk::raii::Device const & device, vk::raii::Queue const & graphicsQueue, vk::raii::Queue const & presentQueue, int currentFrame)
+    void draw(int currentFrame)
     {
         auto& frameFence      = *inFlightFences.at(currentFrame);
         // Wait for any previous frames that haven't finished yet
@@ -710,6 +710,9 @@ struct Renderer
     }
 
     /* RenderTarget renderTarget; */
+    vk::raii::Device device;
+    vk::raii::Queue graphicsQueue;
+    vk::raii::Queue presentQueue;
     SwapchainData scd;
     vk::raii::Pipeline pipeline;
     vk::raii::RenderPass renderPass;
@@ -722,9 +725,12 @@ struct Renderer
     std::vector<std::optional<std::size_t>> imagesInFlight;
 };
 
-Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+Renderer makeRenderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     /* RenderTarget renderTarget = makeRenderTarget(cpd); */
+    vk::raii::Device device = makeLogicalDevice(cpd);
+    vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
+    vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
     auto scd = makeSwapchain(app, cpd, device);
     auto [pipeline, renderPass] = makePipeline(device, scd);
     auto framebuffers = makeFramebuffers(device, renderPass, scd);
@@ -753,6 +759,9 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
 
     return {
         /* .renderTarget = std::move(renderTarget), */
+        .device = std::move(device),
+        .graphicsQueue = std::move(graphicsQueue),
+        .presentQueue = std::move(presentQueue),
         .scd = std::move(scd),
         .pipeline = std::move(pipeline),
         .renderPass = std::move(renderPass),
@@ -817,17 +826,14 @@ int main()
     {
         vk::raii::Instance instance = makeInstance(app);
         ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
-        vk::raii::Device device = makeLogicalDevice(cpd);
-        vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
-        vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
-        Renderer rdr = makeRenderer(device, app, cpd);
+        Renderer rdr = makeRenderer(app, cpd);
         recordDrawCommands(rdr);
 
         int currentFrame = 0;
         while(!glfwWindowShouldClose(app.window))
         {
-            rdr.draw(device, graphicsQueue, presentQueue, currentFrame);
+            rdr.draw(currentFrame);
             currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
             glfwPollEvents();
