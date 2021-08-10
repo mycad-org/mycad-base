@@ -813,14 +813,10 @@ int main()
         std::exit(1);
     }
 
-    vk::raii::Instance instance = makeInstance(app);
-    // set up the debug messenger. throws exception on failure I guess...
-    /* vk::raii::DebugUtilsMessengerEXT dbgMessenger(instance, debugCreateInfo); */
-
     try
     {
+        vk::raii::Instance instance = makeInstance(app);
         ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
-
         vk::raii::Device device = makeLogicalDevice(cpd);
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
