@@ -642,6 +642,10 @@ struct Renderer
     std::vector<vk::raii::Framebuffer> framebuffers;
     vk::raii::CommandPool commandPool;
     vk::raii::CommandBuffers commandBuffers;
+    std::vector<vk::raii::Semaphore> imageAvailableSems;
+    std::vector<vk::raii::Semaphore> renderFinishedSems;
+    std::vector<vk::raii::Fence> inFlightFences;
+    std::vector<std::optional<std::size_t>> imagesInFlight;
 };
 
 Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
@@ -653,13 +657,36 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
     vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
     vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
 
+    std::vector<vk::raii::Semaphore> imageAvailableSems;
+    std::vector<vk::raii::Semaphore> renderFinishedSems;
+    std::vector<vk::raii::Fence> inFlightFences;
+
+    for(int i = 0 ; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        imageAvailableSems.emplace_back(device, vk::SemaphoreCreateInfo());
+        renderFinishedSems.emplace_back(device, vk::SemaphoreCreateInfo());
+
+        vk::FenceCreateInfo fenceInfo{
+            .flags = vk::FenceCreateFlagBits::eSignaled
+        };
+        inFlightFences.emplace_back(device, fenceInfo);
+    }
+
+    // Each image either has not been used yet, or has a inFlightFence that
+    // it is associated with
+    std::vector<std::optional<std::size_t>> imagesInFlight(scd.views.size(), std::nullopt);
+
     return {
         .scd = std::move(scd),
         .pipeline = std::move(pipeline),
         .renderPass = std::move(renderPass),
         .framebuffers = std::move(framebuffers),
         .commandPool = std::move(commandPool),
-        .commandBuffers = std::move(commandBuffers)
+        .commandBuffers = std::move(commandBuffers),
+        .imageAvailableSems = std::move(imageAvailableSems),
+        .renderFinishedSems = std::move (renderFinishedSems),
+        .inFlightFences = std::move(inFlightFences),
+        .imagesInFlight = std::move(imagesInFlight)
     };
 }
 
@@ -723,59 +750,39 @@ int main()
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
         Renderer rdr = makeRenderer(device, app, cpd);
-
         recordDrawCommands(rdr);
-        // Semaphores to sync gpu stuff
-        std::vector<vk::raii::Semaphore> imageAvailableSems;
-        std::vector<vk::raii::Semaphore> renderFinishedSems;
-        std::vector<vk::raii::Fence> inFlightFences;
-
-        // Each image either has not been used yet, or has a inFlightFence that
-        // it is associated with
-        std::vector<std::optional<std::size_t>> imagesInFlight(rdr.scd.views.size(), std::nullopt);
-
-        for([[maybe_unused]] int const i : std::ranges::iota_view(0, MAX_FRAMES_IN_FLIGHT))
-        {
-            imageAvailableSems.emplace_back(device, vk::SemaphoreCreateInfo());
-            renderFinishedSems.emplace_back(device, vk::SemaphoreCreateInfo());
-
-            vk::FenceCreateInfo fenceInfo{
-                .flags = vk::FenceCreateFlagBits::eSignaled
-            };
-            inFlightFences.emplace_back(device, fenceInfo);
-        }
 
         int currentFrame = 0;
         while(!glfwWindowShouldClose(app.window))
         {
-            auto& frameFence      = *inFlightFences.at(currentFrame);
+            auto& frameFence      = *rdr.inFlightFences.at(currentFrame);
             // Wait for any previous frames that haven't finished yet
             [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
             // Acquire an image from the swap chain
-            auto [res, imgIndex] = rdr.scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
-            auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
+            auto [res, imgIndex] = rdr.scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *rdr.imageAvailableSems.at(currentFrame), nullptr);
+            auto& maybeFenceIndex =  rdr.imagesInFlight.at(imgIndex);
 
             // Check if this image is still "in flight", and wait if so
             if(maybeFenceIndex.has_value())
             {
                 std::size_t i = maybeFenceIndex.value();
-                [[maybe_unused]] auto imageWaitRes = device.waitForFences(*inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
+                [[maybe_unused]] auto imageWaitRes = device.waitForFences(*rdr.inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
             }
 
-            imagesInFlight[imgIndex] = currentFrame;
+            rdr.imagesInFlight[imgIndex] = currentFrame;
 
             vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
             // submit the command to the graphics queue
             vk::SubmitInfo submitInfo{
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
+                .pWaitSemaphores = &(*rdr.imageAvailableSems.at(currentFrame)),
                 .pWaitDstStageMask = waitStages,
                 .commandBufferCount = 1,
                 .pCommandBuffers = &(*rdr.commandBuffers.at(imgIndex)),
                 .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
+                .pSignalSemaphores = &(*rdr.renderFinishedSems.at(currentFrame))
             };
 
             device.resetFences({frameFence});
@@ -785,7 +792,7 @@ int main()
             // submit something or other to the "present" queue (this draws!)
             vk::PresentInfoKHR presentInfo{
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
+                .pWaitSemaphores = &(*rdr.renderFinishedSems.at(currentFrame)),
                 .swapchainCount = 1,
                 .pSwapchains = &(*rdr.scd.swapchain),
                 .pImageIndices = &imgIndex
