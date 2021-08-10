@@ -634,6 +634,20 @@ vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk:
     return {device, allocateInfo};
 }
 
+struct Renderer
+{
+    SwapchainData scd;
+};
+
+Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+{
+    auto scd = makeSwapchain(app, cpd, device);
+
+    return {
+        .scd = std::move(scd)
+    };
+}
+
 int main()
 {
     ApplicationData app;
@@ -656,11 +670,11 @@ int main()
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
-        SwapchainData scd = makeSwapchain(app, cpd, device);
+        Renderer rdr = makeRenderer(device, app, cpd);
 
-        auto [pipeline, renderPass] = makePipeline(device, scd);
+        auto [pipeline, renderPass] = makePipeline(device, rdr.scd);
 
-        auto framebuffers = makeFramebuffers(device, renderPass, scd);
+        auto framebuffers = makeFramebuffers(device, renderPass, rdr.scd);
 
         vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
         vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
@@ -682,7 +696,7 @@ int main()
                 .framebuffer = *framebuffers.at(i),
                 .renderArea = {
                     .offset = {0, 0},
-                    .extent = scd.extent
+                    .extent = rdr.scd.extent
                 },
                 .clearValueCount = 1,
                 .pClearValues = &clearColor
@@ -706,7 +720,7 @@ int main()
 
         // Each image either has not been used yet, or has a inFlightFence that
         // it is associated with
-        std::vector<std::optional<std::size_t>> imagesInFlight(scd.views.size(), std::nullopt);
+        std::vector<std::optional<std::size_t>> imagesInFlight(rdr.scd.views.size(), std::nullopt);
 
         for([[maybe_unused]] int const i : std::ranges::iota_view(0, MAX_FRAMES_IN_FLIGHT))
         {
@@ -727,7 +741,7 @@ int main()
             [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
             // Acquire an image from the swap chain
-            auto [res, imgIndex] = scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+            auto [res, imgIndex] = rdr.scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
             auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
 
             // Check if this image is still "in flight", and wait if so
@@ -761,7 +775,7 @@ int main()
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
                 .swapchainCount = 1,
-                .pSwapchains = &(*scd.swapchain),
+                .pSwapchains = &(*rdr.scd.swapchain),
                 .pImageIndices = &imgIndex
             };
 
