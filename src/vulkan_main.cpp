@@ -310,6 +310,137 @@ void cleanup(vk::raii::Instance const & instance, ChosenPhysicalDevice &cpd)
     (*instance).destroySurfaceKHR(cpd.surface);
 }
 
+struct SwapchainData
+{
+    vk::raii::SwapchainKHR swapchain;
+    std::vector<VkImage> images;
+    vk::Extent2D extent;
+    vk::SurfaceFormatKHR format;
+    std::vector<vk::raii::ImageView> views;
+};
+
+SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+{
+    // create the swap chain
+    auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(cpd.surface);
+    auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(cpd.surface);
+    auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(cpd.surface);
+
+    vk::SurfaceFormatKHR surfaceFormat{
+        .format     = vk::Format::eB8G8R8A8Srgb,
+        .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear
+    };
+
+    auto presentMode = vk::PresentModeKHR::eMailbox;
+
+    vk::Extent2D extent;
+
+    if (std::ranges::find(surfaceFormats, surfaceFormat) == surfaceFormats.end())
+    {
+        surfaceFormat = surfaceFormats.front();
+    }
+
+    if (std::ranges::find(surfacePresentModes, presentMode) == surfacePresentModes.end())
+    {
+        presentMode = vk::PresentModeKHR::eFifo;
+    }
+
+    if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
+    {
+        extent = surfaceCapabilities.currentExtent;
+    }
+    else
+    {
+        int width, height;
+        glfwGetFramebufferSize(app.window, &width, &height);
+
+        extent.width  = std::clamp(
+                static_cast<uint32_t>(width),
+                surfaceCapabilities.minImageExtent.width,
+                surfaceCapabilities.maxImageExtent.width
+                );
+        extent.height  = std::clamp(
+                static_cast<uint32_t>(width),
+                surfaceCapabilities.minImageExtent.height,
+                surfaceCapabilities.maxImageExtent.height
+                );
+    }
+
+    // It's recommended to request one more than the minimum since otherwise
+    // we "may have to wait on the driver to complete internal operations
+    // before we can acquire another image to render to"
+    uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+    uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
+    if (maxImageCount > 0 && imageCount > maxImageCount)
+    {
+        imageCount = maxImageCount;
+    }
+
+    vk::SwapchainCreateInfoKHR swapchainInfo{
+        .surface = cpd.surface,
+        .minImageCount = imageCount,
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageExtent = extent,
+        .imageArrayLayers = 1,
+        .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+        .preTransform = surfaceCapabilities.currentTransform,
+        .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        .presentMode = presentMode,
+        .clipped = VK_TRUE,
+        .oldSwapchain = VK_NULL_HANDLE
+    };
+
+    if (cpd.graphicsFamilyQueueIndex != cpd.presentFamilyQueueIndex)
+    {
+        swapchainInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+        swapchainInfo.queueFamilyIndexCount = 2;
+
+        uint32_t familyIndices[] = {cpd.graphicsFamilyQueueIndex, cpd.presentFamilyQueueIndex};
+        swapchainInfo.pQueueFamilyIndices = familyIndices;
+    }
+    else
+    {
+        swapchainInfo.imageSharingMode = vk::SharingMode::eExclusive;
+    }
+
+    vk::raii::SwapchainKHR swapchain(device, swapchainInfo);
+
+    // Create an image "view" for each swapchain image
+    auto swapchainImages = swapchain.getImages();
+    std::vector<vk::raii::ImageView> swapchainImageViews;
+    for(const auto& swapchainImage : swapchainImages)
+    {
+        vk::ImageViewCreateInfo imageViewCreateInfo{
+            .image = swapchainImage,
+            .viewType = vk::ImageViewType::e2D,
+            .format = surfaceFormat.format,
+            .components = {
+                .r = vk::ComponentSwizzle::eIdentity,
+                .g = vk::ComponentSwizzle::eIdentity,
+                .b = vk::ComponentSwizzle::eIdentity,
+                .a = vk::ComponentSwizzle::eIdentity
+            },
+            .subresourceRange = {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
+        };
+        swapchainImageViews.emplace_back(device, imageViewCreateInfo);
+    }
+
+    return {
+        .swapchain = std::move(swapchain),
+        .images = swapchainImages,
+        .extent = extent,
+        .format = surfaceFormat,
+        .views = std::move(swapchainImageViews)
+    };
+}
+
 int main()
 {
     ApplicationData app;
@@ -332,116 +463,7 @@ int main()
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
-        // create the swap chain
-        auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(cpd.surface);
-        auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(cpd.surface);
-        auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(cpd.surface);
-
-        vk::SurfaceFormatKHR surfaceFormat{
-            .format     = vk::Format::eB8G8R8A8Srgb,
-            .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear
-        };
-
-        auto presentMode = vk::PresentModeKHR::eMailbox;
-
-        vk::Extent2D extent;
-
-        if (std::ranges::find(surfaceFormats, surfaceFormat) == surfaceFormats.end())
-        {
-            surfaceFormat = surfaceFormats.front();
-        }
-
-        if (std::ranges::find(surfacePresentModes, presentMode) == surfacePresentModes.end())
-        {
-            presentMode = vk::PresentModeKHR::eFifo;
-        }
-
-        if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
-        {
-            extent = surfaceCapabilities.currentExtent;
-        }
-        else
-        {
-            int width, height;
-            glfwGetFramebufferSize(app.window, &width, &height);
-
-            extent.width  = std::clamp(
-                    static_cast<uint32_t>(width),
-                    surfaceCapabilities.minImageExtent.width,
-                    surfaceCapabilities.maxImageExtent.width
-                    );
-            extent.height  = std::clamp(
-                    static_cast<uint32_t>(width),
-                    surfaceCapabilities.minImageExtent.height,
-                    surfaceCapabilities.maxImageExtent.height
-                    );
-        }
-
-        // It's recommended to request one more than the minimum since otherwise
-        // we "may have to wait on the driver to complete internal operations
-        // before we can acquire another image to render to"
-        uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-        uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
-        if (maxImageCount > 0 && imageCount > maxImageCount)
-        {
-            imageCount = maxImageCount;
-        }
-
-        vk::SwapchainCreateInfoKHR swapchainInfo{
-            .surface = cpd.surface,
-            .minImageCount = imageCount,
-            .imageFormat = surfaceFormat.format,
-            .imageColorSpace = surfaceFormat.colorSpace,
-            .imageExtent = extent,
-            .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-            .preTransform = surfaceCapabilities.currentTransform,
-            .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-            .presentMode = presentMode,
-            .clipped = VK_TRUE,
-            .oldSwapchain = VK_NULL_HANDLE
-        };
-
-        if (cpd.graphicsFamilyQueueIndex != cpd.presentFamilyQueueIndex)
-        {
-            swapchainInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-            swapchainInfo.queueFamilyIndexCount = 2;
-
-            uint32_t familyIndices[] = {cpd.graphicsFamilyQueueIndex, cpd.presentFamilyQueueIndex};
-            swapchainInfo.pQueueFamilyIndices = familyIndices;
-        }
-        else
-        {
-            swapchainInfo.imageSharingMode = vk::SharingMode::eExclusive;
-        }
-
-        vk::raii::SwapchainKHR swapchain(device, swapchainInfo);
-
-        // Create an image "view" for each swapchain image
-        auto swapchainImages = swapchain.getImages();
-        std::vector<vk::raii::ImageView> swapchainImageViews;
-        for(const auto& swapchainImage : swapchainImages)
-        {
-            vk::ImageViewCreateInfo imageViewCreateInfo{
-                .image = swapchainImage,
-                .viewType = vk::ImageViewType::e2D,
-                .format = surfaceFormat.format,
-                .components = {
-                    .r = vk::ComponentSwizzle::eIdentity,
-                    .g = vk::ComponentSwizzle::eIdentity,
-                    .b = vk::ComponentSwizzle::eIdentity,
-                    .a = vk::ComponentSwizzle::eIdentity
-                },
-                .subresourceRange = {
-                    .aspectMask = vk::ImageAspectFlagBits::eColor,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1
-                }
-            };
-            swapchainImageViews.emplace_back(device, imageViewCreateInfo);
-        }
+        SwapchainData scd = makeSwapchain(app, cpd, device);
 
         // Attach shaders
         vk::ShaderModuleCreateInfo vShaderInfo{
@@ -483,15 +505,15 @@ int main()
         vk::Viewport viewport{
             .x = 0.0f,
             .y = 0.0f,
-            .width = (float) extent.width,
-            .height = (float) extent.height,
+            .width = (float) scd.extent.width,
+            .height = (float) scd.extent.height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f
         };
 
         vk::Rect2D scissor{
             .offset = {0, 0},
-            .extent = extent
+            .extent = scd.extent
         };
 
         vk::PipelineViewportStateCreateInfo viewportStateInfo {
@@ -534,7 +556,7 @@ int main()
         vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
         vk::AttachmentDescription colorAttachment{
-            .format = surfaceFormat.format,
+            .format = scd.format.format,
             .samples = vk::SampleCountFlagBits::e1,
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
@@ -598,14 +620,14 @@ int main()
 
         // create framebuffers
         std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
-        for(const auto& swapchainImageView : swapchainImageViews)
+        for(const auto& swapchainImageView : scd.views)
         {
             vk::FramebufferCreateInfo createInfo{
                 .renderPass = *renderPass,
                 .attachmentCount = 1,
                 .pAttachments = &(*swapchainImageView),
-                .width = extent.width,
-                .height = extent.height,
+                .width = scd.extent.width,
+                .height = scd.extent.height,
                 .layers = 1
             };
 
@@ -644,7 +666,7 @@ int main()
                 .framebuffer = *swapchainFramebuffers.at(i),
                 .renderArea = {
                     .offset = {0, 0},
-                    .extent = extent
+                    .extent = scd.extent
                 },
                 .clearValueCount = 1,
                 .pClearValues = &clearColor
@@ -668,7 +690,7 @@ int main()
 
         // Each image either has not been used yet, or has a inFlightFence that
         // it is associated with
-        std::vector<std::optional<std::size_t>> imagesInFlight(swapchainImages.size(), std::nullopt);
+        std::vector<std::optional<std::size_t>> imagesInFlight(scd.views.size(), std::nullopt);
 
         for([[maybe_unused]] int const i : std::ranges::iota_view(0, MAX_FRAMES_IN_FLIGHT))
         {
@@ -689,7 +711,7 @@ int main()
             [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
             // Acquire an image from the swap chain
-            auto [res, imgIndex] = swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+            auto [res, imgIndex] = scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
             auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
 
             // Check if this image is still "in flight", and wait if so
@@ -723,7 +745,7 @@ int main()
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
                 .swapchainCount = 1,
-                .pSwapchains = &(*swapchain),
+                .pSwapchains = &(*scd.swapchain),
                 .pImageIndices = &imgIndex
             };
 
