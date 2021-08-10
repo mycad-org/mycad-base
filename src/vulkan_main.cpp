@@ -592,6 +592,27 @@ std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Devic
     return {vk::raii::Pipeline{device, nullptr, pipelineInfo}, std::move(renderPass)};
 }
 
+std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd)
+{
+    // create framebuffers
+    std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
+    for(const auto& swapchainImageView : scd.views)
+    {
+        vk::FramebufferCreateInfo createInfo{
+            .renderPass = *renderPass,
+            .attachmentCount = 1,
+            .pAttachments = &(*swapchainImageView),
+            .width = scd.extent.width,
+            .height = scd.extent.height,
+            .layers = 1
+        };
+
+        swapchainFramebuffers.emplace_back(device, createInfo);
+    }
+
+    return swapchainFramebuffers;
+}
+
 int main()
 {
     ApplicationData app;
@@ -618,21 +639,7 @@ int main()
 
         auto [pipeline, renderPass] = makePipeline(device, scd);
 
-        // create framebuffers
-        std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
-        for(const auto& swapchainImageView : scd.views)
-        {
-            vk::FramebufferCreateInfo createInfo{
-                .renderPass = *renderPass,
-                .attachmentCount = 1,
-                .pAttachments = &(*swapchainImageView),
-                .width = scd.extent.width,
-                .height = scd.extent.height,
-                .layers = 1
-            };
-
-            swapchainFramebuffers.emplace_back(device, createInfo);
-        }
+        auto framebuffers = makeFramebuffers(device, renderPass, scd);
 
         // Create the command pool
         vk::CommandPoolCreateInfo poolInfo{
@@ -645,7 +652,7 @@ int main()
         vk::CommandBufferAllocateInfo allocateInfo{
             .commandPool = *commandPool,
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = static_cast<uint32_t>(swapchainFramebuffers.size())
+            .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
         };
         vk::raii::CommandBuffers commandBuffers(device, allocateInfo);
 
@@ -663,7 +670,7 @@ int main()
 
             vk::RenderPassBeginInfo renderPassBeginInfo{
                 .renderPass = *renderPass,
-                .framebuffer = *swapchainFramebuffers.at(i),
+                .framebuffer = *framebuffers.at(i),
                 .renderArea = {
                     .offset = {0, 0},
                     .extent = scd.extent
