@@ -639,18 +639,20 @@ struct Renderer
     SwapchainData scd;
     vk::raii::Pipeline pipeline;
     vk::raii::RenderPass renderPass;
+    std::vector<vk::raii::Framebuffer> framebuffers;
 };
 
 Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     auto scd = makeSwapchain(app, cpd, device);
     auto [pipeline, renderPass] = makePipeline(device, scd);
-
+    auto framebuffers = makeFramebuffers(device, renderPass, scd);
 
     return {
         .scd = std::move(scd),
         .pipeline = std::move(pipeline),
-        .renderPass = std::move(renderPass)
+        .renderPass = std::move(renderPass),
+        .framebuffers = std::move(framebuffers)
     };
 }
 
@@ -678,10 +680,8 @@ int main()
 
         Renderer rdr = makeRenderer(device, app, cpd);
 
-        auto framebuffers = makeFramebuffers(device, rdr.renderPass, rdr.scd);
-
         vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
-        vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
+        vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, rdr.framebuffers.size());
 
         // Record the commands
         for(std::size_t i = 0; i < commandBuffers.size(); i++)
@@ -697,7 +697,7 @@ int main()
 
             vk::RenderPassBeginInfo renderPassBeginInfo{
                 .renderPass = *rdr.renderPass,
-                .framebuffer = *framebuffers.at(i),
+                .framebuffer = *rdr.framebuffers.at(i),
                 .renderArea = {
                     .offset = {0, 0},
                     .extent = rdr.scd.extent
