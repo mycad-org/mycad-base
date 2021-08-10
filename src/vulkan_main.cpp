@@ -640,6 +640,8 @@ struct Renderer
     vk::raii::Pipeline pipeline;
     vk::raii::RenderPass renderPass;
     std::vector<vk::raii::Framebuffer> framebuffers;
+    vk::raii::CommandPool commandPool;
+    vk::raii::CommandBuffers commandBuffers;
 };
 
 Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
@@ -648,11 +650,16 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
     auto [pipeline, renderPass] = makePipeline(device, scd);
     auto framebuffers = makeFramebuffers(device, renderPass, scd);
 
+    vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
+    vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
+
     return {
         .scd = std::move(scd),
         .pipeline = std::move(pipeline),
         .renderPass = std::move(renderPass),
-        .framebuffers = std::move(framebuffers)
+        .framebuffers = std::move(framebuffers),
+        .commandPool = std::move(commandPool),
+        .commandBuffers = std::move(commandBuffers)
     };
 }
 
@@ -680,15 +687,12 @@ int main()
 
         Renderer rdr = makeRenderer(device, app, cpd);
 
-        vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
-        vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, rdr.framebuffers.size());
-
         // Record the commands
-        for(std::size_t i = 0; i < commandBuffers.size(); i++)
+        for(std::size_t i = 0; i < rdr.commandBuffers.size(); i++)
         {
             vk::CommandBufferBeginInfo beginInfo{};
 
-            const auto& commandBuffer = commandBuffers.at(i);
+            const auto& commandBuffer = rdr.commandBuffers.at(i);
 
             //==== begin command
             commandBuffer.begin(beginInfo);
@@ -765,7 +769,7 @@ int main()
                 .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
                 .pWaitDstStageMask = waitStages,
                 .commandBufferCount = 1,
-                .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
+                .pCommandBuffers = &(*rdr.commandBuffers.at(imgIndex)),
                 .signalSemaphoreCount = 1,
                 .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
             };
