@@ -10,12 +10,6 @@ int main()
 {
     ApplicationData app;
 
-    if (app.window == nullptr)
-    {
-        std::cerr << "Could not create a glfw Window" << std::endl;
-        std::exit(1);
-    }
-
     vk::raii::Instance instance = makeInstance(app);
     ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
 

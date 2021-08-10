@@ -40,6 +40,12 @@ ApplicationData::ApplicationData(){
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
+    if (window == nullptr)
+    {
+        std::cerr << "Could not create a glfw Window" << std::endl;
+        std::exit(1);
+    }
+
     // List available extensions
     std::cout << "Available vulkan extensions: " << '\n';
     for (const auto& extension : vk::enumerateInstanceExtensionProperties())
