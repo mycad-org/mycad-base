@@ -663,6 +663,43 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
     };
 }
 
+void recordDrawCommands (Renderer const & rdr)
+{
+    // Record the commands
+    for(std::size_t i = 0; i < rdr.commandBuffers.size(); i++)
+    {
+        vk::CommandBufferBeginInfo beginInfo{};
+
+        const auto& commandBuffer = rdr.commandBuffers.at(i);
+
+        //==== begin command
+        commandBuffer.begin(beginInfo);
+
+        vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
+
+        vk::RenderPassBeginInfo renderPassBeginInfo{
+            .renderPass = *rdr.renderPass,
+            .framebuffer = *rdr.framebuffers.at(i),
+            .renderArea = {
+                .offset = {0, 0},
+                .extent = rdr.scd.extent
+            },
+            .clearValueCount = 1,
+            .pClearValues = &clearColor
+        };
+
+        //======== begin render pass
+        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *rdr.pipeline);
+        commandBuffer.draw(3, 1, 0, 0);
+        commandBuffer.endRenderPass();
+        //======== end render pass
+
+        commandBuffer.end();
+        //==== end command
+    }
+}
+
 int main()
 {
     ApplicationData app;
@@ -687,40 +724,7 @@ int main()
 
         Renderer rdr = makeRenderer(device, app, cpd);
 
-        // Record the commands
-        for(std::size_t i = 0; i < rdr.commandBuffers.size(); i++)
-        {
-            vk::CommandBufferBeginInfo beginInfo{};
-
-            const auto& commandBuffer = rdr.commandBuffers.at(i);
-
-            //==== begin command
-            commandBuffer.begin(beginInfo);
-
-            vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
-
-            vk::RenderPassBeginInfo renderPassBeginInfo{
-                .renderPass = *rdr.renderPass,
-                .framebuffer = *rdr.framebuffers.at(i),
-                .renderArea = {
-                    .offset = {0, 0},
-                    .extent = rdr.scd.extent
-                },
-                .clearValueCount = 1,
-                .pClearValues = &clearColor
-            };
-
-            //======== begin render pass
-            commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *rdr.pipeline);
-            commandBuffer.draw(3, 1, 0, 0);
-            commandBuffer.endRenderPass();
-            //======== end render pass
-
-            commandBuffer.end();
-            //==== end command
-        }
-
+        recordDrawCommands(rdr);
         // Semaphores to sync gpu stuff
         std::vector<vk::raii::Semaphore> imageAvailableSems;
         std::vector<vk::raii::Semaphore> renderFinishedSems;
