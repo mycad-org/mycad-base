@@ -637,14 +637,20 @@ vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk:
 struct Renderer
 {
     SwapchainData scd;
+    vk::raii::Pipeline pipeline;
+    vk::raii::RenderPass renderPass;
 };
 
 Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     auto scd = makeSwapchain(app, cpd, device);
+    auto [pipeline, renderPass] = makePipeline(device, scd);
+
 
     return {
-        .scd = std::move(scd)
+        .scd = std::move(scd),
+        .pipeline = std::move(pipeline),
+        .renderPass = std::move(renderPass)
     };
 }
 
@@ -672,9 +678,7 @@ int main()
 
         Renderer rdr = makeRenderer(device, app, cpd);
 
-        auto [pipeline, renderPass] = makePipeline(device, rdr.scd);
-
-        auto framebuffers = makeFramebuffers(device, renderPass, rdr.scd);
+        auto framebuffers = makeFramebuffers(device, rdr.renderPass, rdr.scd);
 
         vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
         vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
@@ -692,7 +696,7 @@ int main()
             vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
 
             vk::RenderPassBeginInfo renderPassBeginInfo{
-                .renderPass = *renderPass,
+                .renderPass = *rdr.renderPass,
                 .framebuffer = *framebuffers.at(i),
                 .renderArea = {
                     .offset = {0, 0},
@@ -704,7 +708,7 @@ int main()
 
             //======== begin render pass
             commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
+            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *rdr.pipeline);
             commandBuffer.draw(3, 1, 0, 0);
             commandBuffer.endRenderPass();
             //======== end render pass
