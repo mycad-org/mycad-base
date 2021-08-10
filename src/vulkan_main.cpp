@@ -25,4 +25,6 @@ int main()
 
         glfwPollEvents();
     }
+
+    device.waitIdle();
 }
