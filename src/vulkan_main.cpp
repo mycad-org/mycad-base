@@ -613,21 +613,17 @@ std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & dev
     return swapchainFramebuffers;
 }
 
-struct CommandData
-{
-    vk::raii::CommandPool pool;
-    vk::raii::CommandBuffers buffers;
-};
-
-CommandData makeCommandBuffers(vk::raii::Device const & device, uint32_t graphicsFamilyQueueIndex, std::size_t nBuffers)
+vk::raii::CommandPool makeCommandPool(vk::raii::Device const & device, uint32_t graphicsFamilyQueueIndex)
 {
     // Create the command pool
     vk::CommandPoolCreateInfo poolInfo{
         .queueFamilyIndex = graphicsFamilyQueueIndex
     };
 
-    vk::raii::CommandPool commandPool(device, poolInfo);
-
+    return {device, poolInfo};
+}
+vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk::raii::CommandPool const & commandPool, std::size_t nBuffers)
+{
     // Create the command buffers
     vk::CommandBufferAllocateInfo allocateInfo{
         .commandPool = *commandPool,
@@ -635,10 +631,7 @@ CommandData makeCommandBuffers(vk::raii::Device const & device, uint32_t graphic
         .commandBufferCount = static_cast<uint32_t>(nBuffers)
     };
 
-    return {
-        .pool = std::move(commandPool),
-        .buffers{device, allocateInfo}
-    };
+    return {device, allocateInfo};
 }
 
 int main()
@@ -669,14 +662,15 @@ int main()
 
         auto framebuffers = makeFramebuffers(device, renderPass, scd);
 
-        CommandData cmd = makeCommandBuffers(device, cpd.graphicsFamilyQueueIndex, framebuffers.size());
+        vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
+        vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
 
         // Record the commands
-        for(std::size_t i = 0; i < cmd.buffers.size(); i++)
+        for(std::size_t i = 0; i < commandBuffers.size(); i++)
         {
             vk::CommandBufferBeginInfo beginInfo{};
 
-            const auto& commandBuffer = cmd.buffers.at(i);
+            const auto& commandBuffer = commandBuffers.at(i);
 
             //==== begin command
             commandBuffer.begin(beginInfo);
@@ -753,7 +747,7 @@ int main()
                 .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
                 .pWaitDstStageMask = waitStages,
                 .commandBufferCount = 1,
-                .pCommandBuffers = &(*cmd.buffers.at(imgIndex)),
+                .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
                 .signalSemaphoreCount = 1,
                 .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
             };
