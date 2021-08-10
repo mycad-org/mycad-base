@@ -634,8 +634,82 @@ vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk:
     return {device, allocateInfo};
 }
 
+struct RenderTarget
+{
+    vk::raii::Device device;
+    vk::raii::Queue graphicsQueue;
+    vk::raii::Queue presentQueue;
+};
+
+RenderTarget makeRenderTarget(ChosenPhysicalDevice const & cpd)
+{
+    vk::raii::Device device = makeLogicalDevice(cpd);
+    vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
+    vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
+
+    return {
+        .device = std::move(device),
+        .graphicsQueue = std::move(graphicsQueue),
+        .presentQueue = std::move(presentQueue)
+    };
+}
+
 struct Renderer
 {
+    /* ~Renderer() */
+    /* { */
+    /*     renderTarget.device.waitIdle(); */
+    /* } */
+
+    void draw(vk::raii::Device const & device, vk::raii::Queue const & graphicsQueue, vk::raii::Queue const & presentQueue, int currentFrame)
+    {
+        auto& frameFence      = *inFlightFences.at(currentFrame);
+        // Wait for any previous frames that haven't finished yet
+        [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+
+        // Acquire an image from the swap chain
+        auto [res, imgIndex] = scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+        auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
+
+        // Check if this image is still "in flight", and wait if so
+        if(maybeFenceIndex.has_value())
+        {
+            std::size_t i = maybeFenceIndex.value();
+            [[maybe_unused]] auto imageWaitRes = device.waitForFences(*inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
+        }
+
+        imagesInFlight[imgIndex] = currentFrame;
+
+        vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+        // submit the command to the graphics queue
+        vk::SubmitInfo submitInfo{
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
+            .pWaitDstStageMask = waitStages,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
+        };
+
+        device.resetFences({frameFence});
+
+        graphicsQueue.submit({submitInfo}, frameFence);
+
+        // submit something or other to the "present" queue (this draws!)
+        vk::PresentInfoKHR presentInfo{
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
+            .swapchainCount = 1,
+            .pSwapchains = &(*scd.swapchain),
+            .pImageIndices = &imgIndex
+        };
+
+        [[maybe_unused]] auto presres = presentQueue.presentKHR(presentInfo);
+    }
+
+    /* RenderTarget renderTarget; */
     SwapchainData scd;
     vk::raii::Pipeline pipeline;
     vk::raii::RenderPass renderPass;
@@ -650,6 +724,7 @@ struct Renderer
 
 Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
+    /* RenderTarget renderTarget = makeRenderTarget(cpd); */
     auto scd = makeSwapchain(app, cpd, device);
     auto [pipeline, renderPass] = makePipeline(device, scd);
     auto framebuffers = makeFramebuffers(device, renderPass, scd);
@@ -677,6 +752,7 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
     std::vector<std::optional<std::size_t>> imagesInFlight(scd.views.size(), std::nullopt);
 
     return {
+        /* .renderTarget = std::move(renderTarget), */
         .scd = std::move(scd),
         .pipeline = std::move(pipeline),
         .renderPass = std::move(renderPass),
@@ -745,7 +821,7 @@ int main()
     {
         ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
 
-        auto device = makeLogicalDevice(cpd);
+        vk::raii::Device device = makeLogicalDevice(cpd);
         vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
         vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
 
@@ -755,57 +831,11 @@ int main()
         int currentFrame = 0;
         while(!glfwWindowShouldClose(app.window))
         {
-            auto& frameFence      = *rdr.inFlightFences.at(currentFrame);
-            // Wait for any previous frames that haven't finished yet
-            [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
-
-            // Acquire an image from the swap chain
-            auto [res, imgIndex] = rdr.scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *rdr.imageAvailableSems.at(currentFrame), nullptr);
-            auto& maybeFenceIndex =  rdr.imagesInFlight.at(imgIndex);
-
-            // Check if this image is still "in flight", and wait if so
-            if(maybeFenceIndex.has_value())
-            {
-                std::size_t i = maybeFenceIndex.value();
-                [[maybe_unused]] auto imageWaitRes = device.waitForFences(*rdr.inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
-            }
-
-            rdr.imagesInFlight[imgIndex] = currentFrame;
-
-            vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-
-            // submit the command to the graphics queue
-            vk::SubmitInfo submitInfo{
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*rdr.imageAvailableSems.at(currentFrame)),
-                .pWaitDstStageMask = waitStages,
-                .commandBufferCount = 1,
-                .pCommandBuffers = &(*rdr.commandBuffers.at(imgIndex)),
-                .signalSemaphoreCount = 1,
-                .pSignalSemaphores = &(*rdr.renderFinishedSems.at(currentFrame))
-            };
-
-            device.resetFences({frameFence});
-
-            graphicsQueue.submit({submitInfo}, frameFence);
-
-            // submit something or other to the "present" queue (this draws!)
-            vk::PresentInfoKHR presentInfo{
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &(*rdr.renderFinishedSems.at(currentFrame)),
-                .swapchainCount = 1,
-                .pSwapchains = &(*rdr.scd.swapchain),
-                .pImageIndices = &imgIndex
-            };
-
-            [[maybe_unused]] auto presres = presentQueue.presentKHR(presentInfo);
-
+            rdr.draw(device, graphicsQueue, presentQueue, currentFrame);
             currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
             glfwPollEvents();
         }
-
-        device.waitIdle();
     }
     catch ( vk::SystemError & err )
     {
