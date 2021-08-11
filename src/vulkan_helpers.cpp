@@ -232,8 +232,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
 
     imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
 
-    recordDrawCommands();
-
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int, int)
         {
