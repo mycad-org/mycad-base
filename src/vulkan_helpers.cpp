@@ -1,7 +1,7 @@
 #include "mycad/vulkan_helpers.h"
 
-#include "shaders/triangle_colors_vshader.h"
-#include "shaders/gradient_fshader.h"
+#include "shaders/vert.h"
+#include "shaders/frag.h"
 
 #include <iostream>
 
@@ -516,12 +516,12 @@ void Renderer::rebuildPipeline()
 
     // Attach shaders
     vk::ShaderModuleCreateInfo vShaderInfo{
-        .codeSize = triangle_colors_vshader_len,
-        .pCode = reinterpret_cast<const uint32_t*>(triangle_colors_vshader)
+        .codeSize = vert_spv_len,
+        .pCode = reinterpret_cast<const uint32_t*>(vert_spv)
     };
     vk::ShaderModuleCreateInfo fShaderInfo{
-        .codeSize = gradient_fshader_len,
-        .pCode = reinterpret_cast<const uint32_t*>(gradient_fshader)
+        .codeSize = frag_spv_len,
+        .pCode = reinterpret_cast<const uint32_t*>(frag_spv)
     };
 
     vk::raii::ShaderModule vShaderModule(*device, vShaderInfo);
