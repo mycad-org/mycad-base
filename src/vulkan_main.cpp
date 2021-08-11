@@ -15,13 +15,13 @@ int main()
     Renderer renderer(app.window, MAX_FRAMES_IN_FLIGHT);
 
     int currentFrame = 0;
-    int i = 0;
-    while(!glfwWindowShouldClose(app.window) && i < 10)
+    /* int i = 0; */
+    while(!glfwWindowShouldClose(app.window))
     {
         renderer.draw(currentFrame);
         currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
         glfwPollEvents();
-        i++;
+        /* i++; */
     }
 }

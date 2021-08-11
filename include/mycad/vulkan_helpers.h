@@ -69,6 +69,9 @@ class Renderer
 
         ~Renderer();
 
+        Renderer (Renderer const&) = delete;
+        Renderer& operator=(Renderer const&) = delete;
+
         void rebuildPipeline();
         void draw(int currentFrame);
 
@@ -80,6 +83,7 @@ class Renderer
         // explicit, and the only alternative I could think of was to just make
         // a very deep hierarchy of shallow wrapper classes, but that seems
         // pointless
+        bool framebufferResized = false;
         GLFWwindow* window = nullptr;
         vk::raii::Context context{};
         uptrInstance instance;

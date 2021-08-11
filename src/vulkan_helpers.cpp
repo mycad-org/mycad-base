@@ -148,6 +148,15 @@ void Renderer::draw(int currentFrame)
 
     // Acquire an image from the swap chain
     auto [res, imgIndex] = scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+    std::cout << "framebufferResize = " << std::boolalpha << framebufferResized << std::endl;
+    std::cout << "    acquireNextImage res = " << vk::to_string(res) << std::endl;
+    if (res == vk::Result::eErrorOutOfDateKHR)
+    {
+        std::cout << "rebuilding due to acquirNextImage" << std::endl;
+        rebuildPipeline();
+        return;
+    }
+
     auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
 
     // Check if this image is still "in flight", and wait if so
@@ -185,7 +194,25 @@ void Renderer::draw(int currentFrame)
         .pImageIndices = &imgIndex
     };
 
-    [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
+    vk::Result presres;
+    try
+    {
+        presres = presentQueue->presentKHR(presentInfo);
+    }
+    catch (vk::OutOfDateKHRError & err)
+    {
+        framebufferResized = false;
+        rebuildPipeline();
+        return;
+    }
+    std::cout << "    presentQueue res = " << vk::to_string(presres) << std::endl;
+
+    if (framebufferResized || presres == vk::Result::eSuboptimalKHR)
+    {
+        std::cout << "rebuilding due to presentQueue" << std::endl;
+        framebufferResized = false;
+        rebuildPipeline();
+    }
 }
 
 Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
@@ -211,6 +238,13 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
 
     recordDrawCommands();
+
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int, int)
+        {
+            auto renderer = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
+            renderer->framebufferResized = true;
+        });
 }
 
 
@@ -468,6 +502,14 @@ SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & c
 
 void Renderer::rebuildPipeline()
 {
+    device->waitIdle();
+
+    scd = nullptr;
+
+    framebuffers.clear();
+    commandBuffers = nullptr;
+    commandPool = nullptr;
+
     scd = std::make_unique<SwapchainData>(window, *cpd, *device);
 
     // Attach shaders
@@ -638,6 +680,7 @@ void Renderer::rebuildPipeline()
     };
 
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
+    recordDrawCommands();
 }
 
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd)
