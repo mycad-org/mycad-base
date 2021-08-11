@@ -1,18 +1,39 @@
 #include "mycad/vulkan_helpers.h"
+#include "mycad/render_helpers.h"
 
 #include "shaders/vert.h"
 #include "shaders/frag.h"
 
+#include <array>
 #include <iostream>
 
 std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context);
 std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd);
-std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
 std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
     vk::raii::Instance const & instance,
     ApplicationData const & app);
 
+vk::VertexInputBindingDescription VertexBindingDescription{
+    .binding = 0,
+    .stride  = sizeof(Vertex),
+    .inputRate = vk::VertexInputRate::eVertex
+};
+
+std::array<vk::VertexInputAttributeDescription, 2> VertexAttributeDescriptions{{
+    {
+        .location = 0,
+        .binding = 0,
+        .format = vk::Format::eR32G32Sfloat,
+        .offset = offsetof(Vertex, pos)
+    },
+    {
+        .location = 1,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(Vertex, color)
+    }
+}};
 
 namespace {
     const int WIDTH=800;
@@ -541,9 +562,11 @@ void Renderer::rebuildPipeline()
     };
 
     // Define "fixed" pipeline stages
-    [[maybe_unused]] vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-        .vertexBindingDescriptionCount = 0,
-        .vertexAttributeDescriptionCount = 0,
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &VertexBindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(VertexAttributeDescriptions.size()),
+        .pVertexAttributeDescriptions = VertexAttributeDescriptions.data()
     };
 
     [[maybe_unused]] vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
@@ -755,3 +778,4 @@ void Renderer::recordDrawCommands ()
         //==== end command
     }
 }
+

@@ -14,6 +14,7 @@ set(MYCAD_VULKAN_VIEWER FALSE CACHE BOOL "Whether to build the mycad-vk viewer")
 
 include_directories(include)
 add_subdirectory(src)
+add_subdirectory(ext)
 
 if(MYCAD_BUILD_EXAMPLES)
     add_subdirectory(examples)
