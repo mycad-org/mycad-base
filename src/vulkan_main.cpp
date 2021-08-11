@@ -10,10 +10,7 @@ int main()
 {
     ApplicationData app;
 
-    vk::raii::Instance instance = makeInstance(app);
-    ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
-
-    Renderer rdr(app, cpd);
+    Renderer rdr(app);
 
     int currentFrame = 0;
     int i = 0;

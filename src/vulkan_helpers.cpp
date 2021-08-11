@@ -5,9 +5,14 @@
 
 #include <iostream>
 
+std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context);
 std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd);
 std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
+std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
+    vk::raii::Instance const & instance,
+    ApplicationData const & app);
+
 
 namespace {
     const int WIDTH=800;
@@ -65,7 +70,7 @@ ApplicationData::~ApplicationData()
     glfwTerminate();
 }
 
-vk::raii::Instance makeInstance(ApplicationData const & app)
+std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context)
 {
     // initialize the vk::ApplicationInfo structure
     vk::ApplicationInfo applicationInfo{
@@ -127,7 +132,7 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
     };
 
     // return an Instance
-    return {app.context, instanceCreateInfo};
+    return std::make_unique<vk::raii::Instance>(context, instanceCreateInfo);
 }
 
 Renderer::~Renderer()
@@ -183,20 +188,21 @@ void Renderer::draw(int currentFrame)
     [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
 }
 
-Renderer::Renderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+Renderer::Renderer(ApplicationData const & app)
 {
-    /* RenderTarget renderTarget = makeRenderTarget(cpd); */
-    device = makeLogicalDevice(cpd);
-    graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd.graphicsFamilyQueueIndex, 0);
-    presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd.presentFamilyQueueIndex, 0);
-    scd = std::make_unique<SwapchainData>(app, cpd, *device);
+    instance = makeInstance(context);
+    cpd = std::make_unique<ChosenPhysicalDevice>(*instance, app);
+    device = makeLogicalDevice(*cpd);
+    graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
+    presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
+    scd = std::make_unique<SwapchainData>(app, *cpd, *device);
     auto [local_pipeline, local_renderPass] = makePipeline(*device, *scd);
     pipeline = std::move(local_pipeline);
     renderPass = std::move(local_renderPass);
     framebuffers = makeFramebuffers(*device, *renderPass, *scd);
 
     vk::CommandPoolCreateInfo poolInfo{
-        .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
+        .queueFamilyIndex = cpd->graphicsFamilyQueueIndex
     };
 
     commandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
@@ -226,7 +232,7 @@ Renderer::Renderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd
 }
 
 
-ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app)
+ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app)
 {
     // Create a "screen surface" to render to.
     VkSurfaceKHR rawSurface;
@@ -237,19 +243,15 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
     }
     // TODO: do we need to worry about this being destructed before
     // vk::raii::Instance?
-    vk::raii::SurfaceKHR surface(instance, rawSurface);
+    surface = std::make_unique<vk::raii::SurfaceKHR>(instance, rawSurface);
 
     // Set up appropriate device
     auto devices = vk::raii::PhysicalDevices(instance);
     std::size_t whichDevice = 0;
-    std::set<uint32_t> whichQueues{};
     bool foundGraphicsQueue = false;
     bool foundSurfaceQueue  = false;
-    uint32_t whichGraphicsFamily = 0;
-    uint32_t whichSurfaceFamily  = 0;
     for (; whichDevice < devices.size(); whichDevice++)
     {
-        std::cout << "Looking at device number: " << whichDevice << '\n';
         // Check for required device extensions
         auto &device = devices.at(whichDevice);
 
@@ -261,16 +263,14 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
 
         if(not requiredExtensions.empty())
         {
-            std::cout << "    bailing, all extensions not found" << '\n';
             continue;
         }
 
         // Ensure appropriate swap chain support
-        auto surfaceFormats      = device.getSurfaceFormatsKHR(*surface);
-        auto surfacePresentModes = device.getSurfacePresentModesKHR(*surface);
+        auto surfaceFormats      = device.getSurfaceFormatsKHR(**surface);
+        auto surfacePresentModes = device.getSurfacePresentModesKHR(**surface);
         if (surfaceFormats.empty() || surfacePresentModes.empty())
         {
-            std::cout << "    bailing, swapchain support not found " << '\n';
             continue;
         }
 
@@ -278,40 +278,37 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
         // Reset in case both were not found last time
         foundGraphicsQueue  = false;
         foundSurfaceQueue   = false;
-        whichGraphicsFamily = 0;
-        whichSurfaceFamily  = 0;
+        graphicsFamilyQueueIndex = 0;
+        presentFamilyQueueIndex  = 0;
         auto queues = device.getQueueFamilyProperties();
         for(auto const& queue : device.getQueueFamilyProperties())
         {
-            std::cout << "    Looking at queue number: " << whichSurfaceFamily << '\n';
             if (not foundGraphicsQueue)
             {
                 if (queue.queueFlags & vk::QueueFlagBits::eGraphics)
                 {
-                    std::cout << "        found graphics bit, index = " << whichGraphicsFamily << '\n';
                     foundGraphicsQueue = true;
                 }
                 else
                 {
-                    whichGraphicsFamily++;
+                    graphicsFamilyQueueIndex++;
                 }
             }
             if (not foundSurfaceQueue) 
             {
-                if (device.getSurfaceSupportKHR(whichSurfaceFamily, *surface))
+                if (device.getSurfaceSupportKHR(presentFamilyQueueIndex, **surface))
                 {
-                    std::cout << "        found surface support, index = " << whichSurfaceFamily << '\n';
                     foundSurfaceQueue = true;
                 }
                 else
                 {
-                    whichSurfaceFamily++;
+                    presentFamilyQueueIndex++;
                 }
             }
 
             if (foundGraphicsQueue && foundSurfaceQueue)
             {
-                whichQueues = {whichGraphicsFamily, whichSurfaceFamily};
+                queueIndices = {graphicsFamilyQueueIndex, presentFamilyQueueIndex};
                 break;
             }
         }
@@ -322,10 +319,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
         }
     }
 
-    std::cout << "whichGraphicsFamily = " << whichGraphicsFamily << '\n';
-    std::cout << "whichSurfaceFamily = " << whichSurfaceFamily << '\n';
-
-    if (whichGraphicsFamily == 0 && whichSurfaceFamily == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
+    if (graphicsFamilyQueueIndex == 0 && presentFamilyQueueIndex == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
     {
         std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
         std::cerr << "    Also, it could be that the appropriate swap-chain support was not found." << std::endl;
@@ -344,15 +338,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
         std::exit(1);
     }
 
-    ChosenPhysicalDevice cpd {
-        .physicalDevice{instance, *devices.at(whichDevice)},
-        .surface = std::move(surface),
-        .queueIndices = whichQueues,
-        .graphicsFamilyQueueIndex = whichGraphicsFamily,
-        .presentFamilyQueueIndex = whichSurfaceFamily
-    };
-
-    return cpd;
+    physicalDevice = std::make_unique<vk::raii::PhysicalDevice>(instance, *devices.at(whichDevice));
 }
 
 std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd)
@@ -384,15 +370,15 @@ std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const &
         .pEnabledFeatures        = &deviceFeatures
     };
 
-    return std::make_unique<vk::raii::Device>(cpd.physicalDevice, deviceInfo);
+    return std::make_unique<vk::raii::Device>(*cpd.physicalDevice, deviceInfo);
 }
 
 SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
     // create the swap chain
-    auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*cpd.surface);
-    auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*cpd.surface);
-    auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*cpd.surface);
+    auto surfaceFormats      = cpd.physicalDevice->getSurfaceFormatsKHR(**cpd.surface);
+    auto surfacePresentModes = cpd.physicalDevice->getSurfacePresentModesKHR(**cpd.surface);
+    auto surfaceCapabilities = cpd.physicalDevice->getSurfaceCapabilitiesKHR(**cpd.surface);
 
     surfaceFormat = vk::SurfaceFormatKHR{
         .format     = vk::Format::eB8G8R8A8Srgb,
@@ -443,7 +429,7 @@ SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice c
     }
 
     vk::SwapchainCreateInfoKHR swapchainInfo{
-        .surface = *cpd.surface,
+        .surface = **cpd.surface,
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,

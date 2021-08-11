@@ -14,6 +14,7 @@
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
+using uptrInstance       = std::unique_ptr<vk::raii::Instance>;
 using uptrPhysicalDevice = std::unique_ptr<vk::raii::PhysicalDevice>;
 using uptrSurfaceKHR     = std::unique_ptr<vk::raii::SurfaceKHR>;
 using VulkanIndex        = uint32_t;
@@ -39,13 +40,14 @@ struct ApplicationData
     ~ApplicationData();
 
     GLFWwindow* window = nullptr;
-    vk::raii::Context context{};
 };
 
 struct ChosenPhysicalDevice
 {
-    vk::raii::PhysicalDevice physicalDevice;
-    vk::raii::SurfaceKHR surface;
+    ChosenPhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app);
+
+    uptrPhysicalDevice physicalDevice;
+    uptrSurfaceKHR surface;
     std::set<uint32_t> queueIndices;
     uint32_t graphicsFamilyQueueIndex;
     uint32_t presentFamilyQueueIndex;
@@ -65,7 +67,7 @@ struct SwapchainData
 class Renderer
 {
     public:
-        Renderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd);
+        Renderer(ApplicationData const & app);
 
         ~Renderer();
 
@@ -79,6 +81,9 @@ class Renderer
         // explicit, and the only alternative I could think of was to just make
         // a very deep hierarchy of shallow wrapper classes, but that seems
         // pointless
+        vk::raii::Context context{};
+        uptrInstance instance;
+        std::unique_ptr<ChosenPhysicalDevice> cpd;
         uptrDevice device;
         uptrQueue graphicsQueue;
         uptrQueue presentQueue;
@@ -93,11 +98,5 @@ class Renderer
         Fences inFlightFences;
         MaybeIndices imagesInFlight;
 };
-
-vk::raii::Instance makeInstance(ApplicationData const & app);
-
-ChosenPhysicalDevice choosePhysicalDevice(
-    vk::raii::Instance const & instance,
-    ApplicationData const & app);
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER
