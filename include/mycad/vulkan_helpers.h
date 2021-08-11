@@ -76,6 +76,7 @@ class Renderer
         void draw(int currentFrame);
 
     private:
+        void makePipelineAndRenderpass();
         void recordDrawCommands();
 
         // I know this is a whole mess of member variables, but honestly I don't
