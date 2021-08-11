@@ -12,8 +12,6 @@
 #include <set>
 #include <vector>
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
 using uptrInstance       = std::unique_ptr<vk::raii::Instance>;
 using uptrPhysicalDevice = std::unique_ptr<vk::raii::PhysicalDevice>;
 using uptrSurfaceKHR     = std::unique_ptr<vk::raii::SurfaceKHR>;
@@ -67,7 +65,7 @@ struct SwapchainData
 class Renderer
 {
     public:
-        Renderer(ApplicationData const & app);
+        Renderer(ApplicationData const & app, int maxFrames);
 
         ~Renderer();
 

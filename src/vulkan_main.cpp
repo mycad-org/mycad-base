@@ -6,11 +6,13 @@
 #include <set>
 #include <vector>
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 int main()
 {
     ApplicationData app;
 
-    Renderer rdr(app);
+    Renderer rdr(app, MAX_FRAMES_IN_FLIGHT);
 
     int currentFrame = 0;
     int i = 0;

@@ -188,7 +188,7 @@ void Renderer::draw(int currentFrame)
     [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
 }
 
-Renderer::Renderer(ApplicationData const & app)
+Renderer::Renderer(ApplicationData const & app, int maxFrames)
 {
     instance = makeInstance(context);
     cpd = std::make_unique<ChosenPhysicalDevice>(*instance, app);
@@ -215,7 +215,7 @@ Renderer::Renderer(ApplicationData const & app)
 
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
 
-    for(int i = 0 ; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for(int i = 0 ; i < maxFrames; i++)
     {
         imageAvailableSems.emplace_back(*device, vk::SemaphoreCreateInfo());
         renderFinishedSems.emplace_back(*device, vk::SemaphoreCreateInfo());
