@@ -14,8 +14,7 @@ int main()
     ChosenPhysicalDevice cpd = choosePhysicalDevice(instance, app);
 
     vk::raii::Device device = makeLogicalDevice(cpd);
-    Renderer rdr = makeRenderer(device, app, cpd);
-    recordDrawCommands(rdr);
+    Renderer rdr(device, app, cpd);
 
     int currentFrame = 0;
     while(!glfwWindowShouldClose(app.window))

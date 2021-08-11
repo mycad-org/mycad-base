@@ -8,10 +8,30 @@
 #include <GLFW/glfw3native.h>
 
 #include <cstdint>
+#include <memory>
 #include <set>
 #include <vector>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+using uptrPhysicalDevice = std::unique_ptr<vk::raii::PhysicalDevice>;
+using uptrSurfaceKHR     = std::unique_ptr<vk::raii::SurfaceKHR>;
+using VulkanIndex        = uint32_t;
+using uIndices           = std::set<VulkanIndex>;
+using uptrSwapchain      = std::unique_ptr<vk::raii::SwapchainKHR>;
+using Images             = std::vector<VkImage>;
+using ImageViews         = std::vector<vk::raii::ImageView>;
+using uptrDevice         = std::unique_ptr<vk::raii::Device>;
+using uptrQueue          = std::unique_ptr<vk::raii::Queue>;
+using uptrPipeline       = std::unique_ptr<vk::raii::Pipeline>;
+using uptrRenderPass     = std::unique_ptr<vk::raii::RenderPass>;
+using Framebuffers       = std::vector<vk::raii::Framebuffer>;
+using uptrCommandPool    = std::unique_ptr<vk::raii::CommandPool>;
+using uptrCommandBuffers = std::unique_ptr<vk::raii::CommandBuffers>;
+using Semaphores         = std::vector<vk::raii::Semaphore>;
+using Fences             = std::vector<vk::raii::Fence>;
+using MaybeIndex         = std::optional<std::size_t>;
+using MaybeIndices       = std::vector<MaybeIndex>;
 
 struct ApplicationData
 {
@@ -33,35 +53,50 @@ struct ChosenPhysicalDevice
 
 struct SwapchainData
 {
-    vk::raii::SwapchainKHR swapchain;
-    std::vector<VkImage> images;
+    SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+
+    uptrSwapchain swapchain;
+    Images images;
     vk::Extent2D extent;
-    vk::SurfaceFormatKHR format;
-    std::vector<vk::raii::ImageView> views;
+    vk::SurfaceFormatKHR surfaceFormat;
+    ImageViews views;
 };
 
-struct Renderer
+class Renderer
 {
-    /* ~Renderer() */
-    /* { */
-    /*     renderTarget.device.waitIdle(); */
-    /* } */
+    public:
+        Renderer(vk::raii::Device const & device,
+                 ApplicationData const & app,
+                 ChosenPhysicalDevice const & cpd);
 
-    void draw(vk::raii::Device const & device, int currentFrame);
+        /* ~Renderer() */
+        /* { */
+        /*     renderTarget.device.waitIdle(); */
+        /* } */
 
-    /* RenderTarget renderTarget; */
-    vk::raii::Queue graphicsQueue;
-    vk::raii::Queue presentQueue;
-    SwapchainData scd;
-    vk::raii::Pipeline pipeline;
-    vk::raii::RenderPass renderPass;
-    std::vector<vk::raii::Framebuffer> framebuffers;
-    vk::raii::CommandPool commandPool;
-    vk::raii::CommandBuffers commandBuffers;
-    std::vector<vk::raii::Semaphore> imageAvailableSems;
-    std::vector<vk::raii::Semaphore> renderFinishedSems;
-    std::vector<vk::raii::Fence> inFlightFences;
-    std::vector<std::optional<std::size_t>> imagesInFlight;
+        void draw(vk::raii::Device const & device, int currentFrame);
+
+    private:
+        void recordDrawCommands();
+
+        // I know this is a whole mess of member variables, but honestly I don't
+        // think there is any 'cleaner' way to do this. Vulkan is _very_
+        // explicit, and the only alternative I could think of was to just make
+        // a very deep hierarchy of shallow wrapper classes, but that seems
+        // pointless
+        uptrDevice device;
+        uptrQueue graphicsQueue;
+        uptrQueue presentQueue;
+        std::unique_ptr<SwapchainData> scd;
+        uptrPipeline pipeline;
+        uptrRenderPass renderPass;
+        Framebuffers framebuffers;
+        uptrCommandPool commandPool;
+        uptrCommandBuffers commandBuffers;
+        Semaphores imageAvailableSems;
+        Semaphores renderFinishedSems;
+        Fences inFlightFences;
+        MaybeIndices imagesInFlight;
 };
 
 vk::raii::Instance makeInstance(ApplicationData const & app);
@@ -71,35 +106,5 @@ ChosenPhysicalDevice choosePhysicalDevice(
     ApplicationData const & app);
 
 vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd);
-
-SwapchainData makeSwapchain(
-    ApplicationData const & app,
-    ChosenPhysicalDevice const & cpd,
-    vk::raii::Device const & device);
-
-std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(
-    vk::raii::Device const & device,
-    SwapchainData const & scd);
-
-std::vector<vk::raii::Framebuffer> makeFramebuffers(
-    vk::raii::Device const & device,
-    vk::raii::RenderPass const & renderPass,
-    SwapchainData const &scd);
-
-vk::raii::CommandPool makeCommandPool(
-    vk::raii::Device const & device,
-    uint32_t graphicsFamilyQueueIndex);
-
-vk::raii::CommandBuffers makeCommandBuffers(
-    vk::raii::Device const & device,
-    vk::raii::CommandPool const & commandPool,
-    std::size_t nBuffers);
-
-Renderer makeRenderer(
-    vk::raii::Device const & device,
-    ApplicationData const & app,
-    ChosenPhysicalDevice const & cpd);
-
-void recordDrawCommands (Renderer const & rdr);
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

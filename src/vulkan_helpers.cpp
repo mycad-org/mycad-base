@@ -5,11 +5,8 @@
 
 #include <iostream>
 
-SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
-std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
+std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
-vk::raii::CommandPool makeCommandPool(vk::raii::Device const & device, uint32_t graphicsFamilyQueueIndex);
-vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk::raii::CommandPool const & commandPool, std::size_t nBuffers);
 
 namespace {
     const int WIDTH=800;
@@ -38,7 +35,8 @@ namespace {
     }
 } // namespace (anonymous)
 
-ApplicationData::ApplicationData(){
+ApplicationData::ApplicationData()
+{
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -143,7 +141,7 @@ void Renderer::draw(vk::raii::Device const & device, int currentFrame)
     [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
     // Acquire an image from the swap chain
-    auto [res, imgIndex] = scd.swapchain.acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+    auto [res, imgIndex] = scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
     auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
 
     // Check if this image is still "in flight", and wait if so
@@ -163,42 +161,51 @@ void Renderer::draw(vk::raii::Device const & device, int currentFrame)
         .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
         .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &(*commandBuffers.at(imgIndex)),
+        .pCommandBuffers = &(*commandBuffers->at(imgIndex)),
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
     };
 
     device.resetFences({frameFence});
 
-    graphicsQueue.submit({submitInfo}, frameFence);
+    graphicsQueue->submit({submitInfo}, frameFence);
 
     // submit something or other to the "present" queue (this draws!)
     vk::PresentInfoKHR presentInfo{
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
         .swapchainCount = 1,
-        .pSwapchains = &(*scd.swapchain),
+        .pSwapchains = &(**scd->swapchain),
         .pImageIndices = &imgIndex
     };
 
-    [[maybe_unused]] auto presres = presentQueue.presentKHR(presentInfo);
+    [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
 }
 
-Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+Renderer::Renderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     /* RenderTarget renderTarget = makeRenderTarget(cpd); */
-    vk::raii::Queue graphicsQueue(device, cpd.graphicsFamilyQueueIndex, 0);
-    vk::raii::Queue presentQueue(device, cpd.presentFamilyQueueIndex, 0);
-    auto scd = makeSwapchain(app, cpd, device);
-    auto [pipeline, renderPass] = makePipeline(device, scd);
-    auto framebuffers = makeFramebuffers(device, renderPass, scd);
+    graphicsQueue = std::make_unique<vk::raii::Queue>(device, cpd.graphicsFamilyQueueIndex, 0);
+    presentQueue = std::make_unique<vk::raii::Queue>(device, cpd.presentFamilyQueueIndex, 0);
+    scd = std::make_unique<SwapchainData>(app, cpd, device);
+    auto [local_pipeline, local_renderPass] = makePipeline(device, *scd);
+    pipeline = std::move(local_pipeline);
+    renderPass = std::move(local_renderPass);
+    framebuffers = makeFramebuffers(device, *renderPass, *scd);
 
-    vk::raii::CommandPool commandPool = makeCommandPool(device, cpd.graphicsFamilyQueueIndex);
-    vk::raii::CommandBuffers commandBuffers = makeCommandBuffers(device, commandPool, framebuffers.size());
+    vk::CommandPoolCreateInfo poolInfo{
+        .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
+    };
 
-    std::vector<vk::raii::Semaphore> imageAvailableSems;
-    std::vector<vk::raii::Semaphore> renderFinishedSems;
-    std::vector<vk::raii::Fence> inFlightFences;
+    commandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
+    // Create the command buffers
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **commandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
+    };
+
+    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(device, allocateInfo);
 
     for(int i = 0 ; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -211,25 +218,9 @@ Renderer makeRenderer(vk::raii::Device const & device, ApplicationData const & a
         inFlightFences.emplace_back(device, fenceInfo);
     }
 
-    // Each image either has not been used yet, or has a inFlightFence that
-    // it is associated with
-    std::vector<std::optional<std::size_t>> imagesInFlight(scd.views.size(), std::nullopt);
+    imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
 
-    return {
-        /* .renderTarget = std::move(renderTarget), */
-        .graphicsQueue = std::move(graphicsQueue),
-        .presentQueue = std::move(presentQueue),
-        .scd = std::move(scd),
-        .pipeline = std::move(pipeline),
-        .renderPass = std::move(renderPass),
-        .framebuffers = std::move(framebuffers),
-        .commandPool = std::move(commandPool),
-        .commandBuffers = std::move(commandBuffers),
-        .imageAvailableSems = std::move(imageAvailableSems),
-        .renderFinishedSems = std::move (renderFinishedSems),
-        .inFlightFences = std::move(inFlightFences),
-        .imagesInFlight = std::move(imagesInFlight)
-    };
+    recordDrawCommands();
 }
 
 
@@ -394,21 +385,19 @@ vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd)
     return {cpd.physicalDevice, deviceInfo};
 }
 
-SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
     // create the swap chain
     auto surfaceFormats      = cpd.physicalDevice.getSurfaceFormatsKHR(*cpd.surface);
     auto surfacePresentModes = cpd.physicalDevice.getSurfacePresentModesKHR(*cpd.surface);
     auto surfaceCapabilities = cpd.physicalDevice.getSurfaceCapabilitiesKHR(*cpd.surface);
 
-    vk::SurfaceFormatKHR surfaceFormat{
+    surfaceFormat = vk::SurfaceFormatKHR{
         .format     = vk::Format::eB8G8R8A8Srgb,
         .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear
     };
 
     auto presentMode = vk::PresentModeKHR::eMailbox;
-
-    vk::Extent2D extent;
 
     if (std::ranges::find(surfaceFormats, surfaceFormat) == surfaceFormats.end())
     {
@@ -479,12 +468,11 @@ SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice co
         swapchainInfo.imageSharingMode = vk::SharingMode::eExclusive;
     }
 
-    vk::raii::SwapchainKHR swapchain(device, swapchainInfo);
+    swapchain = std::make_unique<vk::raii::SwapchainKHR>(device, swapchainInfo);
 
     // Create an image "view" for each swapchain image
-    auto swapchainImages = swapchain.getImages();
-    std::vector<vk::raii::ImageView> swapchainImageViews;
-    for(const auto& swapchainImage : swapchainImages)
+    images = swapchain->getImages();
+    for(const auto& swapchainImage : images)
     {
         vk::ImageViewCreateInfo imageViewCreateInfo{
             .image = swapchainImage,
@@ -504,19 +492,11 @@ SwapchainData makeSwapchain(ApplicationData const & app, ChosenPhysicalDevice co
                 .layerCount = 1
             }
         };
-        swapchainImageViews.emplace_back(device, imageViewCreateInfo);
+        views.emplace_back(device, imageViewCreateInfo);
     }
-
-    return {
-        .swapchain = std::move(swapchain),
-        .images = swapchainImages,
-        .extent = extent,
-        .format = surfaceFormat,
-        .views = std::move(swapchainImageViews)
-    };
 }
 
-std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd)
+std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd)
 {
     // Attach shaders
     vk::ShaderModuleCreateInfo vShaderInfo{
@@ -609,7 +589,7 @@ std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Devic
     vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
     vk::AttachmentDescription colorAttachment{
-        .format = scd.format.format,
+        .format = scd.surfaceFormat.format,
         .samples = vk::SampleCountFlagBits::e1,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
@@ -652,7 +632,7 @@ std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Devic
         .pDependencies = &dependency
     };
 
-    vk::raii::RenderPass renderPass(device, renderPassInfo);
+    auto renderpass = std::make_unique<vk::raii::RenderPass>(device, renderPassInfo);
 
     // Create the actual graphics pipeline!!!
     vk::GraphicsPipelineCreateInfo pipelineInfo{
@@ -665,11 +645,14 @@ std::pair<vk::raii::Pipeline, vk::raii::RenderPass> makePipeline(vk::raii::Devic
         .pMultisampleState = &multisamplingInfo,
         .pColorBlendState = &colorBlendingInfo,
         .layout = *pipelineLayout,
-        .renderPass = *renderPass,
+        .renderPass = **renderpass,
         .subpass = 0
     };
 
-    return {vk::raii::Pipeline{device, nullptr, pipelineInfo}, std::move(renderPass)};
+    return {
+        std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo),
+        std::move(renderpass)
+    };
 }
 
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd)
@@ -693,28 +676,6 @@ std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & dev
     return swapchainFramebuffers;
 }
 
-vk::raii::CommandPool makeCommandPool(vk::raii::Device const & device, uint32_t graphicsFamilyQueueIndex)
-{
-    // Create the command pool
-    vk::CommandPoolCreateInfo poolInfo{
-        .queueFamilyIndex = graphicsFamilyQueueIndex
-    };
-
-    return {device, poolInfo};
-}
-
-vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk::raii::CommandPool const & commandPool, std::size_t nBuffers)
-{
-    // Create the command buffers
-    vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = *commandPool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = static_cast<uint32_t>(nBuffers)
-    };
-
-    return {device, allocateInfo};
-}
-
 /* RenderTarget makeRenderTarget(ChosenPhysicalDevice const & cpd) */
 /* { */
 /*     vk::raii::Device device = makeLogicalDevice(cpd); */
@@ -728,14 +689,14 @@ vk::raii::CommandBuffers makeCommandBuffers(vk::raii::Device const & device, vk:
 /*     }; */
 /* } */
 
-void recordDrawCommands (Renderer const & rdr)
+void Renderer::recordDrawCommands ()
 {
     // Record the commands
-    for(std::size_t i = 0; i < rdr.commandBuffers.size(); i++)
+    for(std::size_t i = 0; i < commandBuffers->size(); i++)
     {
         vk::CommandBufferBeginInfo beginInfo{};
 
-        const auto& commandBuffer = rdr.commandBuffers.at(i);
+        const auto& commandBuffer = commandBuffers->at(i);
 
         //==== begin command
         commandBuffer.begin(beginInfo);
@@ -743,11 +704,11 @@ void recordDrawCommands (Renderer const & rdr)
         vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
 
         vk::RenderPassBeginInfo renderPassBeginInfo{
-            .renderPass = *rdr.renderPass,
-            .framebuffer = *rdr.framebuffers.at(i),
+            .renderPass = *(*renderPass),
+            .framebuffer = *framebuffers.at(i),
             .renderArea = {
                 .offset = {0, 0},
-                .extent = rdr.scd.extent
+                .extent = scd->extent
             },
             .clearValueCount = 1,
             .pClearValues = &clearColor
@@ -755,7 +716,7 @@ void recordDrawCommands (Renderer const & rdr)
 
         //======== begin render pass
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *rdr.pipeline);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pipeline);
         commandBuffer.draw(3, 1, 0, 0);
         commandBuffer.endRenderPass();
         //======== end render pass
