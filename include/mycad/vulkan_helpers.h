@@ -65,16 +65,11 @@ struct SwapchainData
 class Renderer
 {
     public:
-        Renderer(vk::raii::Device const & device,
-                 ApplicationData const & app,
-                 ChosenPhysicalDevice const & cpd);
+        Renderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd);
 
-        /* ~Renderer() */
-        /* { */
-        /*     renderTarget.device.waitIdle(); */
-        /* } */
+        ~Renderer();
 
-        void draw(vk::raii::Device const & device, int currentFrame);
+        void draw(int currentFrame);
 
     private:
         void recordDrawCommands();
@@ -104,7 +99,5 @@ vk::raii::Instance makeInstance(ApplicationData const & app);
 ChosenPhysicalDevice choosePhysicalDevice(
     vk::raii::Instance const & instance,
     ApplicationData const & app);
-
-vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd);
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

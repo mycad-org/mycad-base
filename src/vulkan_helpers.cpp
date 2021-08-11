@@ -5,6 +5,7 @@
 
 #include <iostream>
 
+std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd);
 std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
 
@@ -129,16 +130,16 @@ vk::raii::Instance makeInstance(ApplicationData const & app)
     return {app.context, instanceCreateInfo};
 }
 
-/* Renderer::~Renderer() */
-/* { */
-/*     renderTarget.device.waitIdle(); */
-/* } */
+Renderer::~Renderer()
+{
+    device->waitIdle();
+}
 
-void Renderer::draw(vk::raii::Device const & device, int currentFrame)
+void Renderer::draw(int currentFrame)
 {
     auto& frameFence      = *inFlightFences.at(currentFrame);
     // Wait for any previous frames that haven't finished yet
-    [[maybe_unused]] auto waitResult = device.waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+    [[maybe_unused]] auto waitResult = device->waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
     // Acquire an image from the swap chain
     auto [res, imgIndex] = scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
@@ -148,7 +149,7 @@ void Renderer::draw(vk::raii::Device const & device, int currentFrame)
     if(maybeFenceIndex.has_value())
     {
         std::size_t i = maybeFenceIndex.value();
-        [[maybe_unused]] auto imageWaitRes = device.waitForFences(*inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
+        [[maybe_unused]] auto imageWaitRes = device->waitForFences(*inFlightFences.at(i), VK_TRUE, std::numeric_limits<uint64_t>::max());
     }
 
     imagesInFlight[imgIndex] = currentFrame;
@@ -166,7 +167,7 @@ void Renderer::draw(vk::raii::Device const & device, int currentFrame)
         .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
     };
 
-    device.resetFences({frameFence});
+    device->resetFences({frameFence});
 
     graphicsQueue->submit({submitInfo}, frameFence);
 
@@ -182,22 +183,23 @@ void Renderer::draw(vk::raii::Device const & device, int currentFrame)
     [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
 }
 
-Renderer::Renderer(vk::raii::Device const & device, ApplicationData const & app, ChosenPhysicalDevice const & cpd)
+Renderer::Renderer(ApplicationData const & app, ChosenPhysicalDevice const & cpd)
 {
     /* RenderTarget renderTarget = makeRenderTarget(cpd); */
-    graphicsQueue = std::make_unique<vk::raii::Queue>(device, cpd.graphicsFamilyQueueIndex, 0);
-    presentQueue = std::make_unique<vk::raii::Queue>(device, cpd.presentFamilyQueueIndex, 0);
-    scd = std::make_unique<SwapchainData>(app, cpd, device);
-    auto [local_pipeline, local_renderPass] = makePipeline(device, *scd);
+    device = makeLogicalDevice(cpd);
+    graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd.graphicsFamilyQueueIndex, 0);
+    presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd.presentFamilyQueueIndex, 0);
+    scd = std::make_unique<SwapchainData>(app, cpd, *device);
+    auto [local_pipeline, local_renderPass] = makePipeline(*device, *scd);
     pipeline = std::move(local_pipeline);
     renderPass = std::move(local_renderPass);
-    framebuffers = makeFramebuffers(device, *renderPass, *scd);
+    framebuffers = makeFramebuffers(*device, *renderPass, *scd);
 
     vk::CommandPoolCreateInfo poolInfo{
         .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
     };
 
-    commandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
+    commandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
     // Create the command buffers
     vk::CommandBufferAllocateInfo allocateInfo{
         .commandPool = **commandPool,
@@ -205,17 +207,17 @@ Renderer::Renderer(vk::raii::Device const & device, ApplicationData const & app,
         .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
     };
 
-    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(device, allocateInfo);
+    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
 
     for(int i = 0 ; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        imageAvailableSems.emplace_back(device, vk::SemaphoreCreateInfo());
-        renderFinishedSems.emplace_back(device, vk::SemaphoreCreateInfo());
+        imageAvailableSems.emplace_back(*device, vk::SemaphoreCreateInfo());
+        renderFinishedSems.emplace_back(*device, vk::SemaphoreCreateInfo());
 
         vk::FenceCreateInfo fenceInfo{
             .flags = vk::FenceCreateFlagBits::eSignaled
         };
-        inFlightFences.emplace_back(device, fenceInfo);
+        inFlightFences.emplace_back(*device, fenceInfo);
     }
 
     imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
@@ -353,7 +355,7 @@ ChosenPhysicalDevice choosePhysicalDevice(vk::raii::Instance const & instance, A
     return cpd;
 }
 
-vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd)
+std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd)
 {
     // Set up the logical device
     vk::PhysicalDeviceFeatures deviceFeatures{};
@@ -382,7 +384,7 @@ vk::raii::Device makeLogicalDevice(ChosenPhysicalDevice const & cpd)
         .pEnabledFeatures        = &deviceFeatures
     };
 
-    return {cpd.physicalDevice, deviceInfo};
+    return std::make_unique<vk::raii::Device>(cpd.physicalDevice, deviceInfo);
 }
 
 SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
