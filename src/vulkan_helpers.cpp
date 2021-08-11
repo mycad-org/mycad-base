@@ -148,11 +148,8 @@ void Renderer::draw(int currentFrame)
 
     // Acquire an image from the swap chain
     auto [res, imgIndex] = scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
-    std::cout << "framebufferResize = " << std::boolalpha << framebufferResized << std::endl;
-    std::cout << "    acquireNextImage res = " << vk::to_string(res) << std::endl;
     if (res == vk::Result::eErrorOutOfDateKHR)
     {
-        std::cout << "rebuilding due to acquirNextImage" << std::endl;
         rebuildPipeline();
         return;
     }
@@ -205,11 +202,9 @@ void Renderer::draw(int currentFrame)
         rebuildPipeline();
         return;
     }
-    std::cout << "    presentQueue res = " << vk::to_string(presres) << std::endl;
 
     if (framebufferResized || presres == vk::Result::eSuboptimalKHR)
     {
-        std::cout << "rebuilding due to presentQueue" << std::endl;
         framebufferResized = false;
         rebuildPipeline();
     }
