@@ -495,6 +495,15 @@ SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & c
 
 void Renderer::rebuildPipeline()
 {
+    // Wait until window is not minimized
+    int width = 0, height = 0;
+    while (width == 0 || height == 0) {
+        std::cout << "minimized" << std::endl;
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwWaitEvents();
+    }
+
+    // Let any GPU stuff finish
     device->waitIdle();
 
     scd = nullptr;
