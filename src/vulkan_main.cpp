@@ -12,13 +12,13 @@ int main()
 {
     ApplicationData app;
 
-    Renderer rdr(app, MAX_FRAMES_IN_FLIGHT);
+    Renderer renderer(app, MAX_FRAMES_IN_FLIGHT);
 
     int currentFrame = 0;
     int i = 0;
     while(!glfwWindowShouldClose(app.window) && i < 10)
     {
-        rdr.draw(currentFrame);
+        renderer.draw(currentFrame);
         currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
 
         glfwPollEvents();
