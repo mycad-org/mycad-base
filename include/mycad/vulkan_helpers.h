@@ -42,7 +42,7 @@ struct ApplicationData
 
 struct ChosenPhysicalDevice
 {
-    ChosenPhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app);
+    ChosenPhysicalDevice(vk::raii::Instance const & instance, GLFWwindow * win);
 
     uptrPhysicalDevice physicalDevice;
     uptrSurfaceKHR surface;
@@ -53,7 +53,7 @@ struct ChosenPhysicalDevice
 
 struct SwapchainData
 {
-    SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+    SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
 
     uptrSwapchain swapchain;
     Images images;
@@ -65,10 +65,11 @@ struct SwapchainData
 class Renderer
 {
     public:
-        Renderer(ApplicationData const & app, int maxFrames);
+        Renderer(GLFWwindow * win, int maxFrames);
 
         ~Renderer();
 
+        void rebuildPipeline();
         void draw(int currentFrame);
 
     private:
@@ -79,6 +80,7 @@ class Renderer
         // explicit, and the only alternative I could think of was to just make
         // a very deep hierarchy of shallow wrapper classes, but that seems
         // pointless
+        GLFWwindow* window = nullptr;
         vk::raii::Context context{};
         uptrInstance instance;
         std::unique_ptr<ChosenPhysicalDevice> cpd;

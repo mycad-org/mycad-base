@@ -188,32 +188,14 @@ void Renderer::draw(int currentFrame)
     [[maybe_unused]] auto presres = presentQueue->presentKHR(presentInfo);
 }
 
-Renderer::Renderer(ApplicationData const & app, int maxFrames)
+Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
 {
     instance = makeInstance(context);
-    cpd = std::make_unique<ChosenPhysicalDevice>(*instance, app);
+    cpd = std::make_unique<ChosenPhysicalDevice>(*instance, window);
     device = makeLogicalDevice(*cpd);
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
-    scd = std::make_unique<SwapchainData>(app, *cpd, *device);
-    auto [local_pipeline, local_renderPass] = makePipeline(*device, *scd);
-    pipeline = std::move(local_pipeline);
-    renderPass = std::move(local_renderPass);
-    framebuffers = makeFramebuffers(*device, *renderPass, *scd);
-
-    vk::CommandPoolCreateInfo poolInfo{
-        .queueFamilyIndex = cpd->graphicsFamilyQueueIndex
-    };
-
-    commandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
-    // Create the command buffers
-    vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **commandPool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
-    };
-
-    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
+    rebuildPipeline();
 
     for(int i = 0 ; i < maxFrames; i++)
     {
@@ -232,11 +214,11 @@ Renderer::Renderer(ApplicationData const & app, int maxFrames)
 }
 
 
-ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, ApplicationData const & app)
+ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, GLFWwindow * window)
 {
     // Create a "screen surface" to render to.
     VkSurfaceKHR rawSurface;
-    if (glfwCreateWindowSurface(*instance, app.window, nullptr, &rawSurface) != VK_SUCCESS)
+    if (glfwCreateWindowSurface(*instance, window, nullptr, &rawSurface) != VK_SUCCESS)
     {
         std::cerr << "Error creating a vulkan surface" << std::endl;
         std::exit(1);
@@ -373,7 +355,7 @@ std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const &
     return std::make_unique<vk::raii::Device>(*cpd.physicalDevice, deviceInfo);
 }
 
-SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
     // create the swap chain
     auto surfaceFormats      = cpd.physicalDevice->getSurfaceFormatsKHR(**cpd.surface);
@@ -404,7 +386,7 @@ SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice c
     else
     {
         int width, height;
-        glfwGetFramebufferSize(app.window, &width, &height);
+        glfwGetFramebufferSize(window, &width, &height);
 
         extent.width  = std::clamp(
                 static_cast<uint32_t>(width),
@@ -484,8 +466,10 @@ SwapchainData::SwapchainData(ApplicationData const & app, ChosenPhysicalDevice c
     }
 }
 
-std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & device, SwapchainData const & scd)
+void Renderer::rebuildPipeline()
 {
+    scd = std::make_unique<SwapchainData>(window, *cpd, *device);
+
     // Attach shaders
     vk::ShaderModuleCreateInfo vShaderInfo{
         .codeSize = triangle_colors_vshader_len,
@@ -496,8 +480,8 @@ std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & de
         .pCode = reinterpret_cast<const uint32_t*>(gradient_fshader)
     };
 
-    vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
-    vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
+    vk::raii::ShaderModule vShaderModule(*device, vShaderInfo);
+    vk::raii::ShaderModule fShaderModule(*device, fShaderInfo);
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {
         {
@@ -526,15 +510,15 @@ std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & de
     vk::Viewport viewport{
         .x = 0.0f,
         .y = 0.0f,
-        .width = (float) scd.extent.width,
-        .height = (float) scd.extent.height,
+        .width = (float) scd->extent.width,
+        .height = (float) scd->extent.height,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
 
     vk::Rect2D scissor{
         .offset = {0, 0},
-        .extent = scd.extent
+        .extent = scd->extent
     };
 
     vk::PipelineViewportStateCreateInfo viewportStateInfo {
@@ -574,10 +558,10 @@ std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & de
     };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
-    vk::raii::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
+    vk::raii::PipelineLayout pipelineLayout(*device, pipelineLayoutInfo);
 
     vk::AttachmentDescription colorAttachment{
-        .format = scd.surfaceFormat.format,
+        .format = scd->surfaceFormat.format,
         .samples = vk::SampleCountFlagBits::e1,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
@@ -620,7 +604,7 @@ std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & de
         .pDependencies = &dependency
     };
 
-    auto renderpass = std::make_unique<vk::raii::RenderPass>(device, renderPassInfo);
+    renderPass = std::make_unique<vk::raii::RenderPass>(*device, renderPassInfo);
 
     // Create the actual graphics pipeline!!!
     vk::GraphicsPipelineCreateInfo pipelineInfo{
@@ -633,14 +617,27 @@ std::pair<uptrPipeline, uptrRenderPass> makePipeline(vk::raii::Device const & de
         .pMultisampleState = &multisamplingInfo,
         .pColorBlendState = &colorBlendingInfo,
         .layout = *pipelineLayout,
-        .renderPass = **renderpass,
+        .renderPass = **renderPass,
         .subpass = 0
     };
 
-    return {
-        std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo),
-        std::move(renderpass)
+    pipeline =  std::make_unique<vk::raii::Pipeline>(*device, nullptr, pipelineInfo),
+
+    framebuffers = makeFramebuffers(*device, *renderPass, *scd);
+
+    vk::CommandPoolCreateInfo poolInfo{
+        .queueFamilyIndex = cpd->graphicsFamilyQueueIndex
     };
+
+    commandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
+    // Create the command buffers
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **commandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
+    };
+
+    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
 }
 
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd)

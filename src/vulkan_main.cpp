@@ -12,7 +12,7 @@ int main()
 {
     ApplicationData app;
 
-    Renderer renderer(app, MAX_FRAMES_IN_FLIGHT);
+    Renderer renderer(app.window, MAX_FRAMES_IN_FLIGHT);
 
     int currentFrame = 0;
     int i = 0;
