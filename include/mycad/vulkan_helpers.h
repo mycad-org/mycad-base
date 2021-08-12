@@ -111,13 +111,10 @@ class Renderer
         uptrCommandPool commandPool;
         uptrCommandBuffers commandBuffers;
         uptrCommandPool transferCommandPool;
-        uptrCommandBuffers transferCommandBuffers;
         Semaphores imageAvailableSems;
         Semaphores renderFinishedSems;
         Fences inFlightFences;
         MaybeIndices imagesInFlight;
-        uptrBuffer stagingBuffer;
-        uptrMemory stagingBufferMemory;
         uptrBuffer vertexBuffer;
         uptrMemory vertexBufferMemory;
 };
