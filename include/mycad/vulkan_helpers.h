@@ -7,6 +7,8 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 
+#include "mycad/render_helpers.h"
+
 #include <cstdint>
 #include <memory>
 #include <set>
@@ -31,6 +33,8 @@ using Semaphores         = std::vector<vk::raii::Semaphore>;
 using Fences             = std::vector<vk::raii::Fence>;
 using MaybeIndex         = std::optional<std::size_t>;
 using MaybeIndices       = std::vector<MaybeIndex>;
+using uptrBuffer         = std::unique_ptr<vk::raii::Buffer>;
+using uptrMemory         = std::unique_ptr<vk::raii::DeviceMemory>;
 
 struct ApplicationData
 {
@@ -73,10 +77,12 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
+        void addVertices(std::vector<Vertex> const & vertices);
         void draw(int currentFrame);
 
     private:
         void makePipelineAndRenderpass();
+        void setupBuffers();
         void recordDrawCommands();
 
         // I know this is a whole mess of member variables, but honestly I don't
@@ -102,6 +108,8 @@ class Renderer
         Semaphores renderFinishedSems;
         Fences inFlightFences;
         MaybeIndices imagesInFlight;
+        uptrBuffer vertexBuffer;
+        uptrMemory vertexBufferMemory;
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

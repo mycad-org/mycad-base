@@ -1,5 +1,4 @@
 #include "mycad/vulkan_helpers.h"
-#include "mycad/render_helpers.h"
 
 #include "shaders/vert.h"
 #include "shaders/frag.h"
@@ -238,6 +237,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     device = makeLogicalDevice(*cpd);
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
+    setupBuffers();
     rebuildPipeline();
 
     for(int i = 0 ; i < maxFrames; i++)
@@ -617,7 +617,8 @@ void Renderer::recordDrawCommands ()
         //======== begin render pass
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pipeline);
-        commandBuffer.draw(3, 1, 0, 0);
+        commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
+        commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
         commandBuffer.endRenderPass();
         //======== end render pass
 
@@ -784,3 +785,45 @@ void Renderer::makePipelineAndRenderpass()
     pipeline =  std::make_unique<vk::raii::Pipeline>(*device, nullptr, pipelineInfo);
 }
 
+uint32_t findValidMemoryType(uint32_t allowedMask, vk::PhysicalDeviceMemoryProperties const & props, vk::MemoryPropertyFlags reqs)
+{
+    // Pick a memory type to use for the buffer
+    for(uint32_t i = 0; i < props.memoryTypeCount; i++)
+    {
+        if (allowedMask & (1 << i) &&
+            (props.memoryTypes[i].propertyFlags & reqs) == reqs)
+        {
+            return i;
+        }
+    }
+
+    std::cerr << "Unable to find suitable memory type. Bailing out\n";
+    std::exit(1);
+}
+
+void Renderer::setupBuffers()
+{
+    vk::BufferCreateInfo bufferInfo {
+        .size = sizeof(vertices.at(0)) * vertices.size(),
+        .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+        .sharingMode = vk::SharingMode::eExclusive
+    };
+    vertexBuffer = std::make_unique<vk::raii::Buffer>(*device, bufferInfo);
+
+    vk::MemoryRequirements memReqs = vertexBuffer->getMemoryRequirements();
+    vk::PhysicalDeviceMemoryProperties availMem = cpd->physicalDevice->getMemoryProperties();
+
+    uint32_t whichMem = findValidMemoryType(memReqs.memoryTypeBits, availMem, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+    vk::MemoryAllocateInfo allocInfo{
+        .allocationSize = memReqs.size,
+        .memoryTypeIndex = whichMem
+    };
+
+    vertexBufferMemory = std::make_unique<vk::raii::DeviceMemory>(*device, allocInfo);
+    vertexBuffer->bindMemory(**vertexBufferMemory, 0);
+
+    void* data = vertexBufferMemory->mapMemory(0, bufferInfo.size);
+    memcpy(data, vertices.data(), (std::size_t) bufferInfo.size);
+    vertexBufferMemory->unmapMemory();
+}
