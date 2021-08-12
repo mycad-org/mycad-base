@@ -238,7 +238,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
     transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
-    setupBuffers();
     rebuildPipeline();
 
     for(int i = 0 ; i < maxFrames; i++)
@@ -580,6 +579,8 @@ void Renderer::rebuildPipeline()
 
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
 
+    // TODO: move this, or find a better name for this method
+    setupBuffers();
     recordDrawCommands();
 }
 
@@ -646,7 +647,8 @@ void Renderer::recordDrawCommands ()
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pipeline);
         commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
-        commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+        commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint16);
+        commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         commandBuffer.endRenderPass();
         //======== end render pass
 
@@ -858,50 +860,73 @@ void Renderer::createBuffer(vk::DeviceSize size,
 
 void Renderer::setupBuffers()
 {
-    vk::DeviceSize bufferSize = sizeof(vertices.at(0)) * vertices.size();
+    vk::DeviceSize verticesSize = sizeof(vertices.at(0)) * vertices.size();
+    vk::DeviceSize indicesSize = sizeof(indices.at(0)) * indices.size();
 
-    // Create the staging buffer locally
+    // Create the staging buffer locally - make sure it's big enough for all our
+    // data
     uptrBuffer stagingBuffer = nullptr;
     uptrMemory stagingBufferMemory = nullptr;
 
-    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+    createBuffer(verticesSize + indicesSize,
+                 vk::BufferUsageFlagBits::eTransferSrc,
                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                  stagingBuffer, stagingBufferMemory);
 
-    // Move vertex data to the staging area
-    void* data = stagingBufferMemory->mapMemory(0, bufferSize);
-    memcpy(data, vertices.data(), (std::size_t) bufferSize);
+    // Move vertex and index data to the staging area
+    void* data = stagingBufferMemory->mapMemory(0, verticesSize);
+    memcpy(data, vertices.data(), (std::size_t) verticesSize);
+    stagingBufferMemory->unmapMemory();
+    data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
+    memcpy(data, indices.data(), (std::size_t) indicesSize);
     stagingBufferMemory->unmapMemory();
 
-    // create the vertex buffer, stored as member variable
-    createBuffer(bufferSize,
+    // create the vertex and index buffers, stored as member variable
+    createBuffer(verticesSize,
                  vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
                  vk::MemoryPropertyFlagBits::eDeviceLocal,
                  vertexBuffer, vertexBufferMemory);
+    createBuffer(indicesSize,
+                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 indexBuffer, indexBufferMemory);
 
     // Move the data from the staging area to the vertex buffer
     vk::CommandBufferAllocateInfo allocateInfo{
         .commandPool = **transferCommandPool,
         .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1
+        .commandBufferCount = 2
     };
 
     vk::raii::CommandBuffers transferCommandBuffers(*device, allocateInfo);
-    vk::raii::CommandBuffer & transferCommandBuffer = transferCommandBuffers.front();
 
     vk::CommandBufferBeginInfo beginInfo{
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
     };
 
-    transferCommandBuffer.begin(beginInfo);
+    // copy vertices, buffer 0
+    transferCommandBuffers.at(0).begin(beginInfo);
+    vk::BufferCopy copyRegion{.size = verticesSize};
+    transferCommandBuffers.at(0).copyBuffer(**stagingBuffer, **vertexBuffer, copyRegion);
+    copyRegion.srcOffset = verticesSize;
+    transferCommandBuffers.at(0).end();
 
-    vk::BufferCopy copyRegion{.size = bufferSize};
-    transferCommandBuffer.copyBuffer(**stagingBuffer, **vertexBuffer, copyRegion);
-    transferCommandBuffer.end();
+    // copy indices, buffer 1
+    transferCommandBuffers.at(1).begin(beginInfo);
+    copyRegion.srcOffset = verticesSize;
+    copyRegion.size = indicesSize;
+    transferCommandBuffers.at(1).copyBuffer(**stagingBuffer, **indexBuffer, copyRegion);
+    transferCommandBuffers.at(1).end();
+
+    std::vector<vk::CommandBuffer> buffs;
+    for (auto const & transferBuffer : transferCommandBuffers)
+    {
+        buffs.push_back(*transferBuffer);
+    }
 
     vk::SubmitInfo submitInfo{
-        .commandBufferCount = 1,
-        .pCommandBuffers = &(*transferCommandBuffer),
+        .commandBufferCount = 2,
+        .pCommandBuffers = buffs.data(),
     };
 
     transferQueue->submit({submitInfo});

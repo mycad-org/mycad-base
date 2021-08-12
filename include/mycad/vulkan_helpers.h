@@ -117,6 +117,8 @@ class Renderer
         MaybeIndices imagesInFlight;
         uptrBuffer vertexBuffer;
         uptrMemory vertexBufferMemory;
+        uptrBuffer indexBuffer;
+        uptrMemory indexBufferMemory;
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER
