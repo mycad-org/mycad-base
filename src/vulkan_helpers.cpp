@@ -237,6 +237,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     device = makeLogicalDevice(*cpd);
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
+    transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
     setupBuffers();
     rebuildPipeline();
 
@@ -280,6 +281,7 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
     std::size_t whichDevice = 0;
     bool foundGraphicsQueue = false;
     bool foundSurfaceQueue  = false;
+    bool foundTransferQueue  = false;
     for (; whichDevice < devices.size(); whichDevice++)
     {
         // Check for required device extensions
@@ -308,8 +310,7 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
         // Reset in case both were not found last time
         foundGraphicsQueue  = false;
         foundSurfaceQueue   = false;
-        graphicsFamilyQueueIndex = 0;
-        presentFamilyQueueIndex  = 0;
+        foundTransferQueue  = false;
         auto queues = device.getQueueFamilyProperties();
         for(auto const& queue : device.getQueueFamilyProperties())
         {
@@ -335,15 +336,30 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
                     presentFamilyQueueIndex++;
                 }
             }
-
-            if (foundGraphicsQueue && foundSurfaceQueue)
+            if (not foundTransferQueue)
             {
-                queueIndices = {graphicsFamilyQueueIndex, presentFamilyQueueIndex};
+                if((queue.queueFlags & vk::QueueFlagBits::eTransfer) &&
+                   !(queue.queueFlags & vk::QueueFlagBits::eGraphics))
+                {
+                    foundTransferQueue = true;
+                }
+                else
+                {
+                    transferFamilyQueueIndex++;
+                }
+            }
+
+            if (foundGraphicsQueue && foundSurfaceQueue && foundTransferQueue)
+            {
+                queueIndices = {graphicsFamilyQueueIndex, presentFamilyQueueIndex, foundTransferQueue};
+                std::ranges::sort(queueIndices);
+                auto [first, last] = std::ranges::unique(queueIndices);
+                queueIndices.erase(first, last);
                 break;
             }
         }
 
-        if (foundGraphicsQueue && foundSurfaceQueue)
+        if (foundGraphicsQueue && foundSurfaceQueue && foundTransferQueue)
         {
             break;
         }
@@ -366,6 +382,12 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
     {
         std::cerr << "Unable to find a Device with support for the appropriate surface queue" << std::endl;
         std::exit(1);
+    }
+
+    if(not foundTransferQueue)
+    {
+        std::cout << "Could not find a distinct transfer queue. Falling back to graphic queue." << std::endl;
+        transferFamilyQueueIndex = graphicsFamilyQueueIndex;
     }
 
     physicalDevice = std::make_unique<vk::raii::PhysicalDevice>(instance, *devices.at(whichDevice));
@@ -532,6 +554,8 @@ void Renderer::rebuildPipeline()
     framebuffers.clear();
     commandBuffers = nullptr;
     commandPool = nullptr;
+    transferCommandBuffers = nullptr;
+    transferCommandPool = nullptr;
 
     scd = std::make_unique<SwapchainData>(window, *cpd, *device);
 
@@ -551,7 +575,17 @@ void Renderer::rebuildPipeline()
         .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
     };
 
+    poolInfo.queueFamilyIndex = cpd->transferFamilyQueueIndex;
+    transferCommandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
+    vk::CommandBufferAllocateInfo transferAllocateInfo{
+        .commandPool = **transferCommandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
+    };
+
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
+    transferCommandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, transferAllocateInfo);
+
     recordDrawCommands();
 }
 
@@ -801,29 +835,42 @@ uint32_t findValidMemoryType(uint32_t allowedMask, vk::PhysicalDeviceMemoryPrope
     std::exit(1);
 }
 
-void Renderer::setupBuffers()
+void Renderer::createBuffer(vk::DeviceSize size,
+                           vk::BufferUsageFlags usage,
+                           vk::MemoryPropertyFlags props,
+                           uptrBuffer & buffer,
+                           uptrMemory & memory)
 {
     vk::BufferCreateInfo bufferInfo {
-        .size = sizeof(vertices.at(0)) * vertices.size(),
-        .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-        .sharingMode = vk::SharingMode::eExclusive
+        .size = size,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eConcurrent,
+        .queueFamilyIndexCount = static_cast<uint32_t>(cpd->queueIndices.size()),
+        .pQueueFamilyIndices = cpd->queueIndices.data()
     };
-    vertexBuffer = std::make_unique<vk::raii::Buffer>(*device, bufferInfo);
+    buffer = std::make_unique<vk::raii::Buffer>(*device, bufferInfo);
 
-    vk::MemoryRequirements memReqs = vertexBuffer->getMemoryRequirements();
+    vk::MemoryRequirements memReqs = buffer->getMemoryRequirements();
     vk::PhysicalDeviceMemoryProperties availMem = cpd->physicalDevice->getMemoryProperties();
-
-    uint32_t whichMem = findValidMemoryType(memReqs.memoryTypeBits, availMem, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     vk::MemoryAllocateInfo allocInfo{
         .allocationSize = memReqs.size,
-        .memoryTypeIndex = whichMem
+        .memoryTypeIndex = findValidMemoryType(memReqs.memoryTypeBits, availMem, props)
     };
 
-    vertexBufferMemory = std::make_unique<vk::raii::DeviceMemory>(*device, allocInfo);
-    vertexBuffer->bindMemory(**vertexBufferMemory, 0);
+    memory = std::make_unique<vk::raii::DeviceMemory>(*device, allocInfo);
+    buffer->bindMemory(**memory, 0);
+}
 
-    void* data = vertexBufferMemory->mapMemory(0, bufferInfo.size);
-    memcpy(data, vertices.data(), (std::size_t) bufferInfo.size);
+void Renderer::setupBuffers()
+{
+    vk::DeviceSize bufferSize = sizeof(vertices.at(0)) * vertices.size();
+
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                 vertexBuffer, vertexBufferMemory);
+
+    void* data = vertexBufferMemory->mapMemory(0, bufferSize);
+    memcpy(data, vertices.data(), (std::size_t) bufferSize);
     vertexBufferMemory->unmapMemory();
 }

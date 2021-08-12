@@ -50,9 +50,10 @@ struct ChosenPhysicalDevice
 
     uptrPhysicalDevice physicalDevice;
     uptrSurfaceKHR surface;
-    std::set<uint32_t> queueIndices;
-    uint32_t graphicsFamilyQueueIndex;
-    uint32_t presentFamilyQueueIndex;
+    std::vector<uint32_t> queueIndices;
+    uint32_t graphicsFamilyQueueIndex = 0;
+    uint32_t presentFamilyQueueIndex = 0;
+    uint32_t transferFamilyQueueIndex = 0;
 };
 
 struct SwapchainData
@@ -77,13 +78,17 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
-        void addVertices(std::vector<Vertex> const & vertices);
         void draw(int currentFrame);
 
     private:
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
+        void createBuffer(vk::DeviceSize size,
+                          vk::BufferUsageFlags usage,
+                          vk::MemoryPropertyFlags props,
+                          uptrBuffer & buffer,
+                          uptrMemory & memory);
 
         // I know this is a whole mess of member variables, but honestly I don't
         // think there is any 'cleaner' way to do this. Vulkan is _very_
@@ -98,16 +103,21 @@ class Renderer
         uptrDevice device;
         uptrQueue graphicsQueue;
         uptrQueue presentQueue;
+        uptrQueue transferQueue;
         std::unique_ptr<SwapchainData> scd;
         uptrPipeline pipeline;
         uptrRenderPass renderPass;
         Framebuffers framebuffers;
         uptrCommandPool commandPool;
         uptrCommandBuffers commandBuffers;
+        uptrCommandPool transferCommandPool;
+        uptrCommandBuffers transferCommandBuffers;
         Semaphores imageAvailableSems;
         Semaphores renderFinishedSems;
         Fences inFlightFences;
         MaybeIndices imagesInFlight;
+        uptrBuffer stagingBuffer;
+        uptrMemory stagingBufferMemory;
         uptrBuffer vertexBuffer;
         uptrMemory vertexBufferMemory;
 };
