@@ -259,6 +259,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     pld = std::make_unique<PipelineData>(window, *cpd, *device);
 
     rebuildPipeline();
+    setupTextures();
 
     for(int i = 0 ; i < maxFrames; i++)
     {
@@ -1076,4 +1077,23 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
         device.updateDescriptorSets({descriptorWrite}, {});
     }
 
+}
+
+void Renderer::setupTextures()
+{
+    int width, height, channels;
+    const char * fpath = "../textures/two-types-of-beer-1978012_512_512.jpg";
+    stbi_uc* pixels = stbi_load(fpath, &width, &height, &channels, STBI_rgb_alpha);
+
+    if (!pixels)
+    {
+        std::cerr << "\n\nCould not load: " << fpath << '\n';
+        std::cerr << "Note: this development build of mycad-vk assumes the following:\n\n";
+        std::cerr << "    1. out-of-source cmake build\n"
+                     "    2. executable run from build dir, i.e. `./bin/mycad-vk`\n"
+                     "    3. the project directory contains a sub-directory named textures\n"
+                     "    4. there is a file name two-types-of-beer-1978012_512_512.jpg in that direcory\n\n"
+                     "This will all be made better, of course, in an actual release.\n";
+        std::exit(1);
+    }
 }

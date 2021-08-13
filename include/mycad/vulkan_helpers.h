@@ -123,6 +123,7 @@ class Renderer
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
+        void setupTextures();
 
         // I know this is a whole mess of member variables, but honestly I don't
         // think there is any 'cleaner' way to do this. Vulkan is _very_
