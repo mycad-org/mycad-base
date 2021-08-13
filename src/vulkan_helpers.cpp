@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iostream>
 
-std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
 std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
     vk::raii::Instance const & instance,
     ApplicationData const & app);
@@ -602,7 +601,7 @@ void Renderer::rebuildPipeline()
 
     makePipelineAndRenderpass();
 
-    framebuffers = makeFramebuffers(*device, *renderPass, *scd);
+    makeFramebuffers();
 
     vk::CommandPoolCreateInfo poolInfo{
         .queueFamilyIndex = cpd->graphicsFamilyQueueIndex
@@ -627,25 +626,23 @@ void Renderer::rebuildPipeline()
     recordDrawCommands();
 }
 
-std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd)
+void Renderer::makeFramebuffers()
 {
     // create framebuffers
-    std::vector<vk::raii::Framebuffer> swapchainFramebuffers;
-    for(const auto& swapchainImageView : scd.views)
+    for(const auto& swapchainImageView : scd->views)
     {
         vk::FramebufferCreateInfo createInfo{
-            .renderPass = *renderPass,
+            .renderPass = **renderPass,
             .attachmentCount = 1,
             .pAttachments = &(*swapchainImageView),
-            .width = scd.extent.width,
-            .height = scd.extent.height,
+            .width = scd->extent.width,
+            .height = scd->extent.height,
             .layers = 1
         };
 
-        swapchainFramebuffers.emplace_back(device, createInfo);
+        framebuffers.emplace_back(*device, createInfo);
     }
 
-    return swapchainFramebuffers;
 }
 
 /* RenderTarget makeRenderTarget(ChosenPhysicalDevice const & cpd) */

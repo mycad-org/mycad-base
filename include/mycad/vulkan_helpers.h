@@ -89,6 +89,7 @@ class Renderer
     private:
         void makeInstance();
         void makeLogicalDevice();
+        void makeFramebuffers();
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
