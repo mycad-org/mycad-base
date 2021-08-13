@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iostream>
 
-std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
 std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
     vk::raii::Instance const & instance,
@@ -248,7 +247,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
 {
     makeInstance();
     cpd = std::make_unique<ChosenPhysicalDevice>(*instance, window);
-    device = makeLogicalDevice(*cpd);
+    makeLogicalDevice();
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
     transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
@@ -433,14 +432,14 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
     physicalDevice = std::make_unique<vk::raii::PhysicalDevice>(instance, *devices.at(whichDevice));
 }
 
-std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd)
+void Renderer::makeLogicalDevice()
 {
     // Set up the logical device
     vk::PhysicalDeviceFeatures deviceFeatures{};
 
     float queuePriority = 1.0f;
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    for(uint32_t queueIndex : cpd.queueIndices)
+    for(uint32_t queueIndex : cpd->queueIndices)
     {
         vk::DeviceQueueCreateInfo ci{
             .queueFamilyIndex = queueIndex,
@@ -462,7 +461,7 @@ std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const &
         .pEnabledFeatures        = &deviceFeatures
     };
 
-    return std::make_unique<vk::raii::Device>(*cpd.physicalDevice, deviceInfo);
+    device = std::make_unique<vk::raii::Device>(*cpd->physicalDevice, deviceInfo);
 }
 
 SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
