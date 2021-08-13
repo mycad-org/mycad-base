@@ -10,10 +10,6 @@
 #include <chrono>
 #include <iostream>
 
-std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
-    vk::raii::Instance const & instance,
-    ApplicationData const & app);
-
 vk::VertexInputBindingDescription VertexBindingDescription{
     .binding = 0,
     .stride  = sizeof(Vertex),
