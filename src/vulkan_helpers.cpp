@@ -216,7 +216,7 @@ void Renderer::draw(int currentFrame)
 
     device->resetFences({frameFence});
 
-    graphicsQueue->submit({submitInfo}, frameFence);
+    pld->graphicsQueue->submit({submitInfo}, frameFence);
 
     // submit something or other to the "present" queue (this draws!)
     vk::PresentInfoKHR presentInfo{
@@ -230,7 +230,7 @@ void Renderer::draw(int currentFrame)
     vk::Result presres;
     try
     {
-        presres = presentQueue->presentKHR(presentInfo);
+        presres = pld->presentQueue->presentKHR(presentInfo);
     }
     catch (vk::OutOfDateKHRError & err)
     {
@@ -251,9 +251,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     makeInstance();
     cpd = std::make_unique<ChosenPhysicalDevice>(*instance, window);
     makeLogicalDevice();
-    graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
-    presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
-    transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
 
     // TODO: find a way to avoid duplicating this in rebuildPipeline
     pld = std::make_unique<PipelineData>(window, *cpd, *device);
@@ -566,6 +563,24 @@ SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & c
 
 PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
+    graphicsQueue = std::make_unique<vk::raii::Queue>(device, cpd.graphicsFamilyQueueIndex, 0);
+    presentQueue = std::make_unique<vk::raii::Queue>(device, cpd.presentFamilyQueueIndex, 0);
+    transferQueue = std::make_unique<vk::raii::Queue>(device, cpd.transferFamilyQueueIndex, 0);
+
+    rebuild(window, cpd, device);
+}
+
+void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+{
+    // first, reset the data that we're rebuild
+    scd                 = nullptr;
+    commandBuffers      = nullptr;
+    commandPool         = nullptr;
+    transferCommandPool = nullptr;
+    descriptorSets      = nullptr;
+    framebuffers.clear();
+
+    // then rebuild
     scd = std::make_unique<SwapchainData>(window, cpd, device);
 
     vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
@@ -623,8 +638,14 @@ void Renderer::rebuildPipeline()
     // Let any GPU stuff finish
     device->waitIdle();
 
-    pld = nullptr;
-    pld = std::make_unique<PipelineData>(window, *cpd, *device);
+    if (pld)
+    {
+        pld->rebuild(window, *cpd, *device);
+    }
+    else
+    {
+        pld = std::make_unique<PipelineData>(window, *cpd, *device);
+    }
 
     // TODO: move this, or find a better name for this method
     setupBuffers();
@@ -985,8 +1006,8 @@ void Renderer::setupBuffers()
         .pCommandBuffers = buffs.data(),
     };
 
-    transferQueue->submit({submitInfo});
-    transferQueue->waitIdle();
+    pld->transferQueue->submit({submitInfo});
+    pld->transferQueue->waitIdle();
 }
 
 void PipelineData::setupDescriptors(vk::raii::Device const & device)

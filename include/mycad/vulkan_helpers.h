@@ -73,27 +73,34 @@ struct SwapchainData
     ImageViews views;
 };
 
-struct PipelineData
+class PipelineData
 {
-    PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
-    void setupDescriptors(vk::raii::Device const & device); // e.g. uniforms
-    void makeFramebuffers(vk::raii::Device const & device);
-    void makeRenderPass(vk::raii::Device const & device);
-    void makePipeline(vk::raii::Device const & device);
+    public:
+        PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+        void rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
 
-    std::unique_ptr<SwapchainData> scd;
-    Framebuffers framebuffers;
-    uptrPipeline pipeline;
-    uptrPipelineLayout pipelineLayout;
-    uptrRenderPass renderPass;
-    uptrCommandPool commandPool;
-    uptrCommandBuffers commandBuffers;
-    uptrCommandPool transferCommandPool;
-    uptrDescriptorLayout descriptorLayout;
-    uptrDescriptorPool descriptorPool;
-    uptrDescriptorSets descriptorSets;
-    Buffers uniformBuffers;
-    Memories uniformMemories;
+        std::unique_ptr<SwapchainData> scd;
+        Framebuffers framebuffers;
+        uptrPipeline pipeline;
+        uptrPipelineLayout pipelineLayout;
+        uptrRenderPass renderPass;
+        uptrCommandPool commandPool;
+        uptrCommandBuffers commandBuffers;
+        uptrCommandPool transferCommandPool;
+        uptrDescriptorLayout descriptorLayout;
+        uptrDescriptorPool descriptorPool;
+        uptrDescriptorSets descriptorSets;
+        Buffers uniformBuffers;
+        Memories uniformMemories;
+
+        uptrQueue graphicsQueue;
+        uptrQueue presentQueue;
+        uptrQueue transferQueue;
+    private:
+        void setupDescriptors(vk::raii::Device const & device); // e.g. uniforms
+        void makeFramebuffers(vk::raii::Device const & device);
+        void makeRenderPass(vk::raii::Device const & device);
+        void makePipeline(vk::raii::Device const & device);
 };
 
 class Renderer
@@ -128,9 +135,6 @@ class Renderer
         uptrInstance instance;
         std::unique_ptr<ChosenPhysicalDevice> cpd;
         uptrDevice device;
-        uptrQueue graphicsQueue;
-        uptrQueue presentQueue;
-        uptrQueue transferQueue;
         std::unique_ptr<PipelineData> pld;
         Semaphores imageAvailableSems;
         Semaphores renderFinishedSems;
