@@ -1,5 +1,8 @@
 #include "mycad/vulkan_helpers.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "shaders/vert.h"
