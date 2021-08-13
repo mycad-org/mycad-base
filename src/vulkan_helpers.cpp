@@ -10,6 +10,14 @@
 #include <chrono>
 #include <iostream>
 
+void createBuffer(vk::raii::Device const & device,
+                  ChosenPhysicalDevice const & cpd,
+                  vk::DeviceSize size,
+                  vk::BufferUsageFlags usage,
+                  vk::MemoryPropertyFlags props,
+                  uptrBuffer & buffer,
+                  uptrMemory & memory);
+
 vk::VertexInputBindingDescription VertexBindingDescription{
     .binding = 0,
     .stride  = sizeof(Vertex),
@@ -163,7 +171,7 @@ void Renderer::draw(int currentFrame)
     [[maybe_unused]] auto waitResult = device->waitForFences({frameFence}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
     // Acquire an image from the swap chain
-    auto [res, imgIndex] = scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
+    auto [res, imgIndex] = pld->scd->swapchain->acquireNextImage(std::numeric_limits<uint64_t>::max(), *imageAvailableSems.at(currentFrame), nullptr);
     if (res == vk::Result::eErrorOutOfDateKHR)
     {
         rebuildPipeline();
@@ -189,9 +197,9 @@ void Renderer::draw(int currentFrame)
     mvpMatrix.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
     // send latest uniform buffer data to the gpu
-    void* data = uniformMemories.at(imgIndex).mapMemory(0, sizeof(mvpMatrix));
+    void* data = pld->uniformMemories.at(imgIndex).mapMemory(0, sizeof(mvpMatrix));
     memcpy(data, &mvpMatrix, sizeof(mvpMatrix));
-    uniformMemories.at(imgIndex).unmapMemory();
+    pld->uniformMemories.at(imgIndex).unmapMemory();
 
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
@@ -201,7 +209,7 @@ void Renderer::draw(int currentFrame)
         .pWaitSemaphores = &(*imageAvailableSems.at(currentFrame)),
         .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &(*commandBuffers->at(imgIndex)),
+        .pCommandBuffers = &(*pld->commandBuffers->at(imgIndex)),
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &(*renderFinishedSems.at(currentFrame))
     };
@@ -215,7 +223,7 @@ void Renderer::draw(int currentFrame)
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &(*renderFinishedSems.at(currentFrame)),
         .swapchainCount = 1,
-        .pSwapchains = &(**scd->swapchain),
+        .pSwapchains = &(**pld->scd->swapchain),
         .pImageIndices = &imgIndex
     };
 
@@ -248,21 +256,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
 
     // TODO: find a way to avoid duplicating this in rebuildPipeline
-    scd = std::make_unique<SwapchainData>(window, *cpd, *device);
-
-    vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
-    for (std::size_t i = 0; i < scd->views.size(); i++)
-    {
-        // tmps
-        uptrBuffer buf;
-        uptrMemory mem;
-
-        createBuffer(uniformSize, vk::BufferUsageFlagBits::eUniformBuffer,
-                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                     buf, mem);
-        uniformBuffers.emplace_back(*device, **buf.release());
-        uniformMemories.emplace_back(*device, **mem.release());
-    }
+    pld = std::make_unique<PipelineData>(window, *cpd, *device);
 
     rebuildPipeline();
 
@@ -277,13 +271,13 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
         inFlightFences.emplace_back(*device, fenceInfo);
     }
 
-    imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
+    imagesInFlight = std::vector<std::optional<std::size_t>>(pld->scd->views.size(), std::nullopt);
 
     mvpMatrix.view  = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
                                   glm::vec3(0.0f, 0.0f, 0.0f),
                                   glm::vec3(0.0f, 0.0f, 1.0f));
     mvpMatrix.proj = glm::perspective(glm::radians(45.0f),
-                                      scd->extent.width / (float) scd->extent.height,
+                                      pld->scd->extent.width / (float) pld->scd->extent.height,
                                       0.1f, 10.0f);
     // fix for inverted Y from opengl days
     mvpMatrix.proj[1][1] *= -1;
@@ -570,6 +564,53 @@ SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & c
     }
 }
 
+PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+{
+    scd = std::make_unique<SwapchainData>(window, cpd, device);
+
+    vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
+    for (std::size_t i = 0; i < scd->views.size(); i++)
+    {
+        // tmps
+        uptrBuffer buf;
+        uptrMemory mem;
+
+        createBuffer(device, cpd, uniformSize, vk::BufferUsageFlagBits::eUniformBuffer,
+                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                     buf, mem);
+        uniformBuffers.emplace_back(device, **buf.release());
+        uniformMemories.emplace_back(device, **mem.release());
+    }
+
+
+    // TODO: find a better placo for this
+    setupDescriptors(device);
+
+    makeRenderPass(device);
+    makePipeline(device);
+
+    makeFramebuffers(device);
+
+    vk::CommandPoolCreateInfo poolInfo{
+        .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
+    };
+
+    commandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
+    // Create the command buffers
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **commandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
+    };
+
+    poolInfo.flags = vk::CommandPoolCreateFlagBits::eTransient;
+    poolInfo.queueFamilyIndex = cpd.transferFamilyQueueIndex;
+    transferCommandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
+
+    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(device, allocateInfo);
+
+}
+
 void Renderer::rebuildPipeline()
 {
     // Wait until window is not minimized
@@ -582,47 +623,15 @@ void Renderer::rebuildPipeline()
     // Let any GPU stuff finish
     device->waitIdle();
 
-    // Clear these before re-creating them, otherwise vulkan validation layers
-    // complain
-    scd = nullptr;
-    framebuffers.clear();
-    commandBuffers = nullptr;
-    commandPool = nullptr;
-    transferCommandPool = nullptr;
-
-    scd = std::make_unique<SwapchainData>(window, *cpd, *device);
-
-    // TODO: find a better placo for this
-    setupDescriptors();
-
-    makePipelineAndRenderpass();
-
-    makeFramebuffers();
-
-    vk::CommandPoolCreateInfo poolInfo{
-        .queueFamilyIndex = cpd->graphicsFamilyQueueIndex
-    };
-
-    commandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
-    // Create the command buffers
-    vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **commandPool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
-    };
-
-    poolInfo.flags = vk::CommandPoolCreateFlagBits::eTransient;
-    poolInfo.queueFamilyIndex = cpd->transferFamilyQueueIndex;
-    transferCommandPool = std::make_unique<vk::raii::CommandPool>(*device, poolInfo);
-
-    commandBuffers = std::make_unique<vk::raii::CommandBuffers>(*device, allocateInfo);
+    pld = nullptr;
+    pld = std::make_unique<PipelineData>(window, *cpd, *device);
 
     // TODO: move this, or find a better name for this method
     setupBuffers();
     recordDrawCommands();
 }
 
-void Renderer::makeFramebuffers()
+void PipelineData::makeFramebuffers(vk::raii::Device const & device)
 {
     // create framebuffers
     for(const auto& swapchainImageView : scd->views)
@@ -636,7 +645,7 @@ void Renderer::makeFramebuffers()
             .layers = 1
         };
 
-        framebuffers.emplace_back(*device, createInfo);
+        framebuffers.emplace_back(device, createInfo);
     }
 
 }
@@ -657,11 +666,11 @@ void Renderer::makeFramebuffers()
 void Renderer::recordDrawCommands ()
 {
     // Record the commands
-    for(std::size_t i = 0; i < commandBuffers->size(); i++)
+    for(std::size_t i = 0; i < pld->commandBuffers->size(); i++)
     {
         vk::CommandBufferBeginInfo beginInfo{};
 
-        const auto& commandBuffer = commandBuffers->at(i);
+        const auto& commandBuffer = pld->commandBuffers->at(i);
 
         //==== begin command
         commandBuffer.begin(beginInfo);
@@ -669,11 +678,11 @@ void Renderer::recordDrawCommands ()
         vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
 
         vk::RenderPassBeginInfo renderPassBeginInfo{
-            .renderPass = *(*renderPass),
-            .framebuffer = *framebuffers.at(i),
+            .renderPass = **pld->renderPass,
+            .framebuffer = *pld->framebuffers.at(i),
             .renderArea = {
                 .offset = {0, 0},
-                .extent = scd->extent
+                .extent = pld->scd->extent
             },
             .clearValueCount = 1,
             .pClearValues = &clearColor
@@ -681,10 +690,10 @@ void Renderer::recordDrawCommands ()
 
         //======== begin render pass
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pipeline);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->pipeline);
         commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
         commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint16);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pipelineLayout, 0, *descriptorSets->at(i), {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(i), {});
         commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         commandBuffer.endRenderPass();
         //======== end render pass
@@ -694,7 +703,56 @@ void Renderer::recordDrawCommands ()
     }
 }
 
-void Renderer::makePipelineAndRenderpass()
+void PipelineData::makeRenderPass(vk::raii::Device const & device)
+{
+    vk::AttachmentDescription colorAttachment{
+        .format = scd->surfaceFormat.format,
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::ePresentSrcKHR
+    };
+
+    vk::AttachmentReference colorAttachmentRef{
+        .attachment = 0,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal
+    };
+
+    vk::SubpassDescription subpass{
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachmentRef
+    };
+
+    // Wait until render is complete: note, this could be accomplished
+    // in semImageAvail but setting waitStages equal to
+    // vk::PipeLineStageFlagsBit::eTopOfPipe . We're doing this approach
+    // to learn how sub-pass dependencies can be managed
+    vk::SubpassDependency dependency{
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .srcAccessMask = {},
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+    };
+
+    vk::RenderPassCreateInfo renderPassInfo{
+        .attachmentCount = 1,
+        .pAttachments = &colorAttachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+        .dependencyCount = 1,
+        .pDependencies = &dependency
+    };
+
+    renderPass = std::make_unique<vk::raii::RenderPass>(device, renderPassInfo);
+}
+
+void PipelineData::makePipeline(vk::raii::Device const & device)
 {
     // Attach shaders
     vk::ShaderModuleCreateInfo vShaderInfo{
@@ -706,8 +764,8 @@ void Renderer::makePipelineAndRenderpass()
         .pCode = reinterpret_cast<const uint32_t*>(frag_spv)
     };
 
-    vk::raii::ShaderModule vShaderModule(*device, vShaderInfo);
-    vk::raii::ShaderModule fShaderModule(*device, fShaderInfo);
+    vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
+    vk::raii::ShaderModule fShaderModule(device, fShaderInfo);
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {
         {
@@ -734,6 +792,7 @@ void Renderer::makePipelineAndRenderpass()
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = VK_FALSE
     };
+
 
     vk::Viewport viewport{
         .x = 0.0f,
@@ -790,53 +849,7 @@ void Renderer::makePipelineAndRenderpass()
         .pSetLayouts = &(**descriptorLayout)
     };
 
-    pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(*device, pipelineLayoutInfo);
-
-    vk::AttachmentDescription colorAttachment{
-        .format = scd->surfaceFormat.format,
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::ePresentSrcKHR
-    };
-
-    vk::AttachmentReference colorAttachmentRef{
-        .attachment = 0,
-        .layout = vk::ImageLayout::eColorAttachmentOptimal
-    };
-
-    vk::SubpassDescription subpass{
-        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentRef
-    };
-
-    // Wait until render is complete: note, this could be accomplished
-    // in semImageAvail but setting waitStages equal to
-    // vk::PipeLineStageFlagsBit::eTopOfPipe . We're doing this approach
-    // to learn how sub-pass dependencies can be managed
-    vk::SubpassDependency dependency{
-        .srcSubpass = VK_SUBPASS_EXTERNAL,
-        .dstSubpass = 0,
-        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        .srcAccessMask = {},
-        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
-    };
-
-    vk::RenderPassCreateInfo renderPassInfo{
-        .attachmentCount = 1,
-        .pAttachments = &colorAttachment,
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = 1,
-        .pDependencies = &dependency
-    };
-
-    renderPass = std::make_unique<vk::raii::RenderPass>(*device, renderPassInfo);
+    pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(device, pipelineLayoutInfo);
 
     // Create the actual graphics pipeline!!!
     vk::GraphicsPipelineCreateInfo pipelineInfo{
@@ -853,7 +866,7 @@ void Renderer::makePipelineAndRenderpass()
         .subpass = 0
     };
 
-    pipeline =  std::make_unique<vk::raii::Pipeline>(*device, nullptr, pipelineInfo);
+    pipeline =  std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo);
 }
 
 uint32_t findValidMemoryType(uint32_t allowedMask, vk::PhysicalDeviceMemoryProperties const & props, vk::MemoryPropertyFlags reqs)
@@ -872,30 +885,32 @@ uint32_t findValidMemoryType(uint32_t allowedMask, vk::PhysicalDeviceMemoryPrope
     std::exit(1);
 }
 
-void Renderer::createBuffer(vk::DeviceSize size,
-                           vk::BufferUsageFlags usage,
-                           vk::MemoryPropertyFlags props,
-                           uptrBuffer & buffer,
-                           uptrMemory & memory)
+void createBuffer(vk::raii::Device const & device,
+                  ChosenPhysicalDevice const & cpd,
+                  vk::DeviceSize size,
+                  vk::BufferUsageFlags usage,
+                  vk::MemoryPropertyFlags props,
+                  uptrBuffer & buffer,
+                  uptrMemory & memory)
 {
     vk::BufferCreateInfo bufferInfo {
         .size = size,
         .usage = usage,
         .sharingMode = vk::SharingMode::eConcurrent,
-        .queueFamilyIndexCount = static_cast<uint32_t>(cpd->queueIndices.size()),
-        .pQueueFamilyIndices = cpd->queueIndices.data()
+        .queueFamilyIndexCount = static_cast<uint32_t>(cpd.queueIndices.size()),
+        .pQueueFamilyIndices = cpd.queueIndices.data()
     };
-    buffer = std::make_unique<vk::raii::Buffer>(*device, bufferInfo);
+    buffer = std::make_unique<vk::raii::Buffer>(device, bufferInfo);
 
     vk::MemoryRequirements memReqs = buffer->getMemoryRequirements();
-    vk::PhysicalDeviceMemoryProperties availMem = cpd->physicalDevice->getMemoryProperties();
+    vk::PhysicalDeviceMemoryProperties availMem = cpd.physicalDevice->getMemoryProperties();
 
     vk::MemoryAllocateInfo allocInfo{
         .allocationSize = memReqs.size,
         .memoryTypeIndex = findValidMemoryType(memReqs.memoryTypeBits, availMem, props)
     };
 
-    memory = std::make_unique<vk::raii::DeviceMemory>(*device, allocInfo);
+    memory = std::make_unique<vk::raii::DeviceMemory>(device, allocInfo);
     buffer->bindMemory(**memory, 0);
 }
 
@@ -909,7 +924,7 @@ void Renderer::setupBuffers()
     uptrBuffer stagingBuffer = nullptr;
     uptrMemory stagingBufferMemory = nullptr;
 
-    createBuffer(verticesSize + indicesSize,
+    createBuffer(*device, *cpd, verticesSize + indicesSize,
                  vk::BufferUsageFlagBits::eTransferSrc,
                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                  stagingBuffer, stagingBufferMemory);
@@ -923,18 +938,18 @@ void Renderer::setupBuffers()
     stagingBufferMemory->unmapMemory();
 
     // create the vertex and index buffers, stored as member variable
-    createBuffer(verticesSize,
+    createBuffer(*device, *cpd, verticesSize,
                  vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
                  vk::MemoryPropertyFlagBits::eDeviceLocal,
                  vertexBuffer, vertexBufferMemory);
-    createBuffer(indicesSize,
+    createBuffer(*device, *cpd, indicesSize,
                  vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
                  vk::MemoryPropertyFlagBits::eDeviceLocal,
                  indexBuffer, indexBufferMemory);
 
     // Move the data from the staging area to the vertex buffer
     vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **transferCommandPool,
+        .commandPool = **pld->transferCommandPool,
         .level = vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 2
     };
@@ -974,7 +989,7 @@ void Renderer::setupBuffers()
     transferQueue->waitIdle();
 }
 
-void Renderer::setupDescriptors()
+void PipelineData::setupDescriptors(vk::raii::Device const & device)
 {
     // Setup the DescriptorSetLayouts
     vk::DescriptorSetLayoutBinding binding
@@ -990,7 +1005,7 @@ void Renderer::setupDescriptors()
         .pBindings = &binding
     };
 
-    descriptorLayout = std::make_unique<vk::raii::DescriptorSetLayout>(*device, createInfo);
+    descriptorLayout = std::make_unique<vk::raii::DescriptorSetLayout>(device, createInfo);
 
     // Next, create a DescriptorPool
     vk::DescriptorPoolSize poolSize{
@@ -1004,7 +1019,7 @@ void Renderer::setupDescriptors()
         .pPoolSizes = &poolSize
     };
 
-    descriptorPool = std::make_unique<vk::raii::DescriptorPool>(*device, poolInfo);
+    descriptorPool = std::make_unique<vk::raii::DescriptorPool>(device, poolInfo);
 
     // Allocate the descriptor sets themselves
     std::vector<vk::DescriptorSetLayout> layouts(scd->images.size(), **descriptorLayout);
@@ -1015,7 +1030,7 @@ void Renderer::setupDescriptors()
         .pSetLayouts = layouts.data()
     };
 
-    descriptorSets = std::make_unique<vk::raii::DescriptorSets>(*device, allocInfo);
+    descriptorSets = std::make_unique<vk::raii::DescriptorSets>(device, allocInfo);
 
     for (std::size_t i = 0; i < layouts.size(); i++)
     {
@@ -1034,7 +1049,7 @@ void Renderer::setupDescriptors()
             .pBufferInfo = &bufferInfo
         };
 
-        device->updateDescriptorSets({descriptorWrite}, {});
+        device.updateDescriptorSets({descriptorWrite}, {});
     }
 
 }

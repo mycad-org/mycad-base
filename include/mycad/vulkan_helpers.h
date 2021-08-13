@@ -73,6 +73,29 @@ struct SwapchainData
     ImageViews views;
 };
 
+struct PipelineData
+{
+    PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+    void setupDescriptors(vk::raii::Device const & device); // e.g. uniforms
+    void makeFramebuffers(vk::raii::Device const & device);
+    void makeRenderPass(vk::raii::Device const & device);
+    void makePipeline(vk::raii::Device const & device);
+
+    std::unique_ptr<SwapchainData> scd;
+    Framebuffers framebuffers;
+    uptrPipeline pipeline;
+    uptrPipelineLayout pipelineLayout;
+    uptrRenderPass renderPass;
+    uptrCommandPool commandPool;
+    uptrCommandBuffers commandBuffers;
+    uptrCommandPool transferCommandPool;
+    uptrDescriptorLayout descriptorLayout;
+    uptrDescriptorPool descriptorPool;
+    uptrDescriptorSets descriptorSets;
+    Buffers uniformBuffers;
+    Memories uniformMemories;
+};
+
 class Renderer
 {
     public:
@@ -93,12 +116,6 @@ class Renderer
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
-        void createBuffer(vk::DeviceSize size,
-                          vk::BufferUsageFlags usage,
-                          vk::MemoryPropertyFlags props,
-                          uptrBuffer & buffer,
-                          uptrMemory & memory);
-        void setupDescriptors(); // e.g. uniforms
 
         // I know this is a whole mess of member variables, but honestly I don't
         // think there is any 'cleaner' way to do this. Vulkan is _very_
@@ -114,14 +131,7 @@ class Renderer
         uptrQueue graphicsQueue;
         uptrQueue presentQueue;
         uptrQueue transferQueue;
-        std::unique_ptr<SwapchainData> scd;
-        uptrPipeline pipeline;
-        uptrPipelineLayout pipelineLayout;
-        uptrRenderPass renderPass;
-        Framebuffers framebuffers;
-        uptrCommandPool commandPool;
-        uptrCommandBuffers commandBuffers;
-        uptrCommandPool transferCommandPool;
+        std::unique_ptr<PipelineData> pld;
         Semaphores imageAvailableSems;
         Semaphores renderFinishedSems;
         Fences inFlightFences;
@@ -130,12 +140,7 @@ class Renderer
         uptrMemory vertexBufferMemory;
         uptrBuffer indexBuffer;
         uptrMemory indexBufferMemory;
-        uptrDescriptorLayout descriptorLayout;
-        Buffers uniformBuffers;
-        Memories uniformMemories;
         MVPBufferObject mvpMatrix;
-        uptrDescriptorPool descriptorPool;
-        uptrDescriptorSets descriptorSets;
 
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
