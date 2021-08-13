@@ -740,7 +740,7 @@ void Renderer::makePipelineAndRenderpass()
         .pVertexAttributeDescriptions = VertexAttributeDescriptions.data()
     };
 
-    [[maybe_unused]] vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
+    vk::PipelineInputAssemblyStateCreateInfo inputAssyInfo{
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = VK_FALSE
     };
