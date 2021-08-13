@@ -1,9 +1,13 @@
 #include "mycad/vulkan_helpers.h"
 
+#include "glm/gtc/matrix_transform.hpp"
+
 #include "shaders/vert.h"
 #include "shaders/frag.h"
 
+#include <algorithm>
 #include <array>
+#include <chrono>
 #include <iostream>
 
 std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context);
@@ -185,6 +189,18 @@ void Renderer::draw(int currentFrame)
 
     imagesInFlight[imgIndex] = currentFrame;
 
+    // update the uniform buffer for this imgIndex
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    mvpMatrix.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    // send latest uniform buffer data to the gpu
+    void* data = uniformMemories.at(imgIndex).mapMemory(0, sizeof(mvpMatrix));
+    memcpy(data, &mvpMatrix, sizeof(mvpMatrix));
+    uniformMemories.at(imgIndex).unmapMemory();
+
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
     // submit the command to the graphics queue
@@ -238,6 +254,24 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);
     presentQueue = std::make_unique<vk::raii::Queue>(*device, cpd->presentFamilyQueueIndex, 0);
     transferQueue = std::make_unique<vk::raii::Queue>(*device, cpd->transferFamilyQueueIndex, 0);
+
+    // TODO: find a way to avoid duplicating this in rebuildPipeline
+    scd = std::make_unique<SwapchainData>(window, *cpd, *device);
+
+    vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
+    for (std::size_t i = 0; i < scd->views.size(); i++)
+    {
+        // tmps
+        uptrBuffer buf;
+        uptrMemory mem;
+
+        createBuffer(uniformSize, vk::BufferUsageFlagBits::eUniformBuffer,
+                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                     buf, mem);
+        uniformBuffers.emplace_back(*device, **buf.release());
+        uniformMemories.emplace_back(*device, **mem.release());
+    }
+
     rebuildPipeline();
 
     for(int i = 0 ; i < maxFrames; i++)
@@ -252,6 +286,15 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     }
 
     imagesInFlight = std::vector<std::optional<std::size_t>>(scd->views.size(), std::nullopt);
+
+    mvpMatrix.view  = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
+                                  glm::vec3(0.0f, 0.0f, 0.0f),
+                                  glm::vec3(0.0f, 0.0f, 1.0f));
+    mvpMatrix.proj = glm::perspective(glm::radians(45.0f),
+                                      scd->extent.width / (float) scd->extent.height,
+                                      0.1f, 10.0f);
+    // fix for inverted Y from opengl days
+    mvpMatrix.proj[1][1] *= -1;
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int, int)
@@ -557,6 +600,9 @@ void Renderer::rebuildPipeline()
 
     scd = std::make_unique<SwapchainData>(window, *cpd, *device);
 
+    // TODO: find a better placo for this
+    setupDescriptors();
+
     makePipelineAndRenderpass();
 
     framebuffers = makeFramebuffers(*device, *renderPass, *scd);
@@ -648,6 +694,7 @@ void Renderer::recordDrawCommands ()
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pipeline);
         commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
         commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint16);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pipelineLayout, 0, *descriptorSets->at(i), {});
         commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         commandBuffer.endRenderPass();
         //======== end render pass
@@ -724,7 +771,7 @@ void Renderer::makePipelineAndRenderpass()
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = vk::PolygonMode::eFill,
         .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eClockwise,
+        .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = VK_FALSE,
         .lineWidth = 1.0f
     };
@@ -748,8 +795,12 @@ void Renderer::makePipelineAndRenderpass()
         .pAttachments = &colorAttachmentState
     };
 
-    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{}; // no uniforms at the moment
-    vk::raii::PipelineLayout pipelineLayout(*device, pipelineLayoutInfo);
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+        .setLayoutCount = 1,
+        .pSetLayouts = &(**descriptorLayout)
+    };
+
+    pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(*device, pipelineLayoutInfo);
 
     vk::AttachmentDescription colorAttachment{
         .format = scd->surfaceFormat.format,
@@ -807,7 +858,7 @@ void Renderer::makePipelineAndRenderpass()
         .pRasterizationState = &rasterizerInfo,
         .pMultisampleState = &multisamplingInfo,
         .pColorBlendState = &colorBlendingInfo,
-        .layout = *pipelineLayout,
+        .layout = **pipelineLayout,
         .renderPass = **renderPass,
         .subpass = 0
     };
@@ -931,4 +982,69 @@ void Renderer::setupBuffers()
 
     transferQueue->submit({submitInfo});
     transferQueue->waitIdle();
+}
+
+void Renderer::setupDescriptors()
+{
+    // Setup the DescriptorSetLayouts
+    vk::DescriptorSetLayoutBinding binding
+    {
+        .binding = 0,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+    };
+
+    vk::DescriptorSetLayoutCreateInfo createInfo{
+        .bindingCount = 1,
+        .pBindings = &binding
+    };
+
+    descriptorLayout = std::make_unique<vk::raii::DescriptorSetLayout>(*device, createInfo);
+
+    // Next, create a DescriptorPool
+    vk::DescriptorPoolSize poolSize{
+        .descriptorCount = static_cast<uint32_t>(scd->images.size())
+    };
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets = static_cast<uint32_t>(scd->images.size()),
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize
+    };
+
+    descriptorPool = std::make_unique<vk::raii::DescriptorPool>(*device, poolInfo);
+
+    // Allocate the descriptor sets themselves
+    std::vector<vk::DescriptorSetLayout> layouts(scd->images.size(), **descriptorLayout);
+
+    vk::DescriptorSetAllocateInfo allocInfo{
+        .descriptorPool = **descriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts = layouts.data()
+    };
+
+    descriptorSets = std::make_unique<vk::raii::DescriptorSets>(*device, allocInfo);
+
+    for (std::size_t i = 0; i < layouts.size(); i++)
+    {
+        vk::DescriptorBufferInfo bufferInfo{
+            .buffer = *uniformBuffers.at(i),
+            .offset = 0,
+            .range = sizeof(MVPBufferObject)
+        };
+
+        vk::WriteDescriptorSet descriptorWrite{
+            .dstSet = *descriptorSets->at(i),
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eUniformBuffer,
+            .pBufferInfo = &bufferInfo
+        };
+
+        device->updateDescriptorSets({descriptorWrite}, {});
+    }
+
 }
