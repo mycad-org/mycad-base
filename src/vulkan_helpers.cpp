@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iostream>
 
-std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context);
 std::unique_ptr<vk::raii::Device> makeLogicalDevice(ChosenPhysicalDevice const & cpd);
 std::vector<vk::raii::Framebuffer> makeFramebuffers(vk::raii::Device const & device, vk::raii::RenderPass const & renderPass, SwapchainData const &scd);
 std::unique_ptr<ChosenPhysicalDevice> choosePhysicalDevice(
@@ -94,7 +93,7 @@ ApplicationData::~ApplicationData()
     glfwTerminate();
 }
 
-std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & context)
+void Renderer::makeInstance()
 {
     // initialize the vk::ApplicationInfo structure
     vk::ApplicationInfo applicationInfo{
@@ -155,8 +154,7 @@ std::unique_ptr<vk::raii::Instance> makeInstance(vk::raii::Context const & conte
         .ppEnabledExtensionNames = exts.data()
     };
 
-    // return an Instance
-    return std::make_unique<vk::raii::Instance>(context, instanceCreateInfo);
+    instance = std::make_unique<vk::raii::Instance>(context, instanceCreateInfo);
 }
 
 Renderer::~Renderer()
@@ -248,7 +246,7 @@ void Renderer::draw(int currentFrame)
 
 Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
 {
-    instance = makeInstance(context);
+    makeInstance();
     cpd = std::make_unique<ChosenPhysicalDevice>(*instance, window);
     device = makeLogicalDevice(*cpd);
     graphicsQueue = std::make_unique<vk::raii::Queue>(*device, cpd->graphicsFamilyQueueIndex, 0);

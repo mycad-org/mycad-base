@@ -87,6 +87,7 @@ class Renderer
         void draw(int currentFrame);
 
     private:
+        void makeInstance();
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
