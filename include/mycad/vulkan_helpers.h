@@ -21,6 +21,7 @@ using VulkanIndex           = uint32_t;
 using uIndices              = std::set<VulkanIndex>;
 using uptrSwapchain         = std::unique_ptr<vk::raii::SwapchainKHR>;
 using Images                = std::vector<VkImage>;
+using uptrImageView         = std::unique_ptr<vk::raii::ImageView>;
 using ImageViews            = std::vector<vk::raii::ImageView>;
 using uptrDevice            = std::unique_ptr<vk::raii::Device>;
 using uptrQueue             = std::unique_ptr<vk::raii::Queue>;
@@ -42,6 +43,7 @@ using Memories              = std::vector<vk::raii::DeviceMemory>;
 using uptrDescriptorPool    = std::unique_ptr<vk::raii::DescriptorPool>;
 using uptrDescriptorSets    = std::unique_ptr<vk::raii::DescriptorSets>;
 using uptrImage             = std::unique_ptr<vk::raii::Image>;
+using uptrSampler           = std::unique_ptr<vk::raii::Sampler>;
 
 struct ApplicationData
 {
@@ -150,7 +152,9 @@ class Renderer
         MVPBufferObject mvpMatrix;
 
         uptrImage textureImage;
+        uptrImageView textureImageView;
         uptrMemory textureImageMemory;
+        uptrSampler textureSampler;
 
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},

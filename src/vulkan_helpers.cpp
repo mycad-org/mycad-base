@@ -315,10 +315,13 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
     bool foundGraphicsQueue = false;
     bool foundSurfaceQueue  = false;
     bool foundTransferQueue  = false;
+    std::cout << "Looking for an appropriate physical device:\n";
     for (; whichDevice < devices.size(); whichDevice++)
     {
         // Check for required device extensions
         auto &device = devices.at(whichDevice);
+
+        std::cout << "    Checking device " << device.getProperties().deviceName << '\n';
 
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
         for(const auto& deviceExtension : device.enumerateDeviceExtensionProperties())
@@ -328,6 +331,7 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
 
         if(not requiredExtensions.empty())
         {
+            std::cout << "    Could not find all required extensions, trying again...\n";
             continue;
         }
 
@@ -336,9 +340,16 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
         auto surfacePresentModes = device.getSurfacePresentModesKHR(**surface);
         if (surfaceFormats.empty() || surfacePresentModes.empty())
         {
+            std::cout << "    Could not find appropriate swapchain support, trying again...\n";
             continue;
         }
 
+        // Check for anisotropy support. TODO: make this optional or toggleable
+        if(not device.getFeatures().samplerAnisotropy)
+        {
+            std::cout << "    Could not find anisotropy support, trying again...\n";
+            continue;
+        }
 
         // Reset in case both were not found last time
         foundGraphicsQueue  = false;
@@ -398,38 +409,34 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
         }
     }
 
-    if (graphicsFamilyQueueIndex == 0 && presentFamilyQueueIndex == 0 && not foundGraphicsQueue && not foundSurfaceQueue)
-    {
-        std::cerr << "Error finding device - it could be that the proper device extensions were not found" << std::endl;
-        std::cerr << "    Also, it could be that the appropriate swap-chain support was not found." << std::endl;
-        std::exit(1);
-    }
-
     if(not foundGraphicsQueue)
     {
-        std::cerr << "Unable to find a Device with graphics support" << std::endl;
+        std::cerr << "    Unable to find a Device with graphics support" << std::endl;
         std::exit(1);
     }
 
     if(not foundSurfaceQueue)
     {
-        std::cerr << "Unable to find a Device with support for the appropriate surface queue" << std::endl;
+        std::cerr << "    Unable to find a Device with support for the appropriate surface queue" << std::endl;
         std::exit(1);
     }
 
     if(not foundTransferQueue)
     {
-        std::cout << "Could not find a distinct transfer queue. Falling back to graphic queue." << std::endl;
+        std::cout << "    Could not find a distinct transfer queue. Falling back to graphic queue." << std::endl;
         transferFamilyQueueIndex = graphicsFamilyQueueIndex;
     }
 
+    std::cout << "    DEVICE CHOSEN!\n";
     physicalDevice = std::make_unique<vk::raii::PhysicalDevice>(instance, *devices.at(whichDevice));
 }
 
 void Renderer::makeLogicalDevice()
 {
     // Set up the logical device
-    vk::PhysicalDeviceFeatures deviceFeatures{};
+    vk::PhysicalDeviceFeatures deviceFeatures{
+        .samplerAnisotropy = true
+    };
 
     float queuePriority = 1.0f;
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
@@ -1222,6 +1229,48 @@ void Renderer::setupTextures()
     );
     // end transfer the data from staging to buffer
 
+    // Create an ImageView for the texture
+    vk::ImageViewCreateInfo imageViewCreateInfo{
+        .image = **textureImage,
+        .viewType = vk::ImageViewType::e2D,
+        .format = vk::Format::eR8G8B8A8Srgb,
+        .components = {
+            .r = vk::ComponentSwizzle::eIdentity,
+            .g = vk::ComponentSwizzle::eIdentity,
+            .b = vk::ComponentSwizzle::eIdentity,
+            .a = vk::ComponentSwizzle::eIdentity
+        },
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    };
+    textureImageView = std::make_unique<vk::raii::ImageView>(*device, imageViewCreateInfo);
+
+    // create a sampler for the texture
+    vk::SamplerCreateInfo samplerInfo{
+        .magFilter = vk::Filter::eLinear,
+        .minFilter = vk::Filter::eLinear,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = true,
+        .maxAnisotropy = cpd->physicalDevice->getProperties().limits.maxSamplerAnisotropy,
+        .compareEnable = true,
+        .compareOp = vk::CompareOp::eAlways,
+        .minLod = 0.0f,
+        .maxLod = 0.0f,
+        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+        .unnormalizedCoordinates = false
+
+    };
+
+    textureSampler = std::make_unique<vk::raii::Sampler>(*device, samplerInfo);
 }
 
 void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*fmt*/, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout)
