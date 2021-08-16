@@ -13,13 +13,17 @@
 #include <chrono>
 #include <iostream>
 
-void createBuffer(vk::raii::Device const & device,
-                  ChosenPhysicalDevice const & cpd,
-                  vk::DeviceSize size,
-                  vk::BufferUsageFlags usage,
+uint32_t findValidMemoryType(ChosenPhysicalDevice const & cpd, uint32_t allowedMask, vk::MemoryPropertyFlags reqs);
+void createBuffer(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd,
+                  vk::DeviceSize size, vk::BufferUsageFlags usage,
                   vk::MemoryPropertyFlags props,
-                  uptrBuffer & buffer,
-                  uptrMemory & memory);
+                  uptrBuffer & buffer, uptrMemory & memory);
+void createImage(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd,
+                 uint32_t width, uint32_t height,
+                 vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                 vk::MemoryPropertyFlags props,
+                 uptrImage & image,
+                 uptrMemory & memory);
 
 vk::VertexInputBindingDescription VertexBindingDescription{
     .binding = 0,
@@ -894,13 +898,15 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
     pipeline =  std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo);
 }
 
-uint32_t findValidMemoryType(uint32_t allowedMask, vk::PhysicalDeviceMemoryProperties const & props, vk::MemoryPropertyFlags reqs)
+uint32_t findValidMemoryType(ChosenPhysicalDevice const & cpd, uint32_t allowedMask, vk::MemoryPropertyFlags reqs)
 {
+    vk::PhysicalDeviceMemoryProperties availMem = cpd.physicalDevice->getMemoryProperties();
+
     // Pick a memory type to use for the buffer
-    for(uint32_t i = 0; i < props.memoryTypeCount; i++)
+    for(uint32_t i = 0; i < availMem.memoryTypeCount; i++)
     {
         if (allowedMask & (1 << i) &&
-            (props.memoryTypes[i].propertyFlags & reqs) == reqs)
+            (availMem.memoryTypes[i].propertyFlags & reqs) == reqs)
         {
             return i;
         }
@@ -928,11 +934,10 @@ void createBuffer(vk::raii::Device const & device,
     buffer = std::make_unique<vk::raii::Buffer>(device, bufferInfo);
 
     vk::MemoryRequirements memReqs = buffer->getMemoryRequirements();
-    vk::PhysicalDeviceMemoryProperties availMem = cpd.physicalDevice->getMemoryProperties();
 
     vk::MemoryAllocateInfo allocInfo{
         .allocationSize = memReqs.size,
-        .memoryTypeIndex = findValidMemoryType(memReqs.memoryTypeBits, availMem, props)
+        .memoryTypeIndex = findValidMemoryType(cpd, memReqs.memoryTypeBits, props)
     };
 
     memory = std::make_unique<vk::raii::DeviceMemory>(device, allocInfo);
@@ -1079,8 +1084,47 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
 
 }
 
+void createImage(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd,
+                 uint32_t width, uint32_t height,
+                 vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                 vk::MemoryPropertyFlags props,
+                 uptrImage & image,
+                 uptrMemory & memory)
+{
+    vk::ImageCreateInfo imgInfo{
+        .imageType = vk::ImageType::e2D,
+        .format = format,
+        .extent{
+            .width = width,
+            .height = height,
+            .depth = 1
+        },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined,
+    };
+
+    image = std::make_unique<vk::raii::Image>(device, imgInfo);
+
+    // allocate memory for the image
+    vk::MemoryRequirements memReqs = image->getMemoryRequirements();
+
+    vk::MemoryAllocateInfo allocInfo{
+        .allocationSize = memReqs.size,
+        .memoryTypeIndex = findValidMemoryType(cpd, memReqs.memoryTypeBits, props)
+    };
+
+    memory = std::make_unique<vk::raii::DeviceMemory>(device, allocInfo);
+    image->bindMemory(**memory, 0);
+}
+
 void Renderer::setupTextures()
 {
+    // load the file
     int width, height, channels;
     const char * fpath = "../textures/two-types-of-beer-1978012_512_512.jpg";
     stbi_uc* pixels = stbi_load(fpath, &width, &height, &channels, STBI_rgb_alpha);
@@ -1096,4 +1140,156 @@ void Renderer::setupTextures()
                      "This will all be made better, of course, in an actual release.\n";
         std::exit(1);
     }
+
+    vk::DeviceSize imgSize = width * height * 4;
+
+    // create a staging buffer
+    uptrBuffer stagingBuffer;
+    uptrMemory stagingBufferMemory;
+
+    createBuffer(*device, *cpd, imgSize,
+                 vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                 stagingBuffer, stagingBufferMemory);
+
+    void* data = stagingBufferMemory->mapMemory(0, imgSize);
+    memcpy(data, vertices.data(), (std::size_t) imgSize);
+    stagingBufferMemory->unmapMemory();
+
+    stbi_image_free(pixels);
+
+    // make the vulkan vk::raii::Image for the texture
+    createImage(*device, *cpd, width, height, 
+                vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
+
+    // transfer the data from staging to buffer
+    //     1) transition image from staging buffer to the texture
+    transitionImageLayout(
+        *textureImage,
+        vk::Format::eR8G8B8A8Srgb,
+        vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eTransferDstOptimal
+    );
+    //     2) actually copy the data
+    //     TODO: abstract these three lines a bit (incl. CommandBuffer(s) below)
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **pld->transferCommandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1
+    };
+
+    vk::raii::CommandBuffers cbufs(*device, allocateInfo);
+    vk::raii::CommandBuffer const & buf = cbufs.at(0);
+
+    vk::BufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource{
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {
+            .width = static_cast<uint32_t>(width), 
+            .height = static_cast<uint32_t>(height),
+            .depth = 1
+        }
+    };
+
+    vk::CommandBufferBeginInfo beginInfo{
+        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+    };
+    buf.begin(beginInfo);
+    buf.copyBufferToImage(
+        **stagingBuffer,
+        **textureImage,
+        vk::ImageLayout::eTransferDstOptimal,
+        {region}
+    );
+    buf.end();
+
+    //     3) transition from the texture image to the shader
+    transitionImageLayout(
+        *textureImage,
+        vk::Format::eR8G8B8A8Srgb,
+        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal
+    );
+    // end transfer the data from staging to buffer
+
+}
+
+void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*fmt*/, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout)
+{
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **pld->commandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 1
+    };
+
+    vk::raii::CommandBuffers cbufs(*device, allocateInfo);
+    vk::raii::CommandBuffer const & buf = cbufs.at(0);
+
+    vk::CommandBufferBeginInfo beginInfo{
+        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+    };
+
+    vk::PipelineStageFlags srcStage;
+    vk::PipelineStageFlags dstStage;
+
+    buf.begin(beginInfo);
+
+    vk::ImageMemoryBarrier barrier{
+        .srcAccessMask = vk::AccessFlagBits::eNoneKHR, // set below
+        .dstAccessMask = vk::AccessFlagBits::eNoneKHR, // set below
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = *img,
+        .subresourceRange{
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    };
+
+
+    if (oldLayout == vk::ImageLayout::eUndefined &&
+        newLayout == vk::ImageLayout::eTransferDstOptimal)
+    {
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+        srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dstStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+    else if(oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+            newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+    {
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+        srcStage = vk::PipelineStageFlagBits::eTransfer;
+        dstStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+    else
+    {
+        std::cerr << "I don't know how to support that layout transition!\n";
+        std::exit(1);
+    }
+
+    buf.pipelineBarrier(
+        srcStage, dstStage,
+        vk::DependencyFlagBits::eByRegion,
+        {}, {}, {barrier}
+    );
+
+    buf.end();
 }

@@ -41,6 +41,7 @@ using Buffers               = std::vector<vk::raii::Buffer>;
 using Memories              = std::vector<vk::raii::DeviceMemory>;
 using uptrDescriptorPool    = std::unique_ptr<vk::raii::DescriptorPool>;
 using uptrDescriptorSets    = std::unique_ptr<vk::raii::DescriptorSets>;
+using uptrImage             = std::unique_ptr<vk::raii::Image>;
 
 struct ApplicationData
 {
@@ -124,6 +125,7 @@ class Renderer
         void setupBuffers();
         void recordDrawCommands();
         void setupTextures();
+        void transitionImageLayout(vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 
         // I know this is a whole mess of member variables, but honestly I don't
         // think there is any 'cleaner' way to do this. Vulkan is _very_
@@ -146,6 +148,9 @@ class Renderer
         uptrBuffer indexBuffer;
         uptrMemory indexBufferMemory;
         MVPBufferObject mvpMatrix;
+
+        uptrImage textureImage;
+        uptrMemory textureImageMemory;
 
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
