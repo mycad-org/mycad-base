@@ -94,6 +94,7 @@ ApplicationData::ApplicationData()
     {
         std::cout << "    " << extension.extensionName << '\n';
     }
+    std::cout << '\n';
 }
 
 ApplicationData::~ApplicationData()
@@ -164,6 +165,9 @@ void Renderer::makeInstance()
     };
 
     instance = std::make_unique<vk::raii::Instance>(context, instanceCreateInfo);
+
+    // add newline after validation performance warning
+    std::cout << '\n';
 }
 
 Renderer::~Renderer()
@@ -427,7 +431,7 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
         transferFamilyQueueIndex = graphicsFamilyQueueIndex;
     }
 
-    std::cout << "    DEVICE CHOSEN!\n";
+    std::cout << "        Device Chosen!\n";
     physicalDevice = std::make_unique<vk::raii::PhysicalDevice>(instance, *devices.at(whichDevice));
 }
 
