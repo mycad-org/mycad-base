@@ -96,6 +96,7 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
+        void pushVertices(std::vector<Vertex> const & vertices, std::vector<uint32_t> const & indices);
         void draw(int currentFrame);
 
     private:
@@ -103,7 +104,6 @@ class Renderer
         void makeLogicalDevice();
         void makeFramebuffers();
         void makePipelineAndRenderpass();
-        void setupBuffers();
         void recordDrawCommands();
 
         // I know this is a whole mess of member variables, but honestly I don't
@@ -113,6 +113,7 @@ class Renderer
         // pointless
         bool framebufferResized = false;
         GLFWwindow* window = nullptr;
+        uint32_t nIndices = 0;
         vk::raii::Context context{};
         uptrInstance instance;
         std::unique_ptr<ChosenPhysicalDevice> cpd;
@@ -127,23 +128,6 @@ class Renderer
         uptrBuffer indexBuffer;
         uptrMemory indexBufferMemory;
         MVPBufferObject mvpMatrix;
-
-        const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-
-            {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-            {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-            {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-        };
-
-        const std::vector<uint16_t> indices = {
-            0, 1, 2, 2, 3, 0,
-            4, 5, 6, 6, 7, 4
-        };
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

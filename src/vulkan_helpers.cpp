@@ -691,6 +691,10 @@ void Renderer::rebuildPipeline()
 {
     // Wait until window is not minimized
     int width = 0, height = 0;
+
+    // If we don't call this once first, then we're stuck waiting for the first
+    // glfwWaitEvents until this loop exits. TODO find a better way
+    glfwGetFramebufferSize(window, &width, &height);
     while (width == 0 || height == 0) {
         glfwGetFramebufferSize(window, &width, &height);
         glfwWaitEvents();
@@ -708,8 +712,6 @@ void Renderer::rebuildPipeline()
         pld = std::make_unique<PipelineData>(window, *cpd, *device);
     }
 
-    // TODO: move this, or find a better name for this method
-    setupBuffers();
     recordDrawCommands();
 }
 
@@ -780,10 +782,14 @@ void Renderer::recordDrawCommands ()
         //======== begin render pass
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->pipeline);
-        commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
-        commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint16);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(i), {});
-        commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        // only draw if we have indices
+        if (nIndices > 0)
+        {
+            commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
+            commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint32);
+            commandBuffer.drawIndexed(nIndices, 1, 0, 0, 0);
+        }
         commandBuffer.endRenderPass();
         //======== end render pass
 
@@ -1036,81 +1042,6 @@ void createBuffer(vk::raii::Device const & device,
 
     memory = std::make_unique<vk::raii::DeviceMemory>(device, allocInfo);
     buffer->bindMemory(**memory, 0);
-}
-
-void Renderer::setupBuffers()
-{
-    vk::DeviceSize verticesSize = sizeof(vertices.at(0)) * vertices.size();
-    vk::DeviceSize indicesSize = sizeof(indices.at(0)) * indices.size();
-
-    // Create the staging buffer locally - make sure it's big enough for all our
-    // data
-    uptrBuffer stagingBuffer = nullptr;
-    uptrMemory stagingBufferMemory = nullptr;
-
-    createBuffer(*device, *cpd, verticesSize + indicesSize,
-                 vk::BufferUsageFlagBits::eTransferSrc,
-                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                 stagingBuffer, stagingBufferMemory);
-
-    // Move vertex and index data to the staging area
-    void* data = stagingBufferMemory->mapMemory(0, verticesSize);
-    memcpy(data, vertices.data(), (std::size_t) verticesSize);
-    stagingBufferMemory->unmapMemory();
-    data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
-    memcpy(data, indices.data(), (std::size_t) indicesSize);
-    stagingBufferMemory->unmapMemory();
-
-    // create the vertex and index buffers, stored as member variable
-    createBuffer(*device, *cpd, verticesSize,
-                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-                 vk::MemoryPropertyFlagBits::eDeviceLocal,
-                 vertexBuffer, vertexBufferMemory);
-    createBuffer(*device, *cpd, indicesSize,
-                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-                 vk::MemoryPropertyFlagBits::eDeviceLocal,
-                 indexBuffer, indexBufferMemory);
-
-    // Move the data from the staging area to the vertex buffer
-    vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **pld->transferCommandPool,
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 2
-    };
-
-    vk::raii::CommandBuffers transferCommandBuffers(*device, allocateInfo);
-
-    vk::CommandBufferBeginInfo beginInfo{
-        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
-    };
-
-    // copy vertices, buffer 0
-    transferCommandBuffers.at(0).begin(beginInfo);
-    vk::BufferCopy copyRegion{.size = verticesSize};
-    transferCommandBuffers.at(0).copyBuffer(**stagingBuffer, **vertexBuffer, copyRegion);
-    copyRegion.srcOffset = verticesSize;
-    transferCommandBuffers.at(0).end();
-
-    // copy indices, buffer 1
-    transferCommandBuffers.at(1).begin(beginInfo);
-    copyRegion.srcOffset = verticesSize;
-    copyRegion.size = indicesSize;
-    transferCommandBuffers.at(1).copyBuffer(**stagingBuffer, **indexBuffer, copyRegion);
-    transferCommandBuffers.at(1).end();
-
-    std::vector<vk::CommandBuffer> buffs;
-    for (auto const & transferBuffer : transferCommandBuffers)
-    {
-        buffs.push_back(*transferBuffer);
-    }
-
-    vk::SubmitInfo submitInfo{
-        .commandBufferCount = 2,
-        .pCommandBuffers = buffs.data(),
-    };
-
-    pld->transferQueue->submit({submitInfo});
-    pld->transferQueue->waitIdle();
 }
 
 void PipelineData::setupDescriptors(vk::raii::Device const & device)
@@ -1509,4 +1440,90 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
 
     graphicsQueue->submit({submitInfo});
     graphicsQueue->waitIdle();
+}
+
+void Renderer::pushVertices(std::vector<Vertex> const & vertices, std::vector<uint32_t> const & indices)
+{
+        vk::DeviceSize verticesSize = sizeof(vertices.at(0)) * vertices.size();
+        vk::DeviceSize indicesSize = sizeof(indices.at(0)) * indices.size();
+
+        // Create the staging buffer locally - make sure it's big enough for all our
+        // data
+        uptrBuffer stagingBuffer = nullptr;
+        uptrMemory stagingBufferMemory = nullptr;
+
+        createBuffer(*device, *cpd, verticesSize + indicesSize,
+                     vk::BufferUsageFlagBits::eTransferSrc,
+                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                     stagingBuffer, stagingBufferMemory);
+
+        // Move vertex and index data to the staging area
+        void* data = stagingBufferMemory->mapMemory(0, verticesSize);
+        memcpy(data, vertices.data(), (std::size_t) verticesSize);
+        stagingBufferMemory->unmapMemory();
+        data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
+        memcpy(data, indices.data(), (std::size_t) indicesSize);
+        stagingBufferMemory->unmapMemory();
+
+        // create the vertex and index buffers, stored as member variable
+        createBuffer(*device, *cpd, verticesSize,
+                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+                     vk::MemoryPropertyFlagBits::eDeviceLocal,
+                     vertexBuffer, vertexBufferMemory);
+        createBuffer(*device, *cpd, indicesSize,
+                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                     vk::MemoryPropertyFlagBits::eDeviceLocal,
+                     indexBuffer, indexBufferMemory);
+
+        // Move the data from the staging area to the vertex buffer
+        vk::CommandBufferAllocateInfo allocateInfo{
+            .commandPool = **pld->transferCommandPool,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = 2
+        };
+
+    // the CommandBuffer must be cleaned up before...well before
+    // rebuildPipeline, but I don't know exactly why - it ends up crashing if
+    // you don't though and complains about the buffer
+    {
+        vk::raii::CommandBuffers transferCommandBuffers(*device, allocateInfo);
+
+        vk::CommandBufferBeginInfo beginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+        };
+
+        // copy vertices, buffer 0
+        transferCommandBuffers.at(0).begin(beginInfo);
+        vk::BufferCopy copyRegion{.size = verticesSize};
+        transferCommandBuffers.at(0).copyBuffer(**stagingBuffer, **vertexBuffer, copyRegion);
+        copyRegion.srcOffset = verticesSize;
+        transferCommandBuffers.at(0).end();
+
+        // copy indices, buffer 1
+        transferCommandBuffers.at(1).begin(beginInfo);
+        copyRegion.srcOffset = verticesSize;
+        copyRegion.size = indicesSize;
+        transferCommandBuffers.at(1).copyBuffer(**stagingBuffer, **indexBuffer, copyRegion);
+        transferCommandBuffers.at(1).end();
+
+        std::vector<vk::CommandBuffer> buffs;
+        for (auto const & transferBuffer : transferCommandBuffers)
+        {
+            buffs.push_back(*transferBuffer);
+        }
+
+        vk::SubmitInfo submitInfo{
+            .commandBufferCount = 2,
+            .pCommandBuffers = buffs.data(),
+        };
+
+        pld->transferQueue->submit({submitInfo});
+        pld->transferQueue->waitIdle();
+    }
+
+    // Update the number of indices to draw
+    nIndices = static_cast<uint32_t>(indices.size());
+
+    // The pipeline needs to be updated any time we push new data...for "reasons"
+    rebuildPipeline();
 }
