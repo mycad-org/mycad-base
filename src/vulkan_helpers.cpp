@@ -1185,7 +1185,7 @@ void PipelineData::setupTextures(vk::raii::Device const & device, ChosenPhysical
 {
     // load the file
     int width, height, channels;
-    const char * fpath = "../textures/two-types-of-beer-1978012_512_512.jpg";
+    const char * fpath = "../textures/Beer_Flight_350_350.jpg";
     stbi_uc* pixels = stbi_load(fpath, &width, &height, &channels, STBI_rgb_alpha);
 
     if (!pixels)
