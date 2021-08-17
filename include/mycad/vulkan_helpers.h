@@ -96,14 +96,23 @@ class PipelineData
         Buffers uniformBuffers;
         Memories uniformMemories;
 
+        uptrImage textureImage;
+        uptrImageView textureImageView;
+        uptrMemory textureImageMemory;
+        uptrSampler textureSampler;
+
+
         uptrQueue graphicsQueue;
         uptrQueue presentQueue;
         uptrQueue transferQueue;
     private:
-        void setupDescriptors(vk::raii::Device const & device); // e.g. uniforms
+        void setupDescriptors(vk::raii::Device const & device);
         void makeFramebuffers(vk::raii::Device const & device);
+        void makeCommands(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd);
         void makeRenderPass(vk::raii::Device const & device);
         void makePipeline(vk::raii::Device const & device);
+        void setupTextures(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd);
+        void transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 };
 
 class Renderer
@@ -126,8 +135,6 @@ class Renderer
         void makePipelineAndRenderpass();
         void setupBuffers();
         void recordDrawCommands();
-        void setupTextures();
-        void transitionImageLayout(vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 
         // I know this is a whole mess of member variables, but honestly I don't
         // think there is any 'cleaner' way to do this. Vulkan is _very_
@@ -151,16 +158,11 @@ class Renderer
         uptrMemory indexBufferMemory;
         MVPBufferObject mvpMatrix;
 
-        uptrImage textureImage;
-        uptrImageView textureImageView;
-        uptrMemory textureImageMemory;
-        uptrSampler textureSampler;
-
         const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
         };
 
         const std::vector<uint16_t> indices = {

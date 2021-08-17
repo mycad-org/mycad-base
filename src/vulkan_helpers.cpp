@@ -31,7 +31,7 @@ vk::VertexInputBindingDescription VertexBindingDescription{
     .inputRate = vk::VertexInputRate::eVertex
 };
 
-std::array<vk::VertexInputAttributeDescription, 2> VertexAttributeDescriptions{{
+std::array<vk::VertexInputAttributeDescription, 3> VertexAttributeDescriptions{{
     {
         .location = 0,
         .binding = 0,
@@ -43,6 +43,12 @@ std::array<vk::VertexInputAttributeDescription, 2> VertexAttributeDescriptions{{
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, color)
+    },
+    {
+        .location = 2,
+        .binding = 0,
+        .format = vk::Format::eR32G32Sfloat,
+        .offset = offsetof(Vertex, texCoord)
     }
 }};
 
@@ -267,7 +273,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     pld = std::make_unique<PipelineData>(window, *cpd, *device);
 
     rebuildPipeline();
-    setupTextures();
 
     for(int i = 0 ; i < maxFrames; i++)
     {
@@ -597,10 +602,16 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     commandPool         = nullptr;
     transferCommandPool = nullptr;
     descriptorSets      = nullptr;
+    textureImage        = nullptr;
+    textureImageView    = nullptr;
+    textureImageMemory  = nullptr;
+    textureSampler      = nullptr;
     framebuffers.clear();
 
     // then rebuild
     scd = std::make_unique<SwapchainData>(window, cpd, device);
+
+    makeCommands(device, cpd);
 
     vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
     for (std::size_t i = 0; i < scd->views.size(); i++)
@@ -616,6 +627,7 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
         uniformMemories.emplace_back(device, **mem.release());
     }
 
+    setupTextures(device, cpd);
 
     // TODO: find a better placo for this
     setupDescriptors(device);
@@ -624,7 +636,10 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     makePipeline(device);
 
     makeFramebuffers(device);
+}
 
+void PipelineData::makeCommands(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd)
+{
     vk::CommandPoolCreateInfo poolInfo{
         .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
     };
@@ -634,7 +649,7 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     vk::CommandBufferAllocateInfo allocateInfo{
         .commandPool = **commandPool,
         .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = static_cast<uint32_t>(framebuffers.size())
+        .commandBufferCount = static_cast<uint32_t>(scd->views.size())
     };
 
     poolInfo.flags = vk::CommandPoolCreateFlagBits::eTransient;
@@ -642,8 +657,8 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     transferCommandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
 
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(device, allocateInfo);
-
 }
+
 
 void Renderer::rebuildPipeline()
 {
@@ -1033,31 +1048,48 @@ void Renderer::setupBuffers()
 void PipelineData::setupDescriptors(vk::raii::Device const & device)
 {
     // Setup the DescriptorSetLayouts
-    vk::DescriptorSetLayoutBinding binding
-    {
+    vk::DescriptorSetLayoutBinding uniformBinding{
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
         .descriptorCount = 1,
         .stageFlags = vk::ShaderStageFlagBits::eVertex,
     };
 
+    vk::DescriptorSetLayoutBinding samplerBinding{
+        .binding = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment
+    };
+
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindings{uniformBinding, samplerBinding};
     vk::DescriptorSetLayoutCreateInfo createInfo{
-        .bindingCount = 1,
-        .pBindings = &binding
+        .bindingCount = bindings.size(),
+        .pBindings = bindings.data()
     };
 
     descriptorLayout = std::make_unique<vk::raii::DescriptorSetLayout>(device, createInfo);
 
     // Next, create a DescriptorPool
-    vk::DescriptorPoolSize poolSize{
-        .descriptorCount = static_cast<uint32_t>(scd->images.size())
-    };
+    std::array<vk::DescriptorPoolSize, 2> poolSizes
+    {{
+        {
+            .type            = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = static_cast<uint32_t>(scd->images.size())
+        },
+        {
+            .type            = vk::DescriptorType::eCombinedImageSampler,
+            .descriptorCount = static_cast<uint32_t>(scd->images.size())
+        }
+    }};
 
+    // TODO enable vulkan best practice validation to catch errors like
+    // too-small pool size
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = static_cast<uint32_t>(scd->images.size()),
-        .poolSizeCount = 1,
-        .pPoolSizes = &poolSize
+        .poolSizeCount = poolSizes.size(),
+        .pPoolSizes = poolSizes.data()
     };
 
     descriptorPool = std::make_unique<vk::raii::DescriptorPool>(device, poolInfo);
@@ -1081,16 +1113,32 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
             .range = sizeof(MVPBufferObject)
         };
 
-        vk::WriteDescriptorSet descriptorWrite{
-            .dstSet = *descriptorSets->at(i),
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eUniformBuffer,
-            .pBufferInfo = &bufferInfo
+        vk::DescriptorImageInfo imageInfo{
+            .sampler = **textureSampler,
+            .imageView = **textureImageView,
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
         };
 
-        device.updateDescriptorSets({descriptorWrite}, {});
+        std::array<vk::WriteDescriptorSet, 2> descriptorWrites{{
+            {
+                .dstSet = *descriptorSets->at(i),
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                .pBufferInfo = &bufferInfo
+            },
+            {
+                .dstSet = *descriptorSets->at(i),
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                .pImageInfo = &imageInfo
+            }
+        }};
+
+        device.updateDescriptorSets(descriptorWrites, {});
     }
 
 }
@@ -1133,7 +1181,7 @@ void createImage(vk::raii::Device const & device, ChosenPhysicalDevice const & c
     image->bindMemory(**memory, 0);
 }
 
-void Renderer::setupTextures()
+void PipelineData::setupTextures(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd)
 {
     // load the file
     int width, height, channels;
@@ -1158,19 +1206,19 @@ void Renderer::setupTextures()
     uptrBuffer stagingBuffer;
     uptrMemory stagingBufferMemory;
 
-    createBuffer(*device, *cpd, imgSize,
+    createBuffer(device, cpd, imgSize,
                  vk::BufferUsageFlagBits::eTransferSrc,
                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                  stagingBuffer, stagingBufferMemory);
 
     void* data = stagingBufferMemory->mapMemory(0, imgSize);
-    memcpy(data, vertices.data(), (std::size_t) imgSize);
+    memcpy(data, pixels, (std::size_t) imgSize);
     stagingBufferMemory->unmapMemory();
 
     stbi_image_free(pixels);
 
     // make the vulkan vk::raii::Image for the texture
-    createImage(*device, *cpd, width, height, 
+    createImage(device, cpd, width, height,
                 vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
@@ -1178,6 +1226,7 @@ void Renderer::setupTextures()
     // transfer the data from staging to buffer
     //     1) transition image from staging buffer to the texture
     transitionImageLayout(
+        device,
         *textureImage,
         vk::Format::eR8G8B8A8Srgb,
         vk::ImageLayout::eUndefined,
@@ -1186,12 +1235,12 @@ void Renderer::setupTextures()
     //     2) actually copy the data
     //     TODO: abstract these three lines a bit (incl. CommandBuffer(s) below)
     vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **pld->transferCommandPool,
+        .commandPool = **transferCommandPool,
         .level = vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1
     };
 
-    vk::raii::CommandBuffers cbufs(*device, allocateInfo);
+    vk::raii::CommandBuffers cbufs(device, allocateInfo);
     vk::raii::CommandBuffer const & buf = cbufs.at(0);
 
     vk::BufferImageCopy region{
@@ -1224,8 +1273,17 @@ void Renderer::setupTextures()
     );
     buf.end();
 
+    vk::SubmitInfo submitInfo{
+        .commandBufferCount = 1,
+        .pCommandBuffers = &(*buf),
+    };
+
+    transferQueue->submit({submitInfo});
+    transferQueue->waitIdle();
+
     //     3) transition from the texture image to the shader
     transitionImageLayout(
+        device,
         *textureImage,
         vk::Format::eR8G8B8A8Srgb,
         vk::ImageLayout::eTransferDstOptimal,
@@ -1252,7 +1310,7 @@ void Renderer::setupTextures()
             .layerCount = 1
         }
     };
-    textureImageView = std::make_unique<vk::raii::ImageView>(*device, imageViewCreateInfo);
+    textureImageView = std::make_unique<vk::raii::ImageView>(device, imageViewCreateInfo);
 
     // create a sampler for the texture
     vk::SamplerCreateInfo samplerInfo{
@@ -1264,7 +1322,7 @@ void Renderer::setupTextures()
         .addressModeW = vk::SamplerAddressMode::eRepeat,
         .mipLodBias = 0.0f,
         .anisotropyEnable = true,
-        .maxAnisotropy = cpd->physicalDevice->getProperties().limits.maxSamplerAnisotropy,
+        .maxAnisotropy = cpd.physicalDevice->getProperties().limits.maxSamplerAnisotropy,
         .compareEnable = true,
         .compareOp = vk::CompareOp::eAlways,
         .minLod = 0.0f,
@@ -1274,18 +1332,18 @@ void Renderer::setupTextures()
 
     };
 
-    textureSampler = std::make_unique<vk::raii::Sampler>(*device, samplerInfo);
+    textureSampler = std::make_unique<vk::raii::Sampler>(device, samplerInfo);
 }
 
-void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*fmt*/, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout)
+void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format /*fmt*/, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout)
 {
     vk::CommandBufferAllocateInfo allocateInfo{
-        .commandPool = **pld->commandPool,
+        .commandPool = **commandPool,
         .level = vk::CommandBufferLevel::ePrimary,
         .commandBufferCount = 1
     };
 
-    vk::raii::CommandBuffers cbufs(*device, allocateInfo);
+    vk::raii::CommandBuffers cbufs(device, allocateInfo);
     vk::raii::CommandBuffer const & buf = cbufs.at(0);
 
     vk::CommandBufferBeginInfo beginInfo{
@@ -1294,8 +1352,6 @@ void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*f
 
     vk::PipelineStageFlags srcStage;
     vk::PipelineStageFlags dstStage;
-
-    buf.begin(beginInfo);
 
     vk::ImageMemoryBarrier barrier{
         .srcAccessMask = vk::AccessFlagBits::eNoneKHR, // set below
@@ -1338,6 +1394,8 @@ void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*f
         std::exit(1);
     }
 
+    buf.begin(beginInfo);
+
     buf.pipelineBarrier(
         srcStage, dstStage,
         vk::DependencyFlagBits::eByRegion,
@@ -1345,4 +1403,12 @@ void Renderer::transitionImageLayout(vk::raii::Image const & img, vk::Format /*f
     );
 
     buf.end();
+
+    vk::SubmitInfo submitInfo{
+        .commandBufferCount = 1,
+        .pCommandBuffers = &(*buf),
+    };
+
+    graphicsQueue->submit({submitInfo});
+    graphicsQueue->waitIdle();
 }

@@ -11,6 +11,7 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 };
 
 // alignas added explicitly to remind you in the future in case you have
