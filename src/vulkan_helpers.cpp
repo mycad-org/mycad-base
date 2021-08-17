@@ -7,8 +7,8 @@
 #define GLM_FORC_DEPTH_ZERO_TO_ONE
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "shaders/vert.h"
-#include "shaders/frag.h"
+#include "shaders/vert_texture.h"
+#include "shaders/frag_texture.h"
 
 #include <algorithm>
 #include <array>
@@ -873,12 +873,12 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
 {
     // Attach shaders
     vk::ShaderModuleCreateInfo vShaderInfo{
-        .codeSize = vert_spv_len,
-        .pCode = reinterpret_cast<const uint32_t*>(vert_spv)
+        .codeSize = vert_texture_spv_len,
+        .pCode = reinterpret_cast<const uint32_t*>(vert_texture_spv)
     };
     vk::ShaderModuleCreateInfo fShaderInfo{
-        .codeSize = frag_spv_len,
-        .pCode = reinterpret_cast<const uint32_t*>(frag_spv)
+        .codeSize = frag_texture_spv_len,
+        .pCode = reinterpret_cast<const uint32_t*>(frag_texture_spv)
     };
 
     vk::raii::ShaderModule vShaderModule(device, vShaderInfo);
