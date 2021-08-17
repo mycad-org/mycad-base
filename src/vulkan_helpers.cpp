@@ -3,6 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORC_DEPTH_ZERO_TO_ONE
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "shaders/vert.h"
@@ -591,6 +593,31 @@ PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     presentQueue = std::make_unique<vk::raii::Queue>(device, cpd.presentFamilyQueueIndex, 0);
     transferQueue = std::make_unique<vk::raii::Queue>(device, cpd.transferFamilyQueueIndex, 0);
 
+    // Find the first supported format for depth buffer from a prioritized list
+    std::vector<vk::Format> const formats{
+        vk::Format::eD32Sfloat,
+        vk::Format::eD32SfloatS8Uint,
+        vk::Format::eD24UnormS8Uint,
+    };
+
+    auto formatMatches = [&cpd](vk::Format const & format)
+    {
+        auto props = cpd.physicalDevice->getFormatProperties(format);
+        return (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) == vk::FormatFeatureFlagBits::eDepthStencilAttachment;
+    };
+
+    auto ret = std::ranges::find_if(formats, formatMatches);
+
+    if (ret == formats.end())
+    {
+        std::cerr << "Could not find a supported depth/stencil format.\n";
+        std::exit(1);
+    }
+    else
+    {
+        depthFormat = *ret;
+    }
+
     rebuild(window, cpd, device);
 }
 
@@ -626,6 +653,8 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
         uniformBuffers.emplace_back(device, **buf.release());
         uniformMemories.emplace_back(device, **mem.release());
     }
+
+    setupDepthBuffer(device, cpd);
 
     setupTextures(device, cpd);
 
@@ -688,13 +717,17 @@ void Renderer::rebuildPipeline()
 
 void PipelineData::makeFramebuffers(vk::raii::Device const & device)
 {
-    // create framebuffers
     for(const auto& swapchainImageView : scd->views)
     {
+        std::array<vk::ImageView, 2> attachments{
+            *swapchainImageView,
+            **depthImageView
+        };
+
         vk::FramebufferCreateInfo createInfo{
             .renderPass = **renderPass,
-            .attachmentCount = 1,
-            .pAttachments = &(*swapchainImageView),
+            .attachmentCount = static_cast<uint32_t>(attachments.size()),
+            .pAttachments = attachments.data(),
             .width = scd->extent.width,
             .height = scd->extent.height,
             .layers = 1
@@ -730,7 +763,10 @@ void Renderer::recordDrawCommands ()
         //==== begin command
         commandBuffer.begin(beginInfo);
 
-        vk::ClearValue clearColor = {std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}};
+        std::array<vk::ClearValue, 2> clearValues{
+            vk::ClearColorValue{std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}},
+            vk::ClearDepthStencilValue{1.0f, 0 }
+        };
 
         vk::RenderPassBeginInfo renderPassBeginInfo{
             .renderPass = **pld->renderPass,
@@ -739,8 +775,8 @@ void Renderer::recordDrawCommands ()
                 .offset = {0, 0},
                 .extent = pld->scd->extent
             },
-            .clearValueCount = 1,
-            .pClearValues = &clearColor
+            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+            .pClearValues = clearValues.data()
         };
 
         //======== begin render pass
@@ -776,10 +812,27 @@ void PipelineData::makeRenderPass(vk::raii::Device const & device)
         .layout = vk::ImageLayout::eColorAttachmentOptimal
     };
 
+    vk::AttachmentDescription depthAttachment{
+        .format = depthFormat,
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal
+    };
+
+    vk::AttachmentReference depthAttachmentRef{
+        .attachment = 1,
+        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal
+    };
+
     vk::SubpassDescription subpass{
         .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentRef
+        .pColorAttachments = &colorAttachmentRef,
+        .pDepthStencilAttachment = &depthAttachmentRef
     };
 
     // Wait until render is complete: note, this could be accomplished
@@ -789,15 +842,20 @@ void PipelineData::makeRenderPass(vk::raii::Device const & device)
     vk::SubpassDependency dependency{
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput
+                      | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput
+                      | vk::PipelineStageFlagBits::eEarlyFragmentTests,
         .srcAccessMask = {},
         .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+                       | vk::AccessFlagBits::eDepthStencilAttachmentWrite
     };
 
+    std::array<vk::AttachmentDescription, 2> attachments{colorAttachment, depthAttachment};
+
     vk::RenderPassCreateInfo renderPassInfo{
-        .attachmentCount = 1,
-        .pAttachments = &colorAttachment,
+        .attachmentCount = static_cast<uint32_t>(attachments.size()),
+        .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
         .dependencyCount = 1,
@@ -904,6 +962,14 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .pSetLayouts = &(**descriptorLayout)
     };
 
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{
+        .depthTestEnable = true,
+        .depthWriteEnable = true,
+        .depthCompareOp = vk::CompareOp::eLess,
+        .depthBoundsTestEnable = false,
+        .stencilTestEnable = false
+    };
+
     pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(device, pipelineLayoutInfo);
 
     // Create the actual graphics pipeline!!!
@@ -915,6 +981,7 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .pViewportState = &viewportStateInfo,
         .pRasterizationState = &rasterizerInfo,
         .pMultisampleState = &multisamplingInfo,
+        .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlendingInfo,
         .layout = **pipelineLayout,
         .renderPass = **renderPass,
@@ -1179,6 +1246,36 @@ void createImage(vk::raii::Device const & device, ChosenPhysicalDevice const & c
 
     memory = std::make_unique<vk::raii::DeviceMemory>(device, allocInfo);
     image->bindMemory(**memory, 0);
+}
+
+void PipelineData::setupDepthBuffer(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd)
+{
+    createImage(device, cpd, scd->extent.width, scd->extent.height, depthFormat,
+                vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                vk::MemoryPropertyFlagBits::eDeviceLocal,
+                depthImage, depthImageMemory);
+
+    // Create an ImageView for the depth buffer
+    vk::ImageViewCreateInfo imageViewCreateInfo{
+        .image = **depthImage,
+        .viewType = vk::ImageViewType::e2D,
+        .format = depthFormat,
+        .components = {
+            .r = vk::ComponentSwizzle::eIdentity,
+            .g = vk::ComponentSwizzle::eIdentity,
+            .b = vk::ComponentSwizzle::eIdentity,
+            .a = vk::ComponentSwizzle::eIdentity
+        },
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eDepth,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    };
+    depthImageView = std::make_unique<vk::raii::ImageView>(device, imageViewCreateInfo);
 }
 
 void PipelineData::setupTextures(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd)

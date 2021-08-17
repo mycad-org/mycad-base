@@ -101,6 +101,10 @@ class PipelineData
         uptrMemory textureImageMemory;
         uptrSampler textureSampler;
 
+        uptrImage depthImage;
+        uptrMemory depthImageMemory;
+        uptrImageView depthImageView;
+        vk::Format depthFormat;
 
         uptrQueue graphicsQueue;
         uptrQueue presentQueue;
@@ -111,6 +115,7 @@ class PipelineData
         void makeCommands(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd);
         void makeRenderPass(vk::raii::Device const & device);
         void makePipeline(vk::raii::Device const & device);
+        void setupDepthBuffer(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd);
         void setupTextures(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd);
         void transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 };
