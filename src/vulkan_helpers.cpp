@@ -295,8 +295,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     mvpMatrix.proj = glm::perspective(glm::radians(45.0f),
                                       pld->scd->extent.width / (float) pld->scd->extent.height,
                                       0.1f, 10.0f);
-    // fix for inverted Y from opengl days
-    mvpMatrix.proj[1][1] *= -1;
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int, int)
@@ -909,9 +907,12 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
 
     vk::Viewport viewport{
         .x = 0.0f,
-        .y = 0.0f,
+        // see below
+        .y = (float) scd->extent.height,
         .width = (float) scd->extent.width,
-        .height = (float) scd->extent.height,
+        // flip viewport to match opengl - this is so we can use e.g.
+        // glm::perspective without having to manually flip the y-coords
+        .height = (float) scd->extent.height * -1,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
