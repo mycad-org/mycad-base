@@ -13,7 +13,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <iostream>
 
 uint32_t findValidMemoryType(ChosenPhysicalDevice const & cpd, uint32_t allowedMask, vk::MemoryPropertyFlags reqs);
@@ -209,12 +208,7 @@ void Renderer::draw(int currentFrame)
 
     imagesInFlight[imgIndex] = currentFrame;
 
-    // update the uniform buffer for this imgIndex
-    static auto startTime = std::chrono::high_resolution_clock::now();
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-    mvpMatrix.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    mvpMatrix.model = glm::mat4(1.0f);
 
     // send latest uniform buffer data to the gpu
     void* data = pld->uniformMemories.at(imgIndex).mapMemory(0, sizeof(mvpMatrix));
