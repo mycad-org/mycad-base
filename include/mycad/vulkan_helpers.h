@@ -96,7 +96,7 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
-        void pushVertices(std::vector<Vertex> const & vertices, std::vector<uint32_t> const & indices);
+        void pushVertices(Surface const & surface);
         void draw(int currentFrame);
 
     private:

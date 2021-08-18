@@ -1437,10 +1437,10 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
     graphicsQueue->waitIdle();
 }
 
-void Renderer::pushVertices(std::vector<Vertex> const & vertices, std::vector<uint32_t> const & indices)
+void Renderer::pushVertices(Surface const & surface)
 {
-        vk::DeviceSize verticesSize = sizeof(vertices.at(0)) * vertices.size();
-        vk::DeviceSize indicesSize = sizeof(indices.at(0)) * indices.size();
+        vk::DeviceSize verticesSize = surface.sizeOfVertices();
+        vk::DeviceSize indicesSize = surface.sizeOfIndices();
 
         // Create the staging buffer locally - make sure it's big enough for all our
         // data
@@ -1454,10 +1454,10 @@ void Renderer::pushVertices(std::vector<Vertex> const & vertices, std::vector<ui
 
         // Move vertex and index data to the staging area
         void* data = stagingBufferMemory->mapMemory(0, verticesSize);
-        memcpy(data, vertices.data(), (std::size_t) verticesSize);
+        memcpy(data, surface.getVertices().data(), (std::size_t) verticesSize);
         stagingBufferMemory->unmapMemory();
         data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
-        memcpy(data, indices.data(), (std::size_t) indicesSize);
+        memcpy(data, surface.getIndices().data(), (std::size_t) indicesSize);
         stagingBufferMemory->unmapMemory();
 
         // create the vertex and index buffers, stored as member variable
@@ -1517,7 +1517,7 @@ void Renderer::pushVertices(std::vector<Vertex> const & vertices, std::vector<ui
     }
 
     // Update the number of indices to draw
-    nIndices = static_cast<uint32_t>(indices.size());
+    nIndices = static_cast<uint32_t>(surface.getIndices().size());
 
     // The pipeline needs to be updated any time we push new data...for "reasons"
     rebuildPipeline();
