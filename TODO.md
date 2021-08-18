@@ -16,6 +16,9 @@ Open
 - [ ] create separate include/mycad/Renderer subdir and move all rendering stuff
       in there
 - [ ] allow for different shaders (i.e. texture vs. flat color) at runtime
+- [ ] update vulkan code to use east const
+- [ ] create a data type for storing RenderVertex data, i.e. position, color,
+      transform
 
 Closed
 ======
