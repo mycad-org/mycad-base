@@ -38,7 +38,7 @@ int main()
     ApplicationData app;
 
     Renderer renderer(app.window, MAX_FRAMES_IN_FLIGHT);
-    renderer.pushVertices(squares);
+    renderer.addSurface(squares);
 
     int currentFrame = 0;
     /* int i = 0; */

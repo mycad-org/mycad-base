@@ -1437,7 +1437,7 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
     graphicsQueue->waitIdle();
 }
 
-void Renderer::pushVertices(Surface const & surface)
+void Renderer::addSurface(Surface const & surface)
 {
         vk::DeviceSize verticesSize = surface.sizeOfVertices();
         vk::DeviceSize indicesSize = surface.sizeOfIndices();

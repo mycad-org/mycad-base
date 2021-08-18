@@ -96,7 +96,7 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
-        void pushVertices(Surface const & surface);
+        void addSurface(Surface const & surface);
         void draw(int currentFrame);
 
     private:
