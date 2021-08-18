@@ -13,6 +13,9 @@ Open
 - [ ] add moar documentation
 - [ ] integrate shader compiling and generating headers (with byte code stuff)
       into cmake
+- [ ] create separate include/mycad/Renderer subdir and move all rendering stuff
+      in there
+- [ ] allow for different shaders (i.e. texture vs. flat color) at runtime
 
 Closed
 ======
