@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <optional>
+#include <ranges>
 
 using namespace mycad;
 namespace ranges = std::ranges;
