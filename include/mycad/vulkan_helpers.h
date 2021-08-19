@@ -120,13 +120,7 @@ class Renderer
         void makeLogicalDevice();
         void makeFramebuffers();
         void makePipelineAndRenderpass();
-        void recordDrawCommands();
 
-        // I know this is a whole mess of member variables, but honestly I don't
-        // think there is any 'cleaner' way to do this. Vulkan is _very_
-        // explicit, and the only alternative I could think of was to just make
-        // a very deep hierarchy of shallow wrapper classes, but that seems
-        // pointless
         bool framebufferResized = false;
         GLFWwindow* window = nullptr;
         uint32_t nIndices = 0;
