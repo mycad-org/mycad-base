@@ -11,12 +11,12 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 int main()
 {
     // TODO: don't hard-code this
-    Surface squares{{
+    Mesh squares{{
         {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
         {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
         {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
     }};
-    squares.addData({
+    squares.addFragments({
         {
             {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
             {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
@@ -38,7 +38,7 @@ int main()
     ApplicationData app;
 
     Renderer renderer(app.window, MAX_FRAMES_IN_FLIGHT);
-    renderer.addSurface(squares);
+    renderer.addMesh(squares);
 
     int currentFrame = 0;
     /* int i = 0; */

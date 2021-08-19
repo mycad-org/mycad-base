@@ -2,41 +2,12 @@
 
 #include <algorithm>
 
-Surface::Surface(Fragment const & frag)
+Mesh::Mesh(Fragment const & frag)
 {
     addFragment(frag);
 }
 
-// More resolution can be accomplished by increasing the frag count
-void Surface::addData(std::vector<Fragment> const & frags)
-{
-    for (auto const & frag : frags)
-    {
-        addFragment(frag);
-    }
-}
-
-uint64_t Surface::sizeOfVertices() const
-{
-    return sizeof(vertices.at(0)) * vertices.size();
-}
-
-uint64_t Surface::sizeOfIndices() const
-{
-    return sizeof(indices.at(0)) * indices.size();
-}
-
-auto Surface::getVertices() const -> std::vector<Vertex> const &
-{
-    return vertices;
-}
-
-auto Surface::getIndices() const -> std::vector<uint32_t> const &
-{
-    return indices;
-}
-
-void Surface::addFragment(Fragment const & frag)
+void Mesh::addFragment(Fragment const & frag)
 {
     // see if we already have this vertex
     auto const & [v0, v1, v2] = frag;
@@ -57,4 +28,32 @@ void Surface::addFragment(Fragment const & frag)
     };
 
     std::ranges::for_each(std::vector<Vertex>{v0, v1, v2}, addVertex);
+}
+
+void Mesh::addFragments(std::vector<Fragment> const & frags)
+{
+    for (auto const & frag : frags)
+    {
+        addFragment(frag);
+    }
+}
+
+uint64_t Mesh::sizeOfVertices() const
+{
+    return sizeof(vertices.at(0)) * vertices.size();
+}
+
+uint64_t Mesh::sizeOfIndices() const
+{
+    return sizeof(indices.at(0)) * indices.size();
+}
+
+auto Mesh::getVertices() const -> std::vector<Vertex> const &
+{
+    return vertices;
+}
+
+auto Mesh::getIndices() const -> std::vector<uint32_t> const &
+{
+    return indices;
 }

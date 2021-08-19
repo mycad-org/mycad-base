@@ -85,6 +85,22 @@ class PipelineData
         void transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 };
 
+class MeshVk
+{
+    public:
+        MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
+        void recordDrawCommands(PipelineData const & pld) const;
+
+    private:
+
+        Mesh mesh;
+
+        uptrBuffer vertexBuffer;
+        uptrMemory vertexBufferMemory;
+        uptrBuffer indexBuffer;
+        uptrMemory indexBufferMemory;
+};
+
 class Renderer
 {
     public:
@@ -96,7 +112,7 @@ class Renderer
         Renderer& operator=(Renderer const&) = delete;
 
         void rebuildPipeline();
-        void addSurface(Surface const & surface);
+        void addMesh(Mesh const & mesh);
         void draw(int currentFrame);
 
     private:
@@ -123,11 +139,9 @@ class Renderer
         Semaphores renderFinishedSems;
         Fences inFlightFences;
         MaybeIndices imagesInFlight;
-        uptrBuffer vertexBuffer;
-        uptrMemory vertexBufferMemory;
-        uptrBuffer indexBuffer;
-        uptrMemory indexBufferMemory;
         MVPBufferObject mvpMatrix;
+
+        std::vector<MeshVk> meshes;
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

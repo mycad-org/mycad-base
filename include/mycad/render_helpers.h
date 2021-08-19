@@ -26,14 +26,15 @@ struct Fragment
     Vertex v2;
 };
 
-class Surface
+class Mesh
 {
     public:
         // A surface must have at one fragment
-        explicit Surface(Fragment const & frag);
+        explicit Mesh(Fragment const & frag);
 
         // More resolution can be accomplished by increasing the frag count
-        void addData(std::vector<Fragment> const & frags);
+        void addFragment(Fragment const & frag);
+        void addFragments(std::vector<Fragment> const & frags);
 
         uint64_t sizeOfVertices() const;
         uint64_t sizeOfIndices() const;
@@ -42,7 +43,6 @@ class Surface
         auto getIndices() const -> std::vector<uint32_t> const &;
 
     private:
-        void addFragment(Fragment const & frag);
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;

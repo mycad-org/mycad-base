@@ -707,7 +707,10 @@ void Renderer::rebuildPipeline()
         pld = std::make_unique<PipelineData>(window, *cpd, *device);
     }
 
-    recordDrawCommands();
+    for (auto const & mesh : meshes)
+    {
+        mesh.recordDrawCommands(*pld);
+    }
 }
 
 void PipelineData::makeFramebuffers(vk::raii::Device const & device)
@@ -745,53 +748,6 @@ void PipelineData::makeFramebuffers(vk::raii::Device const & device)
 /*         .presentQueue = std::move(presentQueue) */
 /*     }; */
 /* } */
-
-void Renderer::recordDrawCommands ()
-{
-    // Record the commands
-    for(std::size_t i = 0; i < pld->commandBuffers->size(); i++)
-    {
-        vk::CommandBufferBeginInfo beginInfo{};
-
-        const auto& commandBuffer = pld->commandBuffers->at(i);
-
-        //==== begin command
-        commandBuffer.begin(beginInfo);
-
-        std::array<vk::ClearValue, 2> clearValues{
-            vk::ClearColorValue{std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}},
-            vk::ClearDepthStencilValue{1.0f, 0 }
-        };
-
-        vk::RenderPassBeginInfo renderPassBeginInfo{
-            .renderPass = **pld->renderPass,
-            .framebuffer = *pld->framebuffers.at(i),
-            .renderArea = {
-                .offset = {0, 0},
-                .extent = pld->scd->extent
-            },
-            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-            .pClearValues = clearValues.data()
-        };
-
-        //======== begin render pass
-        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->pipeline);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(i), {});
-        // only draw if we have indices
-        if (nIndices > 0)
-        {
-            commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
-            commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint32);
-            commandBuffer.drawIndexed(nIndices, 1, 0, 0, 0);
-        }
-        commandBuffer.endRenderPass();
-        //======== end render pass
-
-        commandBuffer.end();
-        //==== end command
-    }
-}
 
 void PipelineData::makeRenderPass(vk::raii::Device const & device)
 {
@@ -1437,51 +1393,57 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
     graphicsQueue->waitIdle();
 }
 
-void Renderer::addSurface(Surface const & surface)
+void Renderer::addMesh(Mesh const & mesh)
 {
-        vk::DeviceSize verticesSize = surface.sizeOfVertices();
-        vk::DeviceSize indicesSize = surface.sizeOfIndices();
+    meshes.emplace_back(mesh, *device, *cpd, *pld);
+}
 
-        // Create the staging buffer locally - make sure it's big enough for all our
-        // data
-        uptrBuffer stagingBuffer = nullptr;
-        uptrMemory stagingBufferMemory = nullptr;
+MeshVk::MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld)
+    : mesh(mesh)
+{
+    vk::DeviceSize verticesSize = mesh.sizeOfVertices();
+    vk::DeviceSize indicesSize = mesh.sizeOfIndices();
 
-        createBuffer(*device, *cpd, verticesSize + indicesSize,
-                     vk::BufferUsageFlagBits::eTransferSrc,
-                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                     stagingBuffer, stagingBufferMemory);
+    // Create the staging buffer locally - make sure it's big enough for all our
+    // data
+    uptrBuffer stagingBuffer = nullptr;
+    uptrMemory stagingBufferMemory = nullptr;
 
-        // Move vertex and index data to the staging area
-        void* data = stagingBufferMemory->mapMemory(0, verticesSize);
-        memcpy(data, surface.getVertices().data(), (std::size_t) verticesSize);
-        stagingBufferMemory->unmapMemory();
-        data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
-        memcpy(data, surface.getIndices().data(), (std::size_t) indicesSize);
-        stagingBufferMemory->unmapMemory();
+    createBuffer(device, cpd, verticesSize + indicesSize,
+                 vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                 stagingBuffer, stagingBufferMemory);
 
-        // create the vertex and index buffers, stored as member variable
-        createBuffer(*device, *cpd, verticesSize,
-                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-                     vk::MemoryPropertyFlagBits::eDeviceLocal,
-                     vertexBuffer, vertexBufferMemory);
-        createBuffer(*device, *cpd, indicesSize,
-                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-                     vk::MemoryPropertyFlagBits::eDeviceLocal,
-                     indexBuffer, indexBufferMemory);
+    // Move vertex and index data to the staging area
+    void* data = stagingBufferMemory->mapMemory(0, verticesSize);
+    memcpy(data, mesh.getVertices().data(), (std::size_t) verticesSize);
+    stagingBufferMemory->unmapMemory();
+    data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
+    memcpy(data, mesh.getIndices().data(), (std::size_t) indicesSize);
+    stagingBufferMemory->unmapMemory();
 
-        // Move the data from the staging area to the vertex buffer
-        vk::CommandBufferAllocateInfo allocateInfo{
-            .commandPool = **pld->transferCommandPool,
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = 2
-        };
+    // create the vertex and index buffers, stored as member variable
+    createBuffer(device, cpd, verticesSize,
+                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 vertexBuffer, vertexBufferMemory);
+    createBuffer(device, cpd, indicesSize,
+                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 indexBuffer, indexBufferMemory);
+
+    // Move the data from the staging area to the vertex buffer
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **pld.transferCommandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 2
+    };
 
     // the CommandBuffer must be cleaned up before...well before
     // rebuildPipeline, but I don't know exactly why - it ends up crashing if
     // you don't though and complains about the buffer
     {
-        vk::raii::CommandBuffers transferCommandBuffers(*device, allocateInfo);
+        vk::raii::CommandBuffers transferCommandBuffers(device, allocateInfo);
 
         vk::CommandBufferBeginInfo beginInfo{
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
@@ -1512,13 +1474,56 @@ void Renderer::addSurface(Surface const & surface)
             .pCommandBuffers = buffs.data(),
         };
 
-        pld->transferQueue->submit({submitInfo});
-        pld->transferQueue->waitIdle();
+        pld.transferQueue->submit({submitInfo});
+        pld.transferQueue->waitIdle();
     }
 
-    // Update the number of indices to draw
-    nIndices = static_cast<uint32_t>(surface.getIndices().size());
+    recordDrawCommands(pld);
+}
 
-    // The pipeline needs to be updated any time we push new data...for "reasons"
-    rebuildPipeline();
+void MeshVk::recordDrawCommands(PipelineData const & pld) const
+{
+    // Record the commands
+    for(std::size_t i = 0; i < pld.commandBuffers->size(); i++)
+    {
+        vk::CommandBufferBeginInfo beginInfo{};
+
+        const auto& commandBuffer = pld.commandBuffers->at(i);
+
+        //==== begin command
+        commandBuffer.begin(beginInfo);
+
+        std::array<vk::ClearValue, 2> clearValues{
+            vk::ClearColorValue{std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}},
+            vk::ClearDepthStencilValue{1.0f, 0 }
+        };
+
+        vk::RenderPassBeginInfo renderPassBeginInfo{
+            .renderPass = **pld.renderPass,
+            .framebuffer = *pld.framebuffers.at(i),
+            .renderArea = {
+                .offset = {0, 0},
+                .extent = pld.scd->extent
+            },
+            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+            .pClearValues = clearValues.data()
+        };
+
+        //======== begin render pass
+        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld.pipeline);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld.pipelineLayout, 0, *pld.descriptorSets->at(i), {});
+        // only draw if we have indices
+        if (mesh.getIndices().size() > 0)
+        {
+            commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
+            commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint32);
+            commandBuffer.drawIndexed(mesh.getIndices().size(), 1, 0, 0, 0);
+        }
+        commandBuffer.endRenderPass();
+        //======== end render pass
+
+        commandBuffer.end();
+        //==== end command
+    }
 }
