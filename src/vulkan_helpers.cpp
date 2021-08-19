@@ -151,8 +151,16 @@ void Renderer::makeInstance()
         }
     }
 
+    // enable best-practices validation layer
+    auto bestPractices = vk::ValidationFeatureEnableEXT::eBestPractices;
+    vk::ValidationFeaturesEXT features{
+        .enabledValidationFeatureCount = 1,
+        .pEnabledValidationFeatures = &bestPractices
+    };
+
     // Set up the debugging messenger CreateInfo
     vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
+        .pNext = &features,
         .messageSeverity = //vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
                            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
                          | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
