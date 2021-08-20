@@ -274,10 +274,7 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     cpd = std::make_unique<ChosenPhysicalDevice>(*instance, window);
     makeLogicalDevice();
 
-    // TODO: find a way to avoid duplicating this in rebuildPipeline
     pld = std::make_unique<PipelineData>(window, *cpd, *device);
-
-    rebuildPipeline();
 
     for(int i = 0 ; i < maxFrames; i++)
     {
@@ -381,7 +378,7 @@ ChosenPhysicalDevice::ChosenPhysicalDevice(vk::raii::Instance const & instance, 
                     graphicsFamilyQueueIndex++;
                 }
             }
-            if (not foundSurfaceQueue) 
+            if (not foundSurfaceQueue)
             {
                 if (device.getSurfaceSupportKHR(presentFamilyQueueIndex, **surface))
                 {
@@ -479,7 +476,11 @@ void Renderer::makeLogicalDevice()
 
 SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
 {
-    // create the swap chain
+    rebuild(window, cpd, device);
+}
+
+void SwapchainData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+{
     auto surfaceFormats      = cpd.physicalDevice->getSurfaceFormatsKHR(**cpd.surface);
     auto surfacePresentModes = cpd.physicalDevice->getSurfacePresentModesKHR(**cpd.surface);
     auto surfaceCapabilities = cpd.physicalDevice->getSurfaceCapabilitiesKHR(**cpd.surface);
@@ -560,9 +561,12 @@ SwapchainData::SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & c
         swapchainInfo.imageSharingMode = vk::SharingMode::eExclusive;
     }
 
+    swapchain = nullptr;
     swapchain = std::make_unique<vk::raii::SwapchainKHR>(device, swapchainInfo);
 
     // Create an image "view" for each swapchain image
+    images.clear();
+    views.clear();
     images = swapchain->getImages();
     for(const auto& swapchainImage : images)
     {
@@ -619,27 +623,11 @@ PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd
         depthFormat = *ret;
     }
 
-    rebuild(window, cpd, device);
-}
-
-void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
-{
-    // first, reset the data that we're rebuild
-    scd                 = nullptr;
-    commandBuffers      = nullptr;
-    commandPool         = nullptr;
-    transferCommandPool = nullptr;
-    descriptorSets      = nullptr;
-    textureImage        = nullptr;
-    textureImageView    = nullptr;
-    textureImageMemory  = nullptr;
-    textureSampler      = nullptr;
-    framebuffers.clear();
-
-    // then rebuild
+    // this is redundant, b/c it also gets run in ::rebuild, however some of
+    // these other setup methods need to know how many images there are, and
+    // that gets determined in SwapchainData's constructor. I suppose I could
+    // move that calculation up the stack, but for now this should suffice...
     scd = std::make_unique<SwapchainData>(window, cpd, device);
-
-    makeCommands(device, cpd);
 
     vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
     for (std::size_t i = 0; i < scd->views.size(); i++)
@@ -655,16 +643,30 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
         uniformMemories.emplace_back(device, **mem.release());
     }
 
-    setupDepthBuffer(device, cpd);
+    makeCommands(device, cpd);
 
-    setupTextures(device, cpd);
+    rebuild(window, cpd, device);
 
-    // TODO: find a better placo for this
     setupDescriptors(device);
 
-    makeRenderPass(device);
     makePipeline(device);
+}
 
+void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device)
+{
+    // Let any GPU stuff finish
+    device.waitIdle();
+
+    scd->rebuild(window, cpd, device);
+
+    makeRenderPass(device);
+
+    // Since depthBuffer and texture stuff need to know about viewport size
+    // changes, we need to rebuild those as well
+    setupDepthBuffer(device, cpd);
+    setupTextures(device, cpd);
+
+    framebuffers.clear();
     makeFramebuffers(device);
 }
 
@@ -687,6 +689,22 @@ void PipelineData::makeCommands(vk::raii::Device const & device, ChosenPhysicalD
     transferCommandPool = std::make_unique<vk::raii::CommandPool>(device, poolInfo);
 
     commandBuffers = std::make_unique<vk::raii::CommandBuffers>(device, allocateInfo);
+
+    for (std::size_t i = 0 ; i < commandBuffers->size(); i++)
+    {
+        vk::raii::CommandBuffer const & buf = commandBuffers->at(i);
+
+        std::string name = "CommandBuffer #" + std::to_string(i);
+        /* VULKAN_HPP_INLINE void Device::setDebugUtilsObjectNameEXT( const DebugUtilsObjectNameInfoEXT & nameInfo ) const */
+        vk::DebugUtilsObjectNameInfoEXT nameInfo
+        {
+            .objectType = vk::ObjectType::eCommandBuffer,
+            .objectHandle = (uint64_t) &(**buf),
+            .pObjectName  = name.c_str()
+        };
+
+        device.setDebugUtilsObjectNameEXT(nameInfo);
+    }
 }
 
 
@@ -698,7 +716,8 @@ void Renderer::rebuildPipeline()
     // If we don't call this once first, then we're stuck waiting for the first
     // glfwWaitEvents until this loop exits. TODO find a better way
     glfwGetFramebufferSize(window, &width, &height);
-    while (width == 0 || height == 0) {
+    while (width == 0 || height == 0)
+    {
         glfwGetFramebufferSize(window, &width, &height);
         glfwWaitEvents();
     }
@@ -706,15 +725,10 @@ void Renderer::rebuildPipeline()
     // Let any GPU stuff finish
     device->waitIdle();
 
-    if (pld)
-    {
-        pld->rebuild(window, *cpd, *device);
-    }
-    else
-    {
-        pld = std::make_unique<PipelineData>(window, *cpd, *device);
-    }
+    pld->rebuild(window, *cpd, *device);
 
+    // reset the command pool since we're re-writing all our draw-calls now
+    pld->commandPool->reset({vk::CommandPoolResetFlagBits::eReleaseResources});
     for (auto const & mesh : meshes)
     {
         mesh.recordDrawCommands(*pld);
@@ -869,31 +883,6 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .primitiveRestartEnable = VK_FALSE
     };
 
-
-    vk::Viewport viewport{
-        .x = 0.0f,
-        // see below
-        .y = (float) scd->extent.height,
-        .width = (float) scd->extent.width,
-        // flip viewport to match opengl - this is so we can use e.g.
-        // glm::perspective without having to manually flip the y-coords
-        .height = (float) scd->extent.height * -1,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-
-    vk::Rect2D scissor{
-        .offset = {0, 0},
-        .extent = scd->extent
-    };
-
-    vk::PipelineViewportStateCreateInfo viewportStateInfo {
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor
-    };
-
     vk::PipelineRasterizationStateCreateInfo rasterizerInfo{
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
@@ -938,6 +927,21 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
 
     pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(device, pipelineLayoutInfo);
 
+    std::array<vk::DynamicState, 2> dynamicStates{
+        vk::DynamicState::eScissor,
+        vk::DynamicState::eViewport,
+    };
+
+    vk::PipelineDynamicStateCreateInfo dynamicStatesInfo{
+        .dynamicStateCount = 2,
+        .pDynamicStates = dynamicStates.data()
+    };
+
+    vk::PipelineViewportStateCreateInfo viewportStateInfo {
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+
     // Create the actual graphics pipeline!!!
     vk::GraphicsPipelineCreateInfo pipelineInfo{
         .stageCount = 2,
@@ -949,12 +953,36 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .pMultisampleState = &multisamplingInfo,
         .pDepthStencilState = &depthStencil,
         .pColorBlendState = &colorBlendingInfo,
+        .pDynamicState = &dynamicStatesInfo,
         .layout = **pipelineLayout,
         .renderPass = **renderPass,
         .subpass = 0
     };
 
     pipeline =  std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo);
+}
+
+void PipelineData::resetViewport(vk::raii::CommandBuffer const & buf) const
+{
+    vk::Viewport viewport{
+        .x = 0.0f,
+        // see below
+        .y = (float) scd->extent.height,
+        .width = (float) scd->extent.width,
+        // flip viewport to match opengl - this is so we can use e.g.
+        // glm::perspective without having to manually flip the y-coords
+        .height = (float) scd->extent.height * -1,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+
+    vk::Rect2D scissor{
+        .offset = {0, 0},
+        .extent = scd->extent
+    };
+
+    buf.setScissor(0, {scissor});
+    buf.setViewport(0, {viewport});
 }
 
 uint32_t findValidMemoryType(ChosenPhysicalDevice const & cpd, uint32_t allowedMask, vk::MemoryPropertyFlags reqs)
@@ -1231,6 +1259,16 @@ void PipelineData::setupTextures(vk::raii::Device const & device, ChosenPhysical
     vk::raii::CommandBuffers cbufs(device, allocateInfo);
     vk::raii::CommandBuffer const & buf = cbufs.at(0);
 
+    /* VULKAN_HPP_INLINE void Device::setDebugUtilsObjectNameEXT( const DebugUtilsObjectNameInfoEXT & nameInfo ) const */
+    vk::DebugUtilsObjectNameInfoEXT nameInfo
+    {
+        .objectType = vk::ObjectType::eCommandBuffer,
+        .objectHandle = (uint64_t) &(**buf),
+        .pObjectName  = "Texture transfer buffer # 1"
+    };
+
+    device.setDebugUtilsObjectNameEXT(nameInfo);
+
     vk::BufferImageCopy region{
         .bufferOffset = 0,
         .bufferRowLength = 0,
@@ -1243,7 +1281,7 @@ void PipelineData::setupTextures(vk::raii::Device const & device, ChosenPhysical
         },
         .imageOffset = {0, 0, 0},
         .imageExtent = {
-            .width = static_cast<uint32_t>(width), 
+            .width = static_cast<uint32_t>(width),
             .height = static_cast<uint32_t>(height),
             .depth = 1
         }
@@ -1333,6 +1371,16 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
 
     vk::raii::CommandBuffers cbufs(device, allocateInfo);
     vk::raii::CommandBuffer const & buf = cbufs.at(0);
+
+    /* VULKAN_HPP_INLINE void Device::setDebugUtilsObjectNameEXT( const DebugUtilsObjectNameInfoEXT & nameInfo ) const */
+    vk::DebugUtilsObjectNameInfoEXT nameInfo
+    {
+        .objectType = vk::ObjectType::eCommandBuffer,
+        .objectHandle = (uint64_t) &(**buf),
+        .pObjectName  = "ImageLayout transfer buffer # 1"
+    };
+
+    device.setDebugUtilsObjectNameEXT(nameInfo);
 
     vk::CommandBufferBeginInfo beginInfo{
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
@@ -1453,6 +1501,15 @@ MeshVk::MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysica
     {
         vk::raii::CommandBuffers transferCommandBuffers(device, allocateInfo);
 
+        vk::DebugUtilsObjectNameInfoEXT nameInfo
+        {
+            .objectType = vk::ObjectType::eCommandBuffer,
+            .objectHandle = (uint64_t) &(**transferCommandBuffers.at(0)),
+            .pObjectName  = "MeshVK transfer buffer # 1"
+        };
+
+        device.setDebugUtilsObjectNameEXT(nameInfo);
+
         vk::CommandBufferBeginInfo beginInfo{
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
         };
@@ -1521,6 +1578,9 @@ void MeshVk::recordDrawCommands(PipelineData const & pld) const
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld.pipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld.pipelineLayout, 0, *pld.descriptorSets->at(i), {});
+
+        pld.resetViewport(commandBuffer);
+
         // only draw if we have indices
         if (mesh.getIndices().size() > 0)
         {

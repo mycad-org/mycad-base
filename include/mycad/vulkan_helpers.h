@@ -31,6 +31,7 @@ struct ChosenPhysicalDevice
 struct SwapchainData
 {
     SwapchainData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+    void rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
 
     uptrSwapchain swapchain;
     Images images;
@@ -44,6 +45,7 @@ class PipelineData
     public:
         PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
         void rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd, vk::raii::Device const & device);
+        void resetViewport(vk::raii::CommandBuffer const & buf) const;
 
         std::unique_ptr<SwapchainData> scd;
         Framebuffers framebuffers;
@@ -92,7 +94,6 @@ class MeshVk
         void recordDrawCommands(PipelineData const & pld) const;
 
     private:
-
         Mesh mesh;
 
         uptrBuffer vertexBuffer;
