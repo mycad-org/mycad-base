@@ -45,7 +45,7 @@ int main()
     while(!glfwWindowShouldClose(app.window))
     {
         renderer.draw(currentFrame);
-        currentFrame = currentFrame == MAX_FRAMES_IN_FLIGHT - 1 ? 0 : currentFrame + 1;
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
         glfwPollEvents();
         /* i++; */

@@ -205,6 +205,8 @@ void Renderer::draw(int currentFrame)
         return;
     }
 
+    recordDrawCommands(imgIndex);
+
     auto& maybeFenceIndex =  imagesInFlight.at(imgIndex);
 
     // Check if this image is still "in flight", and wait if so
@@ -673,6 +675,7 @@ void PipelineData::rebuild(GLFWwindow * window, ChosenPhysicalDevice const & cpd
 void PipelineData::makeCommands(vk::raii::Device const & device, ChosenPhysicalDevice const & cpd)
 {
     vk::CommandPoolCreateInfo poolInfo{
+        .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
         .queueFamilyIndex = cpd.graphicsFamilyQueueIndex
     };
 
@@ -726,13 +729,6 @@ void Renderer::rebuildPipeline()
     device->waitIdle();
 
     pld->rebuild(window, *cpd, *device);
-
-    // reset the command pool since we're re-writing all our draw-calls now
-    pld->commandPool->reset({vk::CommandPoolResetFlagBits::eReleaseResources});
-    for (auto const & mesh : meshes)
-    {
-        mesh.recordDrawCommands(*pld);
-    }
 }
 
 void PipelineData::makeFramebuffers(vk::raii::Device const & device)
@@ -1542,21 +1538,22 @@ MeshVk::MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysica
         pld.transferQueue->submit({submitInfo});
         pld.transferQueue->waitIdle();
     }
-
-    recordDrawCommands(pld);
 }
 
-void MeshVk::recordDrawCommands(PipelineData const & pld) const
+void Renderer::recordDrawCommands(std::size_t n) const
 {
     // Record the commands
-    for(std::size_t i = 0; i < pld.commandBuffers->size(); i++)
+    for(auto const & mesh : meshes)
     {
         vk::CommandBufferBeginInfo beginInfo{};
 
-        const auto& commandBuffer = pld.commandBuffers->at(i);
+        // TODO: I've been told that the implicit command buffer reset used here
+        // is "slow" or something. I've been told that instead I should create a
+        // command pool per frame-in-flight and just reset the whole pool.
+        vk::raii::CommandBuffer const & buf = pld->commandBuffers->at(n);
 
         //==== begin command
-        commandBuffer.begin(beginInfo);
+        buf.begin(beginInfo);
 
         std::array<vk::ClearValue, 2> clearValues{
             vk::ClearColorValue{std::array<float, 4>{0.2f, 0.3f, 0.3f, 1.0f}},
@@ -1564,34 +1561,35 @@ void MeshVk::recordDrawCommands(PipelineData const & pld) const
         };
 
         vk::RenderPassBeginInfo renderPassBeginInfo{
-            .renderPass = **pld.renderPass,
-            .framebuffer = *pld.framebuffers.at(i),
+            .renderPass = **pld->renderPass,
+            .framebuffer = *pld->framebuffers.at(n),
             .renderArea = {
                 .offset = {0, 0},
-                .extent = pld.scd->extent
+                .extent = pld->scd->extent
             },
             .clearValueCount = static_cast<uint32_t>(clearValues.size()),
             .pClearValues = clearValues.data()
         };
 
         //======== begin render pass
-        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld.pipeline);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld.pipelineLayout, 0, *pld.descriptorSets->at(i), {});
+        buf.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+        buf.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->pipeline);
+        buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(n), {});
 
-        pld.resetViewport(commandBuffer);
+        pld->resetViewport(buf);
 
         // only draw if we have indices
-        if (mesh.getIndices().size() > 0)
+        std::size_t nIndices = mesh.mesh.getIndices().size();
+        if (nIndices > 0)
         {
-            commandBuffer.bindVertexBuffers(0, {**vertexBuffer}, {0});
-            commandBuffer.bindIndexBuffer(**indexBuffer, 0, vk::IndexType::eUint32);
-            commandBuffer.drawIndexed(mesh.getIndices().size(), 1, 0, 0, 0);
+            buf.bindVertexBuffers(0, {**mesh.vertexBuffer}, {0});
+            buf.bindIndexBuffer(**mesh.indexBuffer, 0, vk::IndexType::eUint32);
+            buf.drawIndexed(nIndices, 1, 0, 0, 0);
         }
-        commandBuffer.endRenderPass();
+        buf.endRenderPass();
         //======== end render pass
 
-        commandBuffer.end();
+        buf.end();
         //==== end command
     }
 }

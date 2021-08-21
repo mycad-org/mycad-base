@@ -87,19 +87,15 @@ class PipelineData
         void transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 };
 
-class MeshVk
+struct MeshVk
 {
-    public:
-        MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
-        void recordDrawCommands(PipelineData const & pld) const;
+    MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
 
-    private:
-        Mesh mesh;
-
-        uptrBuffer vertexBuffer;
-        uptrMemory vertexBufferMemory;
-        uptrBuffer indexBuffer;
-        uptrMemory indexBufferMemory;
+    Mesh mesh;
+    uptrBuffer vertexBuffer;
+    uptrMemory vertexBufferMemory;
+    uptrBuffer indexBuffer;
+    uptrMemory indexBufferMemory;
 };
 
 class Renderer
@@ -117,6 +113,7 @@ class Renderer
         void draw(int currentFrame);
 
     private:
+        void recordDrawCommands(std::size_t n) const;
         void makeInstance();
         void makeLogicalDevice();
         void makeFramebuffers();
