@@ -87,9 +87,9 @@ class PipelineData
         void transitionImageLayout(vk::raii::Device const & device, vk::raii::Image const & img, vk::Format fmt, vk::ImageLayout oldLayout, vk::ImageLayout  newLayout);
 };
 
-struct MeshVk
+struct RenderTarget
 {
-    MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
+    RenderTarget(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
 
     Mesh mesh;
     uptrBuffer vertexBuffer;
@@ -133,7 +133,7 @@ class Renderer
         MaybeIndices imagesInFlight;
         MVPBufferObject mvpMatrix;
 
-        std::vector<MeshVk> meshes;
+        std::vector<RenderTarget> renderTargets;
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER

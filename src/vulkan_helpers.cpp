@@ -1447,10 +1447,10 @@ void PipelineData::transitionImageLayout(vk::raii::Device const & device, vk::ra
 
 void Renderer::addMesh(Mesh const & mesh)
 {
-    meshes.emplace_back(mesh, *device, *cpd, *pld);
+    renderTargets.emplace_back(mesh, *device, *cpd, *pld);
 }
 
-MeshVk::MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld)
+RenderTarget::RenderTarget(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld)
     : mesh(mesh)
 {
     vk::DeviceSize verticesSize = mesh.sizeOfVertices();
@@ -1501,7 +1501,7 @@ MeshVk::MeshVk(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysica
         {
             .objectType = vk::ObjectType::eCommandBuffer,
             .objectHandle = (uint64_t) &(**transferCommandBuffers.at(0)),
-            .pObjectName  = "MeshVK transfer buffer # 1"
+            .pObjectName  = "RenderTarget transfer buffer # 1"
         };
 
         device.setDebugUtilsObjectNameEXT(nameInfo);
@@ -1576,14 +1576,14 @@ void Renderer::recordDrawCommands(std::size_t n) const
     buf.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->pipeline);
     buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(n), {});
 
-    for(auto const & mesh : meshes)
+    for(auto const & renderTarget : renderTargets)
     {
         // only draw if we have indices
-        std::size_t nIndices = mesh.mesh.getIndices().size();
+        std::size_t nIndices = renderTarget.mesh.getIndices().size();
         if (nIndices > 0)
         {
-            buf.bindVertexBuffers(0, {**mesh.vertexBuffer}, {0});
-            buf.bindIndexBuffer(**mesh.indexBuffer, 0, vk::IndexType::eUint32);
+            buf.bindVertexBuffers(0, {**renderTarget.vertexBuffer}, {0});
+            buf.bindIndexBuffer(**renderTarget.indexBuffer, 0, vk::IndexType::eUint32);
             buf.drawIndexed(nIndices, 1, 0, 0, 0);
         }
     }
