@@ -1471,7 +1471,7 @@ RenderTarget::RenderTarget(Mesh const & mesh, vk::raii::Device const & device, C
     memcpy(data, mesh.getVertices().data(), (std::size_t) verticesSize);
     stagingBufferMemory->unmapMemory();
     data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
-    memcpy(data, mesh.getIndices().data(), (std::size_t) indicesSize);
+    memcpy(data, mesh.getVertexIndices().data(), (std::size_t) indicesSize);
     stagingBufferMemory->unmapMemory();
 
     // create the vertex and index buffers, stored as member variable
@@ -1579,7 +1579,7 @@ void Renderer::recordDrawCommands(std::size_t n) const
     for(auto const & renderTarget : renderTargets)
     {
         // only draw if we have indices
-        std::size_t nIndices = renderTarget.mesh.getIndices().size();
+        std::size_t nIndices = renderTarget.mesh.getVertexIndices().size();
         if (nIndices > 0)
         {
             buf.bindVertexBuffers(0, {**renderTarget.vertexBuffer}, {0});

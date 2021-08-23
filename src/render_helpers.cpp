@@ -11,23 +11,11 @@ void Mesh::addFragment(Fragment const & frag)
 {
     // see if we already have this vertex
     auto const & [v0, v1, v2] = frag;
-    auto addVertex = [this](Vertex const & vert)
-    {
-        auto ret = std::find(vertices.begin(), vertices.end(), vert);
 
-        if (ret == vertices.end())
-        {
-            vertices.push_back(vert);
-            indices.push_back(vertices.size() - 1);
-        }
-        else
-        {
-            // don't create a duplicate
-            indices.push_back(ret - vertices.begin());
-        }
-    };
-
-    std::ranges::for_each(std::vector<Vertex>{v0, v1, v2}, addVertex);
+    std::ranges::for_each(
+        std::vector<Vertex>{v0, v1, v2},
+        [this](Vertex const & vert){addVertex(vert);}
+    );
 }
 
 void Mesh::addFragments(std::vector<Fragment> const & frags)
@@ -45,7 +33,7 @@ uint64_t Mesh::sizeOfVertices() const
 
 uint64_t Mesh::sizeOfIndices() const
 {
-    return sizeof(indices.at(0)) * indices.size();
+    return lineIndicesOffset() + sizeof(lineIndices.at(0)) * lineIndices.size();
 }
 
 auto Mesh::getVertices() const -> std::vector<Vertex> const &
@@ -53,7 +41,55 @@ auto Mesh::getVertices() const -> std::vector<Vertex> const &
     return vertices;
 }
 
-auto Mesh::getIndices() const -> std::vector<uint32_t> const &
+auto Mesh::getAllIndices() const -> std::vector<uint32_t>
+{
+    std::vector<uint32_t> copyOfIndices = indices;
+
+    copyOfIndices.insert(copyOfIndices.end(), lineIndices.begin(), lineIndices.end());
+
+    return copyOfIndices;
+}
+
+auto Mesh::getVertexIndices() const -> std::vector<uint32_t> const &
 {
     return indices;
+}
+
+auto Mesh::getLineIndices() const -> std::vector<uint32_t> const &
+{
+    return lineIndices;
+}
+
+uint64_t Mesh::lineIndicesOffset() const
+{
+    return sizeof(indices.at(0)) * indices.size();
+}
+
+void Mesh::addLine(Vertex const & v0, Vertex const & v1)
+{
+    auto i1 = addVertex(v0);
+    auto i2 = addVertex(v1);
+
+    lineIndices.insert(lineIndices.end(), 2, i1);
+    lineIndices.insert(lineIndices.end(), 2, i2);
+}
+
+std::size_t Mesh::addVertex(Vertex const & vertex)
+{
+    auto ret = std::find(vertices.begin(), vertices.end(), vertex);
+
+    std::size_t index = 0;
+    if (ret == vertices.end())
+    {
+        vertices.push_back(vertex);
+        index = vertices.size() - 1;
+    }
+    else
+    {
+        // don't create a duplicate
+        index = ret - vertices.begin();
+    }
+
+    indices.push_back(index);
+    return index;
 }

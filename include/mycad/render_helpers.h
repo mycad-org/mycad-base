@@ -36,16 +36,26 @@ class Mesh
         void addFragment(Fragment const & frag);
         void addFragments(std::vector<Fragment> const & frags);
 
+        // A "thick line" can be rendered using a particular shader
+        void addLine(Vertex const & v0, Vertex const & v1);
+
         uint64_t sizeOfVertices() const;
         uint64_t sizeOfIndices() const;
 
         auto getVertices() const -> std::vector<Vertex> const &;
-        auto getIndices() const -> std::vector<uint32_t> const &;
+        auto getAllIndices() const -> std::vector<uint32_t>;
+        auto getVertexIndices() const -> std::vector<uint32_t> const &;
+        auto getLineIndices() const -> std::vector<uint32_t> const &;
+        uint64_t lineIndicesOffset() const;
 
     private:
+        // Returns the index to indices of the added vertex - this function will
+        // avoid adding duplicate vertices
+        std::size_t addVertex(Vertex const & vertex);
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
+        std::vector<uint32_t> lineIndices;
 };
 
 // alignas added explicitly to remind you in the future in case you have
