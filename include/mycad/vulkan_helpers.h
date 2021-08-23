@@ -50,7 +50,9 @@ class PipelineData
         std::unique_ptr<SwapchainData> scd;
         Framebuffers framebuffers;
         uptrPipeline pipeline;
+        uptrPipeline linePipeline;
         uptrPipelineLayout pipelineLayout;
+        uptrPipelineLayout linePipelineLayout;
         uptrRenderPass renderPass;
         uptrCommandPool commandPool;
         uptrCommandBuffers commandBuffers;

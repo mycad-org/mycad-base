@@ -8,8 +8,10 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "shaders/vert_basic.h"
+#include "shaders/vert_line.h"
 #include "shaders/frag_texture.h"
 #include "shaders/frag_flat.h"
+#include "shaders/frag_line.h"
 
 #include <algorithm>
 #include <array>
@@ -913,16 +915,6 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .pSetLayouts = &(**descriptorLayout)
     };
 
-    vk::PipelineDepthStencilStateCreateInfo depthStencil{
-        .depthTestEnable = true,
-        .depthWriteEnable = true,
-        .depthCompareOp = vk::CompareOp::eLess,
-        .depthBoundsTestEnable = false,
-        .stencilTestEnable = false
-    };
-
-    pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(device, pipelineLayoutInfo);
-
     std::array<vk::DynamicState, 2> dynamicStates{
         vk::DynamicState::eScissor,
         vk::DynamicState::eViewport,
@@ -937,6 +929,16 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .viewportCount = 1,
         .scissorCount = 1,
     };
+
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{
+        .depthTestEnable = true,
+        .depthWriteEnable = true,
+        .depthCompareOp = vk::CompareOp::eLess,
+        .depthBoundsTestEnable = false,
+        .stencilTestEnable = false
+    };
+
+    pipelineLayout = std::make_unique<vk::raii::PipelineLayout>(device, pipelineLayoutInfo);
 
     // Create the actual graphics pipeline!!!
     vk::GraphicsPipelineCreateInfo pipelineInfo{
