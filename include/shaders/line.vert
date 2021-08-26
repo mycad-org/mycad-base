@@ -28,30 +28,28 @@ void main()
     vec2 aspectVec = vec2(line.aspect, 1.0);
     vec2 ndcPos = clipPos.xy / clipPos.w; // * aspectVec;
     vec2 ndcDir = clipDir.xy / clipDir.w; // * aspectVec;
-    ndcPos.x /= line.aspect;
-    ndcDir.x /= line.aspect;
+    ndcPos.x *= line.aspect;
+    ndcDir.x *= line.aspect;
 
     // This vector is the direction of the line in NDC
     vec2 dir = normalize(ndcDir - ndcPos);
 
-    // since it's 2-d, we can easily calculate the normal
-    vec2 normal = vec2(-dir.y, dir.x);
+    // since it's 2-d, we can easily calculate the normal. We put it in a vec4
+    // so we can apply the projection matrix to it
+    vec4 normal = vec4(-dir.y, dir.x, 0, 1.0);
 
     // The normal is the direction we'll "extrude" the line, by half the thickness
-    normal *= line.thickness;
-    // Not sure about these maths...
-    normal.x *= line.aspect;
+    normal *= line.thickness/2.0;
 
-    vec4 delta = vec4(0.0f);
+    // We need to make the normal match everything else's perspective
+    normal *= mvp.proj;
+
     if (up < 0)
     {
-        delta = vec4(-1 * normal, 0.0, 1.0);
-    }
-    else
-    {
-        delta = vec4(normal, 0.0, 1.0);
+        normal *= -1;
     }
 
     // Finally, transform our point.
-    gl_Position = clipPos + delta;
+    clipPos.xy += normal.xy;
+    gl_Position = clipPos;
 }

@@ -78,7 +78,7 @@ void LineMesh::addSegment(glm::vec3 const & v0, glm::vec3 const & v1)
     addVertex({v0, dir, 1});
     addVertex({v0, dir, -1});
     addVertex({v1, -dir, 1});
-    addVertex({v0, dir, -1});
+    addVertex({v0, dir,  1});
     addVertex({v1, -dir, 1});
     addVertex({v1, -dir, -1});
 }

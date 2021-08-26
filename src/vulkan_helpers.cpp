@@ -255,7 +255,7 @@ void Renderer::draw(int currentFrame)
                                       0.1f, 10.0f);
     LineUBO lineData{
         .aspect = aspect,
-        .thickness = 0.1f
+        .thickness = 0.03f
     };
 
     // send latest uniform buffer data to the gpu
