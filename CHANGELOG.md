@@ -1,3 +1,12 @@
+v0.2
+====
+- a super super "simple" (note the quotes) vulkan renderer is implemented. The
+  executable is `mycad-vk`
+- `mycad::Entity` can be visualized in `mycad-vk` - again, super rudimentary
+  (only lines at the moment)
+- the beginnings of an opengl renderer, `mycad-vis` is still around, though
+  we'll probably get rid of this
+
 v.01
 ====
 - initial numbered version

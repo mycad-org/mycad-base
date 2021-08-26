@@ -96,7 +96,6 @@ Roadmap
 
 | Version | Target Date | Main Feature                                                                          |
 | ------- | ----------- | ------------------------------------------------------------------------------------- |
-|  v0.2   |  Aug. 2021  | `mycad-vis`, a minimal opengl viewer for mycad objects                                |
 |  v0.3   |  Nov. 2021  | entity can represent a cube                                                           |
 |  v0.4   |  Jan. 2022  | `arc` added to geometry - maybe `circle`                                              |
 |  v0.5   |  Mar. 2022  | `splitEdge` added to topology                                                         |
