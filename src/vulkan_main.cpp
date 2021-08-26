@@ -1,4 +1,5 @@
 #include "mycad/vulkan_helpers.h"
+#include "mycad/Entity.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 

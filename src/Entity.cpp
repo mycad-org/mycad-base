@@ -47,3 +47,14 @@ auto Entity::getLine(EdgeID const e) const -> MaybeLine
 
     return std::nullopt;
 }
+
+auto Entity::getEdges() const -> Lines
+{
+    Lines out;
+    for (auto const & [_, line] : edges)
+    {
+        out.push_back(line);
+    }
+
+    return out;
+}

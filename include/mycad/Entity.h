@@ -17,6 +17,7 @@ namespace mycad
             auto getPoint(VertexID const v) const -> Point;
             auto getLine(EdgeID const e) const -> MaybeLine;
 
+            auto getEdges() const -> Lines;
         private:
             std::map<VertexID, Point> vertices = {};
             std::map<EdgeID, Line> edges = {};

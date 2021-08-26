@@ -8,6 +8,7 @@ namespace mycad
 {
     class Line;
 
+    using Lines        = std::vector<Line>;
     using VertexID     = std::size_t;
     using VertexIDPair = std::pair<VertexID, VertexID>;
     using EdgeID       = int;
