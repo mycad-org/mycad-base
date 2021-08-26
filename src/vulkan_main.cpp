@@ -1,11 +1,5 @@
 #include "mycad/vulkan_helpers.h"
 
-#include <algorithm>
-#include <iostream>
-#include <limits>
-#include <set>
-#include <vector>
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 int main()
