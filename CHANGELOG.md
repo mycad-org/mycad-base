@@ -7,7 +7,7 @@ v0.2
 - the beginnings of an opengl renderer, `mycad-vis` is still around, though
   we'll probably get rid of this
 
-v.01
+v.1
 ====
 - initial numbered version
 - the most rudimentary of `mycad::Entity` is implemented, allowing to create
