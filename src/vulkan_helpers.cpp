@@ -56,6 +56,33 @@ std::array<vk::VertexInputAttributeDescription, 3> VertexAttributeDescriptions{{
     }
 }};
 
+vk::VertexInputBindingDescription LineVertexBindingDescription{
+    .binding = 0,
+    .stride  = sizeof(LineVertex),
+    .inputRate = vk::VertexInputRate::eVertex
+};
+
+std::array<vk::VertexInputAttributeDescription, 3> LineVertexAttributeDescriptions{{
+    {
+        .location = 0,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(LineVertex, pos)
+    },
+    {
+        .location = 1,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(LineVertex, dir)
+    },
+    {
+        .location = 2,
+        .binding = 0,
+        .format = vk::Format::eR32Sfloat,
+        .offset = offsetof(LineVertex, up)
+    }
+}};
+
 namespace {
     const int WIDTH=800;
     const int HEIGHT=600;
@@ -222,10 +249,23 @@ void Renderer::draw(int currentFrame)
 
     mvpMatrix.model = glm::mat4(1.0f);
 
+    float aspect = pld->scd->extent.width / (float )pld->scd->extent.height;
+    mvpMatrix.proj = glm::perspective(glm::radians(45.0f),
+                                      aspect,
+                                      0.1f, 10.0f);
+    LineUBO lineData{
+        .aspect = aspect,
+        .thickness = 0.1f
+    };
+
     // send latest uniform buffer data to the gpu
     void* data = pld->uniformMemories.at(imgIndex).mapMemory(0, sizeof(mvpMatrix));
     memcpy(data, &mvpMatrix, sizeof(mvpMatrix));
     pld->uniformMemories.at(imgIndex).unmapMemory();
+
+    data = pld->lineMemories.at(imgIndex).mapMemory(0, sizeof(lineData));
+    memcpy(data, &lineData, sizeof(lineData));
+    pld->lineMemories.at(imgIndex).unmapMemory();
 
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
@@ -296,9 +336,6 @@ Renderer::Renderer(GLFWwindow * win, int maxFrames) : window(win)
     mvpMatrix.view  = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
                                   glm::vec3(0.0f, 0.0f, 0.0f),
                                   glm::vec3(0.0f, 0.0f, 1.0f));
-    mvpMatrix.proj = glm::perspective(glm::radians(45.0f),
-                                      pld->scd->extent.width / (float) pld->scd->extent.height,
-                                      0.1f, 10.0f);
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int, int)
@@ -634,6 +671,7 @@ PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd
     scd = std::make_unique<SwapchainData>(window, cpd, device);
 
     vk::DeviceSize uniformSize = sizeof(MVPBufferObject);
+    vk::DeviceSize lineSize = sizeof(LineUBO);
     for (std::size_t i = 0; i < scd->views.size(); i++)
     {
         // tmps
@@ -645,6 +683,14 @@ PipelineData::PipelineData(GLFWwindow * window, ChosenPhysicalDevice const & cpd
                      buf, mem);
         uniformBuffers.emplace_back(device, **buf.release());
         uniformMemories.emplace_back(device, **mem.release());
+
+        buf = nullptr;
+        mem = nullptr;
+        createBuffer(device, cpd, lineSize, vk::BufferUsageFlagBits::eUniformBuffer,
+                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                     buf, mem);
+        lineBuffers.emplace_back(device, **buf.release());
+        lineMemories.emplace_back(device, **mem.release());
     }
 
     makeCommands(device, cpd);
@@ -957,7 +1003,58 @@ void PipelineData::makePipeline(vk::raii::Device const & device)
         .subpass = 0
     };
 
+    std::cout << "stride = " << vertexInputInfo.pVertexBindingDescriptions->stride << "\n";
     pipeline =  std::make_unique<vk::raii::Pipeline>(device, nullptr, pipelineInfo);
+
+    // create a second pipeline - this one will be for our line renderer
+    vShaderInfo.codeSize = vert_line_spv_len;
+    vShaderInfo.pCode = reinterpret_cast<const uint32_t*>(vert_line_spv);
+    fShaderInfo.codeSize = frag_line_spv_len;
+    fShaderInfo.pCode = reinterpret_cast<const uint32_t*>(frag_line_spv);
+
+    vk::raii::ShaderModule vlineShaderModule(device, vShaderInfo);
+    vk::raii::ShaderModule flineShaderModule(device, fShaderInfo);
+
+    shaderStages[0] =
+        {
+            .stage = vk::ShaderStageFlagBits::eVertex,
+            .module = *vlineShaderModule,
+            .pName = "main"
+        };
+    shaderStages[1] =
+        {
+            .stage = vk::ShaderStageFlagBits::eFragment,
+            .module = *flineShaderModule,
+            .pName = "main"
+        };
+
+    vk::PipelineVertexInputStateCreateInfo lineVertexInputInfo{
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &LineVertexBindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(LineVertexAttributeDescriptions.size()),
+        .pVertexAttributeDescriptions = LineVertexAttributeDescriptions.data()
+    };
+
+    vk::GraphicsPipelineCreateInfo linePipelineInfo{
+        .stageCount = 2,
+        .pStages = shaderStages,
+        .pVertexInputState = &lineVertexInputInfo,
+        .pInputAssemblyState = &inputAssyInfo,
+        .pViewportState = &viewportStateInfo,
+        .pRasterizationState = &rasterizerInfo,
+        .pMultisampleState = &multisamplingInfo,
+        .pDepthStencilState = &depthStencil,
+        .pColorBlendState = &colorBlendingInfo,
+        .pDynamicState = &dynamicStatesInfo,
+        .layout = **pipelineLayout,
+        .renderPass = **renderPass,
+        .subpass = 0
+    };
+
+    /* pipelineInfo.pVertexInputState = &vertexInputInfo; */
+    /* pipelineInfo.pDepthStencilState = nullptr; */
+
+    linePipeline = std::make_unique<vk::raii::Pipeline>(device, nullptr, linePipelineInfo);
 }
 
 void PipelineData::resetViewport(vk::raii::CommandBuffer const & buf) const
@@ -1046,7 +1143,14 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
         .stageFlags = vk::ShaderStageFlagBits::eFragment
     };
 
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings{uniformBinding, samplerBinding};
+    vk::DescriptorSetLayoutBinding lineBinding{
+        .binding = 2,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex
+    };
+
+    std::array<vk::DescriptorSetLayoutBinding, 3> bindings{uniformBinding, samplerBinding, lineBinding};
     vk::DescriptorSetLayoutCreateInfo createInfo{
         .bindingCount = bindings.size(),
         .pBindings = bindings.data()
@@ -1055,7 +1159,7 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
     descriptorLayout = std::make_unique<vk::raii::DescriptorSetLayout>(device, createInfo);
 
     // Next, create a DescriptorPool
-    std::array<vk::DescriptorPoolSize, 2> poolSizes
+    std::array<vk::DescriptorPoolSize, 3> poolSizes
     {{
         {
             .type            = vk::DescriptorType::eUniformBuffer,
@@ -1064,11 +1168,13 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
         {
             .type            = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = static_cast<uint32_t>(scd->images.size())
+        },
+        {
+            .type            = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = static_cast<uint32_t>(scd->images.size())
         }
     }};
 
-    // TODO enable vulkan best practice validation to catch errors like
-    // too-small pool size
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = static_cast<uint32_t>(scd->images.size()),
@@ -1103,7 +1209,13 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
         };
 
-        std::array<vk::WriteDescriptorSet, 2> descriptorWrites{{
+        vk::DescriptorBufferInfo lineInfo{
+            .buffer = *lineBuffers.at(i),
+            .offset = 0,
+            .range = sizeof(LineUBO)
+        };
+
+        std::array<vk::WriteDescriptorSet, 3> descriptorWrites{{
             {
                 .dstSet = *descriptorSets->at(i),
                 .dstBinding = 0,
@@ -1119,7 +1231,15 @@ void PipelineData::setupDescriptors(vk::raii::Device const & device)
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eCombinedImageSampler,
                 .pImageInfo = &imageInfo
-            }
+            },
+            {
+                .dstSet = *descriptorSets->at(i),
+                .dstBinding = 2,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                .pBufferInfo = &lineInfo
+            },
         }};
 
         device.updateDescriptorSets(descriptorWrites, {});
@@ -1452,6 +1572,11 @@ void Renderer::addMesh(Mesh const & mesh)
     renderTargets.emplace_back(mesh, *device, *cpd, *pld);
 }
 
+void Renderer::addLineMesh(LineMesh const & mesh)
+{
+    lineRenderTargets.emplace_back(mesh, *device, *cpd, *pld);
+}
+
 RenderTarget::RenderTarget(Mesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld)
     : mesh(mesh)
 {
@@ -1473,7 +1598,7 @@ RenderTarget::RenderTarget(Mesh const & mesh, vk::raii::Device const & device, C
     memcpy(data, mesh.getVertices().data(), (std::size_t) verticesSize);
     stagingBufferMemory->unmapMemory();
     data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
-    memcpy(data, mesh.getVertexIndices().data(), (std::size_t) indicesSize);
+    memcpy(data, mesh.getIndices().data(), (std::size_t) indicesSize);
     stagingBufferMemory->unmapMemory();
 
     // create the vertex and index buffers, stored as member variable
@@ -1504,6 +1629,96 @@ RenderTarget::RenderTarget(Mesh const & mesh, vk::raii::Device const & device, C
             .objectType = vk::ObjectType::eCommandBuffer,
             .objectHandle = (uint64_t) &(**transferCommandBuffers.at(0)),
             .pObjectName  = "RenderTarget transfer buffer # 1"
+        };
+
+        device.setDebugUtilsObjectNameEXT(nameInfo);
+
+        vk::CommandBufferBeginInfo beginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+        };
+
+        // copy vertices, buffer 0
+        transferCommandBuffers.at(0).begin(beginInfo);
+        vk::BufferCopy copyRegion{.size = verticesSize};
+        transferCommandBuffers.at(0).copyBuffer(**stagingBuffer, **vertexBuffer, copyRegion);
+        copyRegion.srcOffset = verticesSize;
+        transferCommandBuffers.at(0).end();
+
+        // copy indices, buffer 1
+        transferCommandBuffers.at(1).begin(beginInfo);
+        copyRegion.srcOffset = verticesSize;
+        copyRegion.size = indicesSize;
+        transferCommandBuffers.at(1).copyBuffer(**stagingBuffer, **indexBuffer, copyRegion);
+        transferCommandBuffers.at(1).end();
+
+        std::vector<vk::CommandBuffer> buffs;
+        for (auto const & transferBuffer : transferCommandBuffers)
+        {
+            buffs.push_back(*transferBuffer);
+        }
+
+        vk::SubmitInfo submitInfo{
+            .commandBufferCount = 2,
+            .pCommandBuffers = buffs.data(),
+        };
+
+        pld.transferQueue->submit({submitInfo});
+        pld.transferQueue->waitIdle();
+    }
+}
+
+LineRenderTarget::LineRenderTarget(LineMesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld)
+    : mesh(mesh)
+{
+    vk::DeviceSize verticesSize = mesh.sizeOfVertices();
+    vk::DeviceSize indicesSize = mesh.sizeOfIndices();
+
+    // Create the staging buffer locally - make sure it's big enough for all our
+    // data
+    uptrBuffer stagingBuffer = nullptr;
+    uptrMemory stagingBufferMemory = nullptr;
+
+    createBuffer(device, cpd, verticesSize + indicesSize,
+                 vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                 stagingBuffer, stagingBufferMemory);
+
+    // Move vertex and index data to the staging area
+    void* data = stagingBufferMemory->mapMemory(0, verticesSize);
+    memcpy(data, mesh.getVertices().data(), (std::size_t) verticesSize);
+    stagingBufferMemory->unmapMemory();
+    data = stagingBufferMemory->mapMemory(verticesSize, indicesSize);
+    memcpy(data, mesh.getIndices().data(), (std::size_t) indicesSize);
+    stagingBufferMemory->unmapMemory();
+
+    // create the vertex and index buffers, stored as member variable
+    createBuffer(device, cpd, verticesSize,
+                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 vertexBuffer, vertexBufferMemory);
+    createBuffer(device, cpd, indicesSize,
+                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 indexBuffer, indexBufferMemory);
+
+    // Move the data from the staging area to the vertex buffer
+    vk::CommandBufferAllocateInfo allocateInfo{
+        .commandPool = **pld.transferCommandPool,
+        .level = vk::CommandBufferLevel::ePrimary,
+        .commandBufferCount = 2
+    };
+
+    // the CommandBuffer must be cleaned up before...well before
+    // rebuildPipeline, but I don't know exactly why - it ends up crashing if
+    // you don't though and complains about the buffer
+    {
+        vk::raii::CommandBuffers transferCommandBuffers(device, allocateInfo);
+
+        vk::DebugUtilsObjectNameInfoEXT nameInfo
+        {
+            .objectType = vk::ObjectType::eCommandBuffer,
+            .objectHandle = (uint64_t) &(**transferCommandBuffers.at(0)),
+            .pObjectName  = "LineRenderTarget transfer buffer # 1"
         };
 
         device.setDebugUtilsObjectNameEXT(nameInfo);
@@ -1581,7 +1796,22 @@ void Renderer::recordDrawCommands(std::size_t n) const
     for(auto const & renderTarget : renderTargets)
     {
         // only draw if we have indices
-        std::size_t nIndices = renderTarget.mesh.getVertexIndices().size();
+        std::size_t nIndices = renderTarget.mesh.getIndices().size();
+        if (nIndices > 0)
+        {
+            buf.bindVertexBuffers(0, {**renderTarget.vertexBuffer}, {0});
+            buf.bindIndexBuffer(**renderTarget.indexBuffer, 0, vk::IndexType::eUint32);
+            buf.drawIndexed(nIndices, 1, 0, 0, 0);
+        }
+    }
+
+    buf.bindPipeline(vk::PipelineBindPoint::eGraphics, **pld->linePipeline);
+    buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, **pld->pipelineLayout, 0, *pld->descriptorSets->at(n), {});
+
+    for(auto const & renderTarget : lineRenderTargets)
+    {
+        // only draw if we have indices
+        std::size_t nIndices = renderTarget.mesh.getIndices().size();
         if (nIndices > 0)
         {
             buf.bindVertexBuffers(0, {**renderTarget.vertexBuffer}, {0});

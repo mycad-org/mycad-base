@@ -35,29 +35,36 @@ int main()
         }
     });
 
-    // TODO: make it so that I don't have to add the Color and Texture info when
-    // drawing lines
-    squares.addLine(
-        {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}
-    );
-    squares.addLine(
-        {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}
-    );
-    squares.addLine(
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-    );
-    squares.addLine(
-        {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-        {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}
-    );
+    LineMesh lines{
+        {-0.5f, -0.5f, 0.0f},
+        { 0.5f, -0.5f, 0.0f}
+    };
+    LineMesh addSegment{
+        {0.5f, -0.5f, 0.0f},
+        {0.5f, 0.5f, 0.0f}
+    };
+    /* lines.addSegment( */
+    /*     {{ 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, 0.5f}, 1}, */
+    /*     {{ 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, 0.5f}, -1} */
+    /* ); */
+    /* lines.addSegment( */
+    /*     {{-0.5f,  0.5f, -0.5f}, {-0.5f, -0.5f, 0.5f}, 1}, */
+    /*     {{-0.5f,  0.5f, -0.5f}, {-0.5f, -0.5f, 0.5f}, -1} */
+    /* ); */
+    /* lines.addSegment( */
+    /*     {{-0.75f, -0.75f, -0.5f}, {-0.75f, 0.75f, 0.5f}, 1}, */
+    /*     {{-0.75f, -0.75f, -0.5f}, {-0.75f, 0.75f, 0.5f}, -1} */
+    /* ); */
+    /* lines.addSegment( */
+    /*     {{ 0.75f,  0.75f,  0.5f}, {-0.75f, 0.75f, 0.5f}, 1}, */
+    /*     {{ 0.75f,  0.75f,  1.0f}, {-0.75f, 0.75f, 0.5f}, -1} */
+    /* ); */
 
     ApplicationData app;
 
     Renderer renderer(app.window, MAX_FRAMES_IN_FLIGHT);
     renderer.addMesh(squares);
+    renderer.addLineMesh(lines);
 
     int currentFrame = 0;
     /* int i = 0; */

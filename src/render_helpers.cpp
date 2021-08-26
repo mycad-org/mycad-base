@@ -33,7 +33,7 @@ uint64_t Mesh::sizeOfVertices() const
 
 uint64_t Mesh::sizeOfIndices() const
 {
-    return lineIndicesOffset() + sizeof(lineIndices.at(0)) * lineIndices.size();
+    return sizeof(indices.at(0)) * indices.size();
 }
 
 auto Mesh::getVertices() const -> std::vector<Vertex> const &
@@ -41,40 +41,69 @@ auto Mesh::getVertices() const -> std::vector<Vertex> const &
     return vertices;
 }
 
-auto Mesh::getAllIndices() const -> std::vector<uint32_t>
-{
-    std::vector<uint32_t> copyOfIndices = indices;
-
-    copyOfIndices.insert(copyOfIndices.end(), lineIndices.begin(), lineIndices.end());
-
-    return copyOfIndices;
-}
-
-auto Mesh::getVertexIndices() const -> std::vector<uint32_t> const &
+auto Mesh::getIndices() const -> std::vector<uint32_t> const &
 {
     return indices;
 }
 
-auto Mesh::getLineIndices() const -> std::vector<uint32_t> const &
+std::size_t Mesh::addVertex(Vertex const & vertex)
 {
-    return lineIndices;
+    auto ret = std::find(vertices.begin(), vertices.end(), vertex);
+
+    std::size_t index = 0;
+    if (ret == vertices.end())
+    {
+        vertices.push_back(vertex);
+        index = vertices.size() - 1;
+    }
+    else
+    {
+        // don't create a duplicate
+        index = ret - vertices.begin();
+    }
+
+    indices.push_back(index);
+    return index;
 }
 
-uint64_t Mesh::lineIndicesOffset() const
+LineMesh::LineMesh(glm::vec3 const & v0, glm::vec3 const & v1)
+{
+    addSegment(v0, v1);
+}
+
+void LineMesh::addSegment(glm::vec3 const & v0, glm::vec3 const & v1)
+{
+    glm::vec3 dir = glm::normalize(v1 - v0);
+
+    addVertex({v0, dir, 1});
+    addVertex({v0, dir, -1});
+    addVertex({v1, -dir, 1});
+    addVertex({v0, dir, -1});
+    addVertex({v1, -dir, 1});
+    addVertex({v1, -dir, -1});
+}
+
+uint64_t LineMesh::sizeOfVertices() const
+{
+    return sizeof(vertices.at(0)) * vertices.size();
+}
+
+uint64_t LineMesh::sizeOfIndices() const
 {
     return sizeof(indices.at(0)) * indices.size();
 }
 
-void Mesh::addLine(Vertex const & v0, Vertex const & v1)
+auto LineMesh::getVertices() const -> std::vector<LineVertex> const &
 {
-    auto i1 = addVertex(v0);
-    auto i2 = addVertex(v1);
-
-    lineIndices.insert(lineIndices.end(), 2, i1);
-    lineIndices.insert(lineIndices.end(), 2, i2);
+    return vertices;
 }
 
-std::size_t Mesh::addVertex(Vertex const & vertex)
+auto LineMesh::getIndices() const -> std::vector<uint32_t> const &
+{
+    return indices;
+}
+
+std::size_t LineMesh::addVertex(LineVertex const & vertex)
 {
     auto ret = std::find(vertices.begin(), vertices.end(), vertex);
 

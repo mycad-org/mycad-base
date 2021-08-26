@@ -52,7 +52,6 @@ class PipelineData
         uptrPipeline pipeline;
         uptrPipeline linePipeline;
         uptrPipelineLayout pipelineLayout;
-        uptrPipelineLayout linePipelineLayout;
         uptrRenderPass renderPass;
         uptrCommandPool commandPool;
         uptrCommandBuffers commandBuffers;
@@ -63,7 +62,9 @@ class PipelineData
         uptrDescriptorSets descriptorSets;
 
         Buffers uniformBuffers;
+        Buffers lineBuffers;
         Memories uniformMemories;
+        Memories lineMemories;
 
         uptrImage textureImage;
         uptrImageView textureImageView;
@@ -100,6 +101,17 @@ struct RenderTarget
     uptrMemory indexBufferMemory;
 };
 
+struct LineRenderTarget
+{
+    LineRenderTarget(LineMesh const & mesh, vk::raii::Device const & device, ChosenPhysicalDevice const & cpd, PipelineData const & pld);
+
+    LineMesh mesh;
+    uptrBuffer vertexBuffer;
+    uptrMemory vertexBufferMemory;
+    uptrBuffer indexBuffer;
+    uptrMemory indexBufferMemory;
+};
+
 class Renderer
 {
     public:
@@ -112,6 +124,7 @@ class Renderer
 
         void rebuildPipeline();
         void addMesh(Mesh const & mesh);
+        void addLineMesh(LineMesh const & mesh);
         void draw(int currentFrame);
 
     private:
@@ -136,6 +149,7 @@ class Renderer
         MVPBufferObject mvpMatrix;
 
         std::vector<RenderTarget> renderTargets;
+        std::vector<LineRenderTarget> lineRenderTargets;
 };
 
 #endif // MYCAD_VULKAN_HELPERS_HEADER
