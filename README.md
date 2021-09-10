@@ -18,7 +18,7 @@ your own projects.
 Example
 =======
 
-Please see [the examples directory][./examples] for samples that fully compile
+Please see [the examples directory](./examples) for samples that fully compile
 and run. Here are a few highlights:
 
 ```cpp
